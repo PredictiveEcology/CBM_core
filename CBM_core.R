@@ -98,7 +98,7 @@ defineModule(sim, list(
         "(a character path to a raster file or a terra SpatRaster)",
         "can be accessed by subsetting the object with the 4 digit year name",
         "(e.g. sim$disturbanceRasters[[\"1990\"]]);",
-        "2. A data.table with the first column containing pixel values and another named 'year'."
+        "2. A data.table with a 'pixelIndex' column and additional columns named by disturbance year."
       )),
     expectsInput(
       objectName = "historicDMtype", objectClass = "numeric", sourceURL = NA,
@@ -413,70 +413,61 @@ postSpinup <- function(sim) {
 
 annual <- function(sim) {
 
-  # 1. Read-in the disturbances and add a column for disturbed pixels to the spatialDT
-
   spatialDT <- sim$spatialDT
   setkeyv(spatialDT, "pixelIndex")
-  spatialDT[, events := 0L]
+
+  # 1. Read year disturbances
+  if (!as.character(time(sim)) %in% names(sim$disturbanceRasters)) stop(
+    "Disturbances for year ", time(sim), " not found")
 
   if (!is(sim$disturbanceRasters, "data.table")){
 
-    if (!as.character(time(sim)) %in% names(sim$disturbanceRasters)) stop(
-      "Disturbance raster for year ", time(sim), " not found")
-
-    annualDisturbance <- sim$disturbanceRasters[[as.character(time(sim))]]
+    annualDist <- sim$disturbanceRasters[[as.character(time(sim))]]
 
     # Convert to SpatRaster object
-    if (!is(annualDisturbance, "SpatRaster")){
-
-      annualDisturbance <- tryCatch(
-        terra::rast(annualDisturbance),
+    if (!is(annualDist, "SpatRaster")){
+      annualDist <- tryCatch(
+        terra::rast(annualDist),
         error = function(e) stop(
           "Disturbances raster for year ", time(sim), " failed to be read as terra SpatRaster: ",
           e$message, call. = FALSE))
     }
 
     # Align with master raster
-    annualDisturbance <- postProcess(annualDisturbance, to = sim$masterRaster, method = "near")
+    annualDist <- postProcess(
+      annualDist,
+      to     = sim$masterRaster,
+      method = "near" #TODO: consider resampling with mode
+    ) |> Cache()
 
-    # 2. Add this year's events to the spatialDT, so each disturbed pixels has its event
-    yearEvents <- terra::values(annualDisturbance)[!is.na(terra::values(sim$masterRaster))]
+    # Summarize events into a table
+    annualDist <- data.table(
+      pixelIndex = 1:terra::ncell(sim$masterRaster),
+      events     = terra::values(annualDist)[,1]
+    )
 
-    ##TODO: put in a check here where sum(.N) == length(pixels[!is.na(pixels)])
-    ### do I have to make it sim$ here?
-    newEvents <- yearEvents > 0
-    spatialDT <- spatialDT[newEvents == TRUE, events := yearEvents[newEvents]]
-    # this could be big so remove it
-    rm(yearEvents)
+  }else if (is(sim$disturbanceRasters, "data.table")) {
 
-    # 3. get the disturbed pixels only
-    distPixels <- spatialDT[events > 0, .(
-      pixelIndex, pixelGroup, ages, spatial_unit_id,
-      gcids, ecozones, events
-    )]
+    if (!"pixelIndex" %in% names(sim$disturbanceRasters)) stop(
+      "Disturbances table must have 'pixelIndex' column")
 
-  } else if (is(sim$disturbanceRasters, "data.table")) {
-
-    annualDisturbance <- sim$disturbanceRasters[year == time(sim)]
-    setnames(annualDisturbance, names(annualDisturbance)[1], "pixelIndex", skip_absent = TRUE)
-    set(annualDisturbance, NULL, "year", NULL)
-    distPixels <- spatialDT[annualDisturbance, on = "pixelIndex", nomatch = NULL]
-    # had to change this for the presentDay runs (and harvest scenarios b/c
-    # there are two types of dists)
-    # set(distPixels, NULL, "events", 1L) # These are fires i.e., event type 1
-    distPixels[, "events" := NULL]
-    setnames(distPixels, "i.events", "events")
-    # make sure there are no double disturbance
-    countDist <- distPixels[, .N, by = "pixelIndex"]
-    rowsWfireOut <- countDist[N > 1]$pixelIndex
-    distPixels <- distPixels[!(pixelIndex %in% rowsWfireOut & events == 1)]
-    setorder(distPixels, pixelIndex)
-    setorder(spatialDT, pixelIndex)
-    spatialDT[pixelIndex %in% distPixels$pixelIndex, ]$events <- distPixels$events
-
+    annualDist <- sim$disturbanceRasters[, c("pixelIndex", time(sim)), with = FALSE]
+    names(annualDist)[[2]] <- "events"
   }
 
-  pixelCount <- spatialDT[, .N, by = pixelGroup]
+  # 2. Join disturbances with spatialDT
+  if (!is.integer(annualDist$events)) annualDist$events <- as.integer(annualDist$events)
+  if ("events" %in% names(spatialDT)) spatialDT[, events := NULL]
+  spatialDT <- merge(spatialDT, annualDist, by = "pixelIndex", all.x = TRUE)
+  spatialDT[is.na(events), events := 0L]
+  spatialDT[events < 0,    events := 0L]
+  rm(annualDist)
+
+  # 3. Isolate disturbed pixels
+  distPixels <- spatialDT[events > 0, .(
+    pixelIndex, pixelGroup, ages, spatial_unit_id,
+    gcids, ecozones, events
+  )]
 
   # 4. Reset the ages for disturbed pixels in stand replacing disturbances.
   # libcbm resets ages to 0 internally but for transparency we are doing it here
