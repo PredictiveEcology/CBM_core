@@ -29,14 +29,13 @@ test_that("Module: SK 1985-2011", {
         outputPath  = file.path(projectPath, "outputs")
       ),
 
-      require = "terra",
-
       outputs = as.data.frame(expand.grid(
         objectName = c("cbmPools", "NPP"),
         saveTime   = sort(c(times$start, times$start + c(1:(times$end - times$start))))
       )),
 
-      spatialDT         = data.table::fread(file.path(spadesTestPaths$testdata, "SK/input", "spatialDT.csv"))[, area := 900][, ageSpinup := sapply(ages, min, 3)],
+      standDT           = data.table::fread(file.path(spadesTestPaths$testdata, "SK/input", "standDT.csv"))[, area := 900],
+      cohortDT          = data.table::fread(file.path(spadesTestPaths$testdata, "SK/input", "cohortDT.csv"))[, ageSpinup := sapply(ages, min, 3)],
       disturbanceEvents = file.path(spadesTestPaths$testdata, "SK/input", "disturbanceEvents.csv") |> data.table::fread(),
       disturbanceMeta   = file.path(spadesTestPaths$testdata, "SK/input", "disturbanceMeta.csv")   |> data.table::fread(),
       gcMeta            = file.path(spadesTestPaths$testdata, "SK/input", "gcMeta.csv")            |> data.table::fread(),
@@ -63,15 +62,13 @@ test_that("Module: SK 1985-2011", {
 
   ## Check outputs ----
 
-  # spinupResult
-  ## There should always be the same number of initial pixel groups.
+  # spinupInpit and spinupResult
+  ## There should always be the same number of spinup cohort groups.
+  expect_true(!is.null(simTest$spinupInput))
   expect_true(!is.null(simTest$spinupResult))
-
-  spinupResultValid <- data.table::fread(file.path(spadesTestPaths$testdata, "SK/valid", "spinupResult.csv"))
-  expect_equal(nrow(simTest$spinupResult), nrow(spinupResultValid))
   expect_equal(
-    data.table::as.data.table(simTest$spinupResult)[order(Merch)],
-    spinupResultValid[order(Merch)],
+    data.table::as.data.table(simTest$spinupResult),
+    data.table::fread(file.path(spadesTestPaths$testdata, "SK/valid", "spinupResult.csv")),
     check.attributes = FALSE
   )
 
@@ -87,18 +84,23 @@ test_that("Module: SK 1985-2011", {
   expect_equal(
     data.table::as.data.table(simTest$emissionsProducts),
     data.table::fread(file.path(spadesTestPaths$testdata, "SK/valid", "emissionsProducts.csv"))[
-      , colnames(simTest$emissionsProducts), with = FALSE]
+      , .SD, .SDcols = colnames(simTest$emissionsProducts)]
   )
 
+  # cbmPools
   expect_true(!is.null(simTest$cbmPools))
 
-  expect_true(!is.null(simTest$spinupInput))
+  # cohortGroups
+  ## There should always be the same number of total cohort groups.
+  expect_true(!is.null(simTest$cohortGroups))
+  expect_equal(nrow(simTest$cohortGroups), 1938)
 
-  expect_true(!is.null(simTest$cbm_vars))
-
-  expect_true(!is.null(simTest$pixelGroupC))
-
-  expect_true(!is.null(simTest$pixelKeep))
+  # cohortGroupKeep
+  expect_true(!is.null(simTest$cohortGroupKeep))
+  expect_identical(simTest$cohortGroupKeep$cohortID,   simTest$cohortDT$cohortID)
+  expect_identical(simTest$cohortGroupKeep$pixelIndex, simTest$cohortDT$pixelIndex)
+  expect_true(all(simTest$cohortGroupKeep$cohortGroupID %in% simTest$cohortGroups$cohortGroupID))
+  expect_true(all(as.character(start(simTest):end(simTest)) %in% names(simTest$cohortGroupKeep)))
 
 })
 
