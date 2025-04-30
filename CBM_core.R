@@ -640,7 +640,7 @@ annual <- function(sim) {
                                 sim$spinupSQL[,.(id, mean_annual_temperature)],
                                 by.x = "spatial_unit_id", by.y = "id"
     )
-    new_cbm_parameters[, disturbance_type := 0] # DC 28-04-2025: TODO#############################
+    new_cbm_parameters[, disturbance_type := 0] 
     new_cbm_parameters <- merge(new_cbm_parameters, 
                                 sim$growth_increments,
                                 by = c("gcids", "age"))
@@ -663,6 +663,28 @@ annual <- function(sim) {
                      parameters = new_cbm_parameters[!is.na(row_idx)],
                      state = new_cbm_state[!is.na(row_idx)])
     
+    # add disturbed cohorts
+    if(nrow(distCohorts) > 0){ #DC 2025-04-30: Have to make sure that disturbed cohorts are in sim$cohortDT. If not needs to add distCohort to sim$cohortGroupKeep
+      newDistCohortGroups <- unique(sim$cohortGroupKeep[cohortGroupPrev %in% distCohorts$cohortGroupID, .(cohortGroupID, cohortGroupPrev)])
+      
+      # update parameters
+      
+      # add to CBM C 
+      disturbanceTypes <- merge(newDistCohortGroups, distCohorts,
+                                by.x = "cohortGroupPrev",
+                                by.y = "cohortGroupID")
+      cbm_vars[["parameters"]][disturbanceTypes$cohortGroupID, disturbance_type] <- disturbanceTypes$eventID 
+      # DC 29-04-2025: Not sure what should be the increments for disturbed cohorts.
+      cbm_vars[["parameters"]][disturbanceTypes$cohortGroupID, merch_inc := NA_real_]
+      cbm_vars[["parameters"]][disturbanceTypes$cohortGroupID, foliage_inc := NA_real_]
+      cbm_vars[["parameters"]][disturbanceTypes$cohortGroupID, other_inc := NA_real_]
+      
+      # update CBM C state
+      cbm_vars[["state"]][newDistCohortGroups$cohortGroupID, age := 1L] #DC 29-04-2025: Setting ages of disturbed cohort to 1?
+      cbm_vars[["state"]][newDistCohortGroups$cohortGroupID, time_since_last_disturbance := NA_real_]
+      cbm_vars[["state"]][newDistCohortGroups$cohortGroupID, time_since_land_use_change  := NA_real_]
+      cbm_vars[["state"]][newDistCohortGroups$cohortGroupID, last_disturbance_type       := NA_real_]
+    }
   }
 
   ## RUN PYTHON -----
