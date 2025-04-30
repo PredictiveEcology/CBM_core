@@ -425,7 +425,6 @@ annual <- function(sim) {
   ## SET COHORT GROUPS ----
 
   # Set previous group IDs
-  ## Groups only change if disturbance(s) occur
   sim$cohortGroupKeep[, cohortGroupPrev := cohortGroupID]
  
   if(!is.null(sim$cohortData)){ # DC 28.04.2025: A dirty way to say - "if we use LandR". 
@@ -725,6 +724,7 @@ annual <- function(sim) {
   data.table::setkey(cohortCount, cohortGroupID)
 
   # Update the final simulation horizon table with all the pools/year/cohortGroupID
+  # DC 30-04-2025: CohortGroupID change every year in LandRCBM, so we need to rethink how we track pools across years
   sim$cbmPools <- cbind(
     simYear = as.integer(time(sim)),
     merge(
