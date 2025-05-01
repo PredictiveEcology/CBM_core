@@ -641,6 +641,7 @@ annual <- function(sim) {
                            all.x = TRUE)
     new_cbm_pools[, cohortGroupPrev := NULL]
     setnames(new_cbm_pools, old = "cohortGroupID", new = "row_idx")
+    
     # Handle new cohorts
     if(any(is.na(new_cbm_pools))) {
       new_cbm_pools$Input[is.na(new_cbm_pools$Input)] <- 1L
@@ -656,6 +657,7 @@ annual <- function(sim) {
                           all.x = TRUE)
     new_cbm_flux[, cohortGroupPrev := NULL]
     setnames(new_cbm_flux, old = "cohortGroupID", new = "row_idx")
+    
     # Handle new cohorts
     if(any(is.na(new_cbm_flux))) {
       setnafill(new_cbm_flux, fill = 0L)
@@ -689,6 +691,31 @@ annual <- function(sim) {
                             all.x = TRUE)
     new_cbm_state[, cohortGroupPrev := NULL]
     setnames(new_cbm_state, old = "cohortGroupID", new = "row_idx")
+    
+    # Handle new cohorts
+    if(any(is.na(new_cbm_state))) {
+      newCohorts_cbm_state <- new_cbm_state[is.na(area), ]
+      setnafill(newCohorts_cbm_state, fill = 1L, cols = c("area", "last_disturbance_type", "enabled"))
+      setnafill(newCohorts_cbm_state, fill = -1L, cols = c("land_class_id", "time_since_land_use_change")) 
+      
+      # Get gc info
+      newCohorts_cbm_state[sim$cohortGroups, on = c("row_idx" = "cohortGroupID"), `:=`(
+        spatial_unit_id = fifelse(is.na(spatial_unit_id), i.spatial_unit_id, spatial_unit_id),
+        age  = fifelse(is.na(age),  i.age,  age)
+      )]
+      
+      # DC 01-05-2025: gcids and cohortGroupID are the same in LandRCBM.
+      newCohorts_gcMeta <- sim$gcMeta[match(newCohorts_cbm_state$row_idx, sim$gcMeta$gcids)]
+      newCohorts_cbm_state[, species := newCohorts_gcMeta$species_id]
+      newCohorts_cbm_state[, sw_hw := as.integer(newCohorts_gcMeta$sw_hw == "sw")]
+      newCohorts_cbm_state[, time_since_last_disturbance := age] # DC 01-05-2025: Make sure that this is correct
+      
+      # Combine
+      new_cbm_state <- rbind(
+        new_cbm_state[!is.na(area),],
+        newCohorts_cbm_state
+      )
+    }
     setkey(new_cbm_state, row_idx)
     
     # Put in cbm_vars
