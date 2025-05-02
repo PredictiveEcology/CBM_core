@@ -427,7 +427,7 @@ annual <- function(sim) {
   # Set previous group IDs
   sim$cohortGroupKeep[, cohortGroupPrev := cohortGroupID]
  
-  if (!is.null(sim$cohortData)) { # DC 28.04.2025: A rough way to say - "if we use LandR".
+  if ("LandRCBM_split3pools" %in% modules(sim)) { # With LandRCBM
     
     # Get the pools for the cohorts of the previous timestep
     cohorts <- merge(sim$cohortGroupKeep[, .(pixelIndex, cohortGroupPrev)],
@@ -514,7 +514,7 @@ annual <- function(sim) {
 
 
   ## PREPARE PYTHON INPUTS ----
-  if(is.null(sim$cohortData)) { # DC 29-04-2025: standard CBM
+  if(!("LandRCBM_split3pools" %in% modules(sim))) { # Standard CBM
     
     # Get data for existing groups
     cbm_vars <- lapply(sim$cbm_vars, function(tbl) subset(tbl, row_idx %in% sim$cohortGroupKeep$cohortGroupID))
@@ -631,7 +631,7 @@ annual <- function(sim) {
     
     rm(annualIncr)
     rm(growthIncr)
-  } else { # DC 29-04-2025: With LandR
+  } else { # With LandRCBM
     
     # Update cbm_vars$pools
     new_cbm_pools <- merge(sim$cohortGroupKeep[, .(cohortGroupID, cohortGroupPrev)],
@@ -729,18 +729,20 @@ annual <- function(sim) {
     # Add disturbed cohorts
     if (nrow(distCohorts) > 0) {
       # DC 2025-04-30: Have to make sure that disturbed cohorts are in sim$cohortDT. If not needs to add distCohort to sim$cohortGroupKeep
-      newDistCohortGroups <- unique(sim$cohortGroupKeep[cohortGroupPrev %in% distCohorts$cohortGroupID, .(cohortGroupID, cohortGroupPrev)])
+      newDistCohortGroups <- unique(sim$cohortGroupKeep[cohortGroupPrev %in% distCohorts$cohortGroupID, .(cohortGroupID, cohortGroupPrev, pixelIndex)])
       
       # Update CBM parameters
-      disturbanceTypes <- merge(newDistCohortGroups,
-                                distCohorts,
-                                by.x = "cohortGroupPrev",
-                                by.y = "cohortGroupID")
-      cbm_vars[["parameters"]][disturbanceTypes$cohortGroupID, disturbance_type] <- disturbanceTypes$eventID
+      disturbanceTypes <- merge(
+        newDistCohortGroups,
+        distCohorts,
+        by.x = c("cohortGroupPrev", "pixelIndex"),
+        by.y = c("cohortGroupID", "pixelIndex")
+      )
+      cbm_vars[["parameters"]][disturbanceTypes$cohortGroupID, "disturbance_type"] <- disturbanceTypes$eventID
       # DC 29-04-2025: Not sure what should be the increments for disturbed cohorts.
-      cbm_vars[["parameters"]][disturbanceTypes$cohortGroupID, merch_inc := NA_real_]
+      cbm_vars[["parameters"]][disturbanceTypes$cohortGroupID, merch_inc   := NA_real_]
       cbm_vars[["parameters"]][disturbanceTypes$cohortGroupID, foliage_inc := NA_real_]
-      cbm_vars[["parameters"]][disturbanceTypes$cohortGroupID, other_inc := NA_real_]
+      cbm_vars[["parameters"]][disturbanceTypes$cohortGroupID, other_inc   := NA_real_]
       
       # Update CBM state
       cbm_vars[["state"]][newDistCohortGroups$cohortGroupID, age := 1L] #DC 29-04-2025: Setting ages of disturbed cohort to 1?
