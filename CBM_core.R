@@ -740,15 +740,9 @@ annual <- function(sim) {
       )
       cbm_vars[["parameters"]][disturbanceTypes$cohortGroupID, "disturbance_type"] <- disturbanceTypes$eventID
       # DC 29-04-2025: Not sure what should be the increments for disturbed cohorts.
-      cbm_vars[["parameters"]][disturbanceTypes$cohortGroupID, merch_inc   := NA_real_]
-      cbm_vars[["parameters"]][disturbanceTypes$cohortGroupID, foliage_inc := NA_real_]
-      cbm_vars[["parameters"]][disturbanceTypes$cohortGroupID, other_inc   := NA_real_]
-      
-      # Update CBM state
-      cbm_vars[["state"]][newDistCohortGroups$cohortGroupID, age := 1L] #DC 29-04-2025: Setting ages of disturbed cohort to 1?
-      cbm_vars[["state"]][newDistCohortGroups$cohortGroupID, time_since_last_disturbance := NA_real_]
-      cbm_vars[["state"]][newDistCohortGroups$cohortGroupID, time_since_land_use_change  := NA_real_]
-      cbm_vars[["state"]][newDistCohortGroups$cohortGroupID, last_disturbance_type       := NA_real_]
+      cbm_vars[["parameters"]][disturbanceTypes$cohortGroupID, merch_inc := 0L]
+      cbm_vars[["parameters"]][disturbanceTypes$cohortGroupID, foliage_inc := 0L]
+      cbm_vars[["parameters"]][disturbanceTypes$cohortGroupID, other_inc := 0L]
     }
   }
   
