@@ -337,7 +337,6 @@ spinup <- function(sim) {
   sim$spinupResult <- spinupOut$output$pools
 
   # If LandRCBM, adjust biomass values to match LandR.
-  # DC 2025-05-06: For all of this section, make sure what is biomass and what is carbon mass
   if ("LandRCBM_split3pools" %in% modules(sim)) {
     # 1. Expand spinup output to have 1 row per cohort
     spinupOut$output <- lapply(spinupOut$output, function(tbl){
@@ -348,14 +347,19 @@ spinup <- function(sim) {
     spinupOut$output$pools[, c("Merch", "Foliage", "Other")] <- sim$aboveGroundBiomass[,.(merch, foliage, other)]
     
     # 3. Update below ground live pools.
-    #### VALUES ARE HARDCODED - TODO get values from cbm_exn_get_default_parameters?
+    #### DC 06-05-2025 VALUES ARE HARDCODED - TODO get values from cbm_exn_get_default_parameters?
+    #### Confirm equation are correct and wrap into a CBMutils function?
     totAGB <- rowSums(spinupOut$output$pools[, c("Merch", "Foliage", "Other")])
+    # convert to mg/ha of total biomass
+    totAGB <- totAGB * 2
     rootTotBiom <- ifelse(spinupOut$output$state$sw_hw == 1,
                           0.222 * totAGB,
                           1.576 * totAGB ^ 0.615)
-    fineRootProp <- 0.072 + 0.354 * exp(-0.060212 * rootTotBiom)
-    spinupOut$output$pools$CoarseRoots <- rootTotBiom * (1-fineRootProp) 
-    spinupOut$output$pools$FineRoots <- rootTotBiom * fineRootProp 
+    # reconvert to carbon tonnes/ha
+    rootTotC <- rootTotBiom * 0.5
+    fineRootProp <- 0.072 + 0.354 * exp(-0.060212 * rootTotC)
+    spinupOut$output$pools$CoarseRoots <- rootTotC * (1-fineRootProp) 
+    spinupOut$output$pools$FineRoots <- rootTotC * fineRootProp 
     
     # 4. Update cohortGroupID
     spinupOut$key$cohortGroupID <- spinupOut$key$cohortID
