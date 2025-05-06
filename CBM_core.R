@@ -336,6 +336,31 @@ spinup <- function(sim) {
   sim$spinupInput  <- spinupOut["increments"]
   sim$spinupResult <- spinupOut$output$pools
 
+  # If LandRCBM, adjust biomass values to match LandR.
+  # DC 2025-05-06: For all of this section, make sure what is biomass and what is carbon mass
+  if ("LandRCBM_split3pools" %in% modules(sim)) {
+    # 1. Expand spinup output to have 1 row per cohort
+    spinupOut$output <- lapply(spinupOut$output, function(tbl){
+      tbl <- tbl[spinupOut$key$cohortGroupID,]
+    })
+    
+    # 2. Replace above ground pools with the LandR biomass.
+    spinupOut$output$pools[, c("Merch", "Foliage", "Other")] <- sim$aboveGroundBiomass[,.(merch, foliage, other)]
+    
+    # 3. Update below ground live pools.
+    #### VALUES ARE HARDCODED - TODO get values from cbm_exn_get_default_parameters?
+    totAGB <- rowSums(spinupOut$output$pools[, c("Merch", "Foliage", "Other")])
+    rootTotBiom <- ifelse(spinupOut$output$state$sw_hw == 1,
+                          0.222 * totAGB,
+                          1.576 * totAGB ^ 0.615)
+    fineRootProp <- 0.072 + 0.354 * exp(-0.060212 * rootTotBiom)
+    spinupOut$output$pools$CoarseRoots <- rootTotBiom * (1-fineRootProp) 
+    spinupOut$output$pools$FineRoots <- rootTotBiom * fineRootProp 
+    
+    # 4. Update cohortGroupID
+    spinupOut$key$cohortGroupID <- spinupOut$key$cohortID
+  }
+  
   # Save cohort group key
   sim$cohortGroupKeep <- merge(spinupOut$key, sim$cohortDT, by = "cohortID")[, .(cohortID, pixelIndex, cohortGroupID)]
   sim$cohortGroupKeep[, cohortGroupPrev := NA_integer_]
@@ -344,11 +369,19 @@ spinup <- function(sim) {
 
   # Prepare spinup output data for annual event
   ## data.table with row_idx to match cohortGroupID
-  sim$cbm_vars <- lapply(spinupOut$output, function(tbl){
-    tbl <- data.table::data.table(row_idx = unique(spinupOut[["increments"]]$row_idx), tbl)
-    data.table::setkey(tbl, row_idx)
-    tbl
-  })
+  if ("LandRCBM_split3pools" %in% modules(sim)) {
+    sim$cbm_vars <- lapply(spinupOut$output, function(tbl){
+      tbl <- data.table::data.table(row_idx = sim$cohortGroupKeep$cohortGroupID, tbl)
+      data.table::setkey(tbl, row_idx)
+      tbl
+    })
+  } else {
+    sim$cbm_vars <- lapply(spinupOut$output, function(tbl){
+      tbl <- data.table::data.table(row_idx = unique(spinupOut[["increments"]]$row_idx), tbl)
+      data.table::setkey(tbl, row_idx)
+      tbl
+    })
+  }
 
   # Prepare cohort group attributes for annual event
   sim$cohortGroups <- unique(merge(
