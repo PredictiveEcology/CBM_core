@@ -477,12 +477,20 @@ annual <- function(sim) {
       cohorts[, age := age + 1],
       merge(sim$cohortDT[, .(pixelIndex, age, gcids)], sim$gcMeta[, .(gcids, species_id)]),
       by = c("pixelIndex", "age", "species_id"),
-      all.y = TRUE
+      all = TRUE
     )
     
     # Add spatial unit
     cohorts <- merge(cohorts, sim$standDT, by = "pixelIndex")
     cohorts[, cohortGroupID := gcids]
+    
+    # Cohorts that have disappeared
+    if(any(is.na(cohorts$cohortGroupID))){
+      missingCohorts <- cohorts[is.na(cohortGroupID), ]
+      missingCohorts[, gcids := 0]
+      missingCohorts[, cohortGroupID := .GRP + max(cohorts$cohortGroupID, na.rm = TRUE), by = pixelIndex]
+      cohorts[is.na(cohortGroupID), ] <- missingCohorts
+    }
     
     # Update cohortGroupKeep
     sim$cohortGroupKeep <- merge(
@@ -494,7 +502,8 @@ annual <- function(sim) {
     setkey(sim$cohortGroupKeep, cohortID)
     
     # Update cohortGroups
-    sim$cohortGroups <- cohorts[, .(cohortGroupID, spatial_unit_id, age, gcids)]
+    sim$cohortGroups <- unique(cohorts[, .(cohortGroupID, spatial_unit_id, age, gcids)])
+    setkey(sim$cohortGroups, cohortGroupID)
     
   } else if (nrow(distCohorts) > 0){ # DC 28.04.2025: In standard CBM, cohorts change if disturbed.
     
@@ -684,6 +693,13 @@ annual <- function(sim) {
       new_cbm_pools$Input[is.na(new_cbm_pools$Input)] <- 1L
       setnafill(new_cbm_pools, fill = 0L)
     }
+    
+    # Handle DOM cohorts
+    if(any(sim$cohortGroups$gcids == 0)){
+      pool_columns <- setdiff(colnames(new_cbm_pools), "row_idx")
+      new_cbm_pools <- new_cbm_pools[, lapply(.SD, sum), by = row_idx, .SDcols = pool_columns]
+      new_cbm_pools$Input <- 1L
+    }
     setkey(new_cbm_pools, row_idx)
     
     # Update cbm_vars$flux
@@ -699,6 +715,13 @@ annual <- function(sim) {
     if(any(is.na(new_cbm_flux))) {
       setnafill(new_cbm_flux, fill = 0L)
     }
+    
+    # Handle DOM cohorts
+    if(any(sim$cohortGroups$gcids == 0)){
+      flux_columns <- setdiff(colnames(new_cbm_flux), "row_idx")
+      new_cbm_flux <- new_cbm_flux[, lapply(.SD, sum), by = row_idx, .SDcols = flux_columns]
+    }
+    
     setkey(new_cbm_flux, row_idx)
     
     # Update cbm_vars$parameters
@@ -710,7 +733,11 @@ annual <- function(sim) {
     new_cbm_parameters[, disturbance_type := 0]
     new_cbm_parameters <- merge(new_cbm_parameters,
                                 sim$growth_increments,
-                                by = c("gcids", "age"))
+                                by = c("gcids", "age"),
+                                all.x = TRUE)
+    # For the cohorts that disappear set increments to 0 and age to 0?
+    setnafill(new_cbm_parameters, fill = 0L, cols = c("merch_inc", "foliage_inc", "other_inc"))
+    
     new_cbm_parameters <- new_cbm_parameters[, .(
       row_idx = cohortGroupID,
       mean_annual_temperature,
@@ -728,6 +755,18 @@ annual <- function(sim) {
                             all.x = TRUE)
     new_cbm_state[, cohortGroupPrev := NULL]
     setnames(new_cbm_state, old = "cohortGroupID", new = "row_idx")
+    
+    # Handle DOM cohorts
+    if(any(sim$cohortGroups$gcids == 0)){
+      DOMcohorts <- sim$cohortGroups[gcids == 0, cohortGroupID]
+      new_cbm_state[row_idx %in% DOMcohorts, age := 0]
+      new_cbm_state[row_idx %in% DOMcohorts, species := NA]
+      new_cbm_state[row_idx %in% DOMcohorts, sw_hw := NA]
+      new_cbm_state[row_idx %in% DOMcohorts, time_since_last_disturbance := 0]
+      new_cbm_state[row_idx %in% DOMcohorts, time_since_land_use_change  := -1]
+      new_cbm_state[row_idx %in% DOMcohorts, last_disturbance_type := -1]
+      new_cbm_state <- unique(new_cbm_state)
+    }
     
     # Handle new cohorts
     if(any(is.na(new_cbm_state))) {
