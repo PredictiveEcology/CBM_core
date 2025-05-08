@@ -467,7 +467,7 @@ annual <- function(sim) {
   if ("LandRCBM_split3pools" %in% modules(sim)) { # With LandRCBM
     
     # Get the pools for the cohorts of the previous timestep
-    cohorts <- merge(sim$cohortGroupKeep[, .(pixelIndex, cohortGroupPrev)],
+    cohorts <- merge(unique(sim$cohortGroupKeep[, .(pixelIndex, cohortGroupPrev)]),
                      sim$cbm_vars$state[, .(row_idx, age, species_id = species)],
                      by.x = "cohortGroupPrev",
                      by.y = "row_idx")
