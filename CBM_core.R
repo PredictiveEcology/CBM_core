@@ -484,7 +484,7 @@ annual <- function(sim) {
     cohorts <- merge(cohorts, sim$standDT, by = "pixelIndex")
     cohorts[, cohortGroupID := gcids]
     
-    # Cohorts that have disappeared
+    # Handle DOM cohorts
     if(any(is.na(cohorts$cohortGroupID))){
       missingCohorts <- cohorts[is.na(cohortGroupID), ]
       missingCohorts[, gcids := 0]
