@@ -488,6 +488,7 @@ annual <- function(sim) {
     if(any(is.na(cohorts$cohortGroupID))){
       missingCohorts <- cohorts[is.na(cohortGroupID), ]
       missingCohorts[, gcids := 0]
+      missingCohorts[, age := 0]
       missingCohorts[, cohortGroupID := .GRP + max(cohorts$cohortGroupID, na.rm = TRUE), by = pixelIndex]
       cohorts[is.na(cohortGroupID), ] <- missingCohorts
     }
