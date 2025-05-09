@@ -777,11 +777,11 @@ annual <- function(sim) {
       # Get gc info
       newCohorts_cbm_state[sim$cohortGroups, on = c("row_idx" = "cohortGroupID"), `:=`(
         spatial_unit_id = fifelse(is.na(spatial_unit_id), i.spatial_unit_id, spatial_unit_id),
-        age  = fifelse(is.na(age),  i.age,  age)
+        age  = fifelse(is.na(age),  i.age - 1,  age) # age minus 1 because we added 1 in cohortGroups
       )]
       
-      # DC 01-05-2025: gcids and cohortGroupID are the same in LandRCBM.
-      newCohorts_gcMeta <- sim$gcMeta[match(newCohorts_cbm_state$row_idx, sim$gcMeta$gcids)]
+      newCohort_gcids <- sim$cohortGroups[newCohorts_cbm_state$row_idx, gcids]
+      newCohorts_gcMeta <- sim$gcMeta[match(newCohort_gcids, sim$gcMeta$gcids)]
       newCohorts_cbm_state[, species := newCohorts_gcMeta$species_id]
       newCohorts_cbm_state[, sw_hw := as.integer(newCohorts_gcMeta$sw_hw == "sw")]
       newCohorts_cbm_state[, time_since_last_disturbance := age] # DC 01-05-2025: Make sure that this is correct
