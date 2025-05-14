@@ -506,7 +506,7 @@ annual <- function(sim) {
     sim$cohortGroups <- unique(cohorts[, .(cohortGroupID, spatial_unit_id, age, gcids)])
     setkey(sim$cohortGroups, cohortGroupID)
     
-  } else if (nrow(distCohorts) > 0){ # DC 28.04.2025: In standard CBM, cohorts change if disturbed.
+  } else if (nrow(distCohorts) > 0){ # In standard CBM, cohorts change if disturbed.
     
     # Get attributes and disturbance information about disturbed cohorts
     distCohorts <- merge(distCohorts, sim$cohortGroups, by = "cohortGroupID")
@@ -680,7 +680,8 @@ annual <- function(sim) {
     rm(growthIncr)
   } else { # With LandRCBM
     
-    # Update cbm_vars$pools
+    # 1. Prepare cbm pools
+    # Get the pools of cohorts of the previous timestep
     new_cbm_pools <- merge(sim$cohortGroupKeep[, .(cohortGroupID, cohortGroupPrev)],
                            sim$cbm_vars$pools,
                            by.x = "cohortGroupPrev",
@@ -689,13 +690,13 @@ annual <- function(sim) {
     new_cbm_pools[, cohortGroupPrev := NULL]
     setnames(new_cbm_pools, old = "cohortGroupID", new = "row_idx")
     
-    # Handle new cohorts
+    # Fill pools of new cohorts with 0s
     if(any(is.na(new_cbm_pools))) {
       new_cbm_pools$Input[is.na(new_cbm_pools$Input)] <- 1L
       setnafill(new_cbm_pools, fill = 0L)
     }
     
-    # Handle DOM cohorts
+    # Aggregate DOM cohorts of the sharing pixel
     if(any(sim$cohortGroups$gcids == 0)){
       pool_columns <- setdiff(colnames(new_cbm_pools), "row_idx")
       new_cbm_pools <- new_cbm_pools[, lapply(.SD, sum), by = row_idx, .SDcols = pool_columns]
@@ -703,7 +704,8 @@ annual <- function(sim) {
     }
     setkey(new_cbm_pools, row_idx)
     
-    # Update cbm_vars$flux
+    # 2. Prepare cbm flux
+    # Get the flux of the cohorts of the previous timestep
     new_cbm_flux <- merge(sim$cohortGroupKeep[, .(cohortGroupID, cohortGroupPrev)],
                           sim$cbm_vars$flux,
                           by.x = "cohortGroupPrev",
@@ -712,31 +714,36 @@ annual <- function(sim) {
     new_cbm_flux[, cohortGroupPrev := NULL]
     setnames(new_cbm_flux, old = "cohortGroupID", new = "row_idx")
     
-    # Handle new cohorts
+    # Fill fluxes of new cohorts with 0s.
     if(any(is.na(new_cbm_flux))) {
       setnafill(new_cbm_flux, fill = 0L)
     }
     
-    # Handle DOM cohorts
+    # Aggregate DOM cohorts of the sharing pixel
     if(any(sim$cohortGroups$gcids == 0)){
       flux_columns <- setdiff(colnames(new_cbm_flux), "row_idx")
       new_cbm_flux <- new_cbm_flux[, lapply(.SD, sum), by = row_idx, .SDcols = flux_columns]
     }
-    
     setkey(new_cbm_flux, row_idx)
     
-    # Update cbm_vars$parameters
+    # 3. Prepare cbm parameters
+    # Get the mean annual temperature based on spatial unit.
     new_cbm_parameters <- merge(sim$cohortGroups,
                                 sim$spinupSQL[, .(id, mean_annual_temperature)],
                                 by.x = "spatial_unit_id",
                                 by.y = "id",
                                 all.x = TRUE)
+    
+    # Set no disturbance by default (will be changed later for disturbed cohorts)
     new_cbm_parameters[, disturbance_type := 0]
+    
+    # Get the increments
     new_cbm_parameters <- merge(new_cbm_parameters,
                                 sim$growth_increments,
                                 by = c("gcids", "age"),
                                 all.x = TRUE)
-    # For the cohorts that disappear set increments to 0 and age to 0?
+    
+    # For the DOM cohorts (gcids = 0) set increments to 0
     setnafill(new_cbm_parameters, fill = 0L, cols = c("merch_inc", "foliage_inc", "other_inc"))
     
     new_cbm_parameters <- new_cbm_parameters[, .(
@@ -747,8 +754,10 @@ annual <- function(sim) {
       foliage_inc,
       other_inc
     )]
+    setkey(new_cbm_parameters, row_idx)
     
-    # Update cbm_vars$state
+    # 4. Prepare cbm state
+    # Get the state of the cohorts of the previous timestep
     new_cbm_state <-  merge(sim$cohortGroupKeep[, .(cohortGroupID, cohortGroupPrev)],
                             sim$cbm_vars$state,
                             by.x = "cohortGroupPrev",
@@ -757,7 +766,7 @@ annual <- function(sim) {
     new_cbm_state[, cohortGroupPrev := NULL]
     setnames(new_cbm_state, old = "cohortGroupID", new = "row_idx")
     
-    # Handle DOM cohorts
+    # Change the state of DOM cohorts
     if(any(sim$cohortGroups$gcids == 0)){
       DOMcohorts <- sim$cohortGroups[gcids == 0, cohortGroupID]
       new_cbm_state[row_idx %in% DOMcohorts, age := 0]
@@ -769,25 +778,24 @@ annual <- function(sim) {
       new_cbm_state <- unique(new_cbm_state)
     }
     
-    # Handle new cohorts
+    # Set the state of the new cohorts
     if(any(is.na(new_cbm_state))) {
       newCohorts_cbm_state <- new_cbm_state[is.na(area), ]
       setnafill(newCohorts_cbm_state, fill = 1L, cols = c("area", "last_disturbance_type", "enabled"))
       setnafill(newCohorts_cbm_state, fill = -1L, cols = c("land_class_id", "time_since_land_use_change")) 
       
-      # Get gc info
+      # Get growth curve information
       newCohorts_cbm_state[sim$cohortGroups, on = c("row_idx" = "cohortGroupID"), `:=`(
         spatial_unit_id = fifelse(is.na(spatial_unit_id), i.spatial_unit_id, spatial_unit_id),
         age  = fifelse(is.na(age),  i.age - 1,  age) # age minus 1 because we added 1 in cohortGroups
       )]
-      
       newCohort_gcids <- sim$cohortGroups[newCohorts_cbm_state$row_idx, gcids]
       newCohorts_gcMeta <- sim$gcMeta[match(newCohort_gcids, sim$gcMeta$gcids)]
       newCohorts_cbm_state[, species := newCohorts_gcMeta$species_id]
       newCohorts_cbm_state[, sw_hw := as.integer(newCohorts_gcMeta$sw_hw == "sw")]
-      newCohorts_cbm_state[, time_since_last_disturbance := age] # DC 01-05-2025: Make sure that this is correct
+      newCohorts_cbm_state[, time_since_last_disturbance := age]
       
-      # Combine
+      # Combine with cohorts that were present before
       new_cbm_state <- rbind(
         new_cbm_state[!is.na(area),],
         newCohorts_cbm_state
@@ -795,7 +803,7 @@ annual <- function(sim) {
     }
     setkey(new_cbm_state, row_idx)
     
-    # Put in cbm_vars
+    # 5. Put in cbm_vars
     cbm_vars <- list(
       pools = new_cbm_pools[!is.na(row_idx)],
       flux = new_cbm_flux[!is.na(row_idx)],
@@ -805,7 +813,6 @@ annual <- function(sim) {
     
     # Add disturbed cohorts
     if (nrow(distCohorts) > 0) {
-      # DC 2025-04-30: Have to make sure that disturbed cohorts are in sim$cohortDT. If not needs to add distCohort to sim$cohortGroupKeep
       newDistCohortGroups <- unique(sim$cohortGroupKeep[cohortGroupPrev %in% distCohorts$cohortGroupID, .(cohortGroupID, cohortGroupPrev, pixelIndex)])
       
       # Update CBM parameters
