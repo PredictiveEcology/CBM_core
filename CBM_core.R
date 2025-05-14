@@ -756,6 +756,24 @@ annual <- function(sim) {
     )]
     setkey(new_cbm_parameters, row_idx)
     
+    # Update parameters of disturbed cohorts
+    if (nrow(distCohorts) > 0) {
+      newDistCohortGroups <- unique(sim$cohortGroupKeep[cohortGroupPrev %in% distCohorts$cohortGroupID, .(cohortGroupID, cohortGroupPrev, pixelIndex)])
+      
+      # Update CBM parameters
+      disturbanceTypes <- merge(
+        newDistCohortGroups,
+        distCohorts,
+        by.x = c("cohortGroupPrev", "pixelIndex"),
+        by.y = c("cohortGroupID", "pixelIndex")
+      )
+      new_cbm_parameters[disturbanceTypes$cohortGroupID, "disturbance_type"] <- disturbanceTypes$eventID
+      # DC 29-04-2025: Not sure what should be the increments for disturbed cohorts.
+      new_cbm_parameters[disturbanceTypes$cohortGroupID, merch_inc := 0L]
+      new_cbm_parameters[disturbanceTypes$cohortGroupID, foliage_inc := 0L]
+      new_cbm_parameters[disturbanceTypes$cohortGroupID, other_inc := 0L]
+    }
+    
     # 4. Prepare cbm state
     # Get the state of the cohorts of the previous timestep
     new_cbm_state <-  merge(sim$cohortGroupKeep[, .(cohortGroupID, cohortGroupPrev)],
@@ -810,24 +828,6 @@ annual <- function(sim) {
       parameters = new_cbm_parameters[!is.na(row_idx)],
       state = new_cbm_state[!is.na(row_idx)]
     )
-    
-    # Add disturbed cohorts
-    if (nrow(distCohorts) > 0) {
-      newDistCohortGroups <- unique(sim$cohortGroupKeep[cohortGroupPrev %in% distCohorts$cohortGroupID, .(cohortGroupID, cohortGroupPrev, pixelIndex)])
-      
-      # Update CBM parameters
-      disturbanceTypes <- merge(
-        newDistCohortGroups,
-        distCohorts,
-        by.x = c("cohortGroupPrev", "pixelIndex"),
-        by.y = c("cohortGroupID", "pixelIndex")
-      )
-      cbm_vars[["parameters"]][disturbanceTypes$cohortGroupID, "disturbance_type"] <- disturbanceTypes$eventID
-      # DC 29-04-2025: Not sure what should be the increments for disturbed cohorts.
-      cbm_vars[["parameters"]][disturbanceTypes$cohortGroupID, merch_inc := 0L]
-      cbm_vars[["parameters"]][disturbanceTypes$cohortGroupID, foliage_inc := 0L]
-      cbm_vars[["parameters"]][disturbanceTypes$cohortGroupID, other_inc := 0L]
-    }
   }
   
   ## RUN PYTHON -----
