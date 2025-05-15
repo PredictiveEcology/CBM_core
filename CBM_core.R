@@ -698,7 +698,7 @@ annual <- function(sim) {
     if(any(is.na(new_cbm_pools[, Merch]))) {
       age_newCohorts <- sim$cohortGroups[new_cbm_pools[is.na(Merch), row_idx], age]
       # Check that all new cohorts are age 2 (age at the end of the year).
-      if (any(age_newCohorts) != 2) {
+      if (any(age_newCohorts != 2)) {
         stop("Some of the new cohorts have ages > 1.")
       }
       new_cbm_pools$Input[is.na(new_cbm_pools$Input)] <- 1L
