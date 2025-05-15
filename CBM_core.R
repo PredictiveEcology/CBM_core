@@ -487,6 +487,10 @@ annual <- function(sim) {
     # Handle DOM cohorts
     if(any(is.na(cohorts$cohortGroupID))){
       missingCohorts <- cohorts[is.na(cohortGroupID), ]
+      # Check that the DOM cohorts had AGB close to 0
+      if(any(sim$cbm_vars$pools[missingCohorts$cohortGroupPrev,.(Merch, Foliage, Other)] > 10^-6)) {
+        stop("Some cohorts with positive above ground biomasses are missing.")
+      }
       missingCohorts[, gcids := 0]
       missingCohorts[, age := 0]
       missingCohorts[, cohortGroupID := .GRP + max(cohorts$cohortGroupID, na.rm = TRUE), by = pixelIndex]
@@ -692,6 +696,10 @@ annual <- function(sim) {
     
     # Fill pools of new cohorts with 0s
     if(any(is.na(new_cbm_pools))) {
+      # Check that all new cohorts are age 2 (age at the end of the year).
+      if (any(age_newCohorts) != 2) {
+        stop("Some of the new cohorts have ages > 1.")
+      }
       new_cbm_pools$Input[is.na(new_cbm_pools$Input)] <- 1L
       setnafill(new_cbm_pools, fill = 0L)
     }
@@ -847,6 +855,15 @@ annual <- function(sim) {
     libcbmr::cbm_exn_get_step_ops_sequence(),
     mod$libcbm_default_model_config
   )
+  
+  # If using LandR, check if the above ground biomass are synchronize
+  if("LandRCBM_split3pools" %in% modules(sim)) { 
+    LandR_AGB <- colSums(sim$aboveGroundBiomass[,.(merch, foliage, other)])
+    cbm_AGB <- colSums(cbm_vars$pools[,c("Merch", "Foliage", "Other")])
+    if(any(abs(LandR_AGB - cbm_AGB) > 10^-3)){
+      stop("LandR above ground biomass do not match CBM above ground biomass")
+    }
+  }
 
   # Prepare output data for next annual event
   sim$cbm_vars <- lapply(cbm_vars, function(tbl){
