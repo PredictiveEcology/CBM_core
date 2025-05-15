@@ -698,7 +698,7 @@ annual <- function(sim) {
     if(any(is.na(new_cbm_pools[, Merch]))) {
       age_newCohorts <- sim$cohortGroups[new_cbm_pools[is.na(Merch), row_idx], age]
       # Check that all new cohorts are age 2 (age at the end of the year).
-      if (any(age_newCohorts != 2)) {
+      if (any(age_newCohorts %in% c(2,11))) {
         stop("Some of the new cohorts have ages > 1.")
       }
       new_cbm_pools$Input[is.na(new_cbm_pools$Input)] <- 1L
@@ -710,6 +710,9 @@ annual <- function(sim) {
       pool_columns <- setdiff(colnames(new_cbm_pools), "row_idx")
       new_cbm_pools <- new_cbm_pools[, lapply(.SD, sum), by = row_idx, .SDcols = pool_columns]
       new_cbm_pools$Input <- 1L
+      # Set AGB pools to 0 for DOM cohorts.
+      
+      new_cbm_pools[row_idx %in% missingCohorts$cohortGroupID, c("Merch", "Foliage", "Other") := 0L]
     }
     setkey(new_cbm_pools, row_idx)
     
