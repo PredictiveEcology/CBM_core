@@ -487,8 +487,8 @@ annual <- function(sim) {
     # Handle DOM cohorts
     if(any(is.na(cohorts$cohortGroupID))){
       missingCohorts <- cohorts[is.na(cohortGroupID), ]
-      # Check that the DOM cohorts had AGB close to 0
-      if(any(sim$cbm_vars$pools[missingCohorts$cohortGroupPrev,.(Merch, Foliage, Other)] > 10^-6)) {
+      # Check that the DOM cohorts have live pools close to 0
+      if(any(sim$cbm_vars$pools[missingCohorts$cohortGroupPrev, c("Merch", "Foliage", "Other", "CoarseRoots", "FineRoots")] > 10^-6)) {
         stop("Some cohorts with positive above ground biomasses are missing.")
       }
       missingCohorts[, gcids := 0]
@@ -696,11 +696,6 @@ annual <- function(sim) {
     
     # Fill pools of new cohorts with 0s
     if(any(is.na(new_cbm_pools[, Merch]))) {
-      age_newCohorts <- sim$cohortGroups[new_cbm_pools[is.na(Merch), row_idx], age]
-      # Check that all new cohorts are age 2 (age at the end of the year).
-      if (any(!(age_newCohorts %in% c(2,11)))) {
-        stop("Some of the new cohorts have ages > 1.")
-      }
       new_cbm_pools$Input[is.na(new_cbm_pools$Input)] <- 1L
       setnafill(new_cbm_pools, fill = 0L)
     }
@@ -710,9 +705,8 @@ annual <- function(sim) {
       pool_columns <- setdiff(colnames(new_cbm_pools), "row_idx")
       new_cbm_pools <- new_cbm_pools[, lapply(.SD, sum), by = row_idx, .SDcols = pool_columns]
       new_cbm_pools$Input <- 1L
-      # Set AGB pools to 0 for DOM cohorts.
-      
-      new_cbm_pools[row_idx %in% missingCohorts$cohortGroupID, c("Merch", "Foliage", "Other") := 0L]
+      # Set live pools to 0 for DOM cohorts.
+      new_cbm_pools[row_idx %in% missingCohorts$cohortGroupID, c("Merch", "Foliage", "Other", "CoarseRoots", "FineRoots") := 0L]
     }
     setkey(new_cbm_pools, row_idx)
     
