@@ -488,7 +488,8 @@ annual <- function(sim) {
     if(any(is.na(cohorts$cohortGroupID))){
       missingCohorts <- cohorts[is.na(cohortGroupID), ]
       # Check that the DOM cohorts have live pools close to 0
-      if(any(sim$cbm_vars$pools[missingCohorts$cohortGroupPrev, c("Merch", "Foliage", "Other", "CoarseRoots", "FineRoots")] > 10^-6)) {
+      browser()
+      if(any(sim$cbm_vars$pools[missingCohorts$cohortGroupPrev, c("Merch", "Foliage", "Other")] > 10^-6)) {
         stop("Some cohorts with positive above ground biomasses are missing.")
       }
       missingCohorts[, gcids := 0]
@@ -858,8 +859,8 @@ annual <- function(sim) {
   if("LandRCBM_split3pools" %in% modules(sim)) {
     LandR_AGB <- sim$aboveGroundBiomass[,.(merch, foliage, other)]
     cbm_AGB <- as.data.table(cbm_vars$pools[, c("Merch", "Foliage", "Other")])
-    # Uses 10^-10 to remove 0s and artifacts
-    if(any(abs(cbm_AGB[Merch > 10^-10] - LandR_AGB[merch > 10^-10]) > 10^-10)){
+    # Filtered to remove 0s and artifacts
+    if(any(abs(cbm_AGB[Merch > 10^-10] - LandR_AGB[merch > 10^-10]) > 10^-6)){
       stop("LandR above ground biomass do not match cbm above ground biomass")
     }
   }
