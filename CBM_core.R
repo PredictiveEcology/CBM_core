@@ -698,7 +698,7 @@ annual <- function(sim) {
     if(any(is.na(new_cbm_pools[, Merch]))) {
       age_newCohorts <- sim$cohortGroups[new_cbm_pools[is.na(Merch), row_idx], age]
       # Check that all new cohorts are age 2 (age at the end of the year).
-      if (any(age_newCohorts %in% c(2,11))) {
+      if (any(!(age_newCohorts %in% c(2,11)))) {
         stop("Some of the new cohorts have ages > 1.")
       }
       new_cbm_pools$Input[is.na(new_cbm_pools$Input)] <- 1L
@@ -861,11 +861,12 @@ annual <- function(sim) {
   )
   
   # If using LandR, check if the above ground biomass are synchronize
-  if("LandRCBM_split3pools" %in% modules(sim)) { 
-    LandR_AGB <- colSums(sim$aboveGroundBiomass[,.(merch, foliage, other)])
-    cbm_AGB <- colSums(cbm_vars$pools[,c("Merch", "Foliage", "Other")])
-    if(any(abs(LandR_AGB - cbm_AGB) > 10^-3)){
-      stop("LandR above ground biomass do not match CBM above ground biomass")
+  if("LandRCBM_split3pools" %in% modules(sim)) {
+    LandR_AGB <- sim$aboveGroundBiomass[,.(merch, foliage, other)]
+    cbm_AGB <- as.data.table(cbm_vars$pools[, c("Merch", "Foliage", "Other")])
+    # Uses 10^-10 to remove 0s and artifacts
+    if(any(abs(cbm_AGB[Merch > 10^-10] - LandR_AGB[merch > 10^-10]) > 10^-10)){
+      stop("LandR above ground biomass do not match cbm above ground biomass")
     }
   }
 
