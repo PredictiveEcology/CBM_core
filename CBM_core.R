@@ -644,7 +644,7 @@ annual <- function(sim) {
     setkey(new_cbm_parameters, row_idx)
     
     # Update parameters of disturbed cohorts
-    if (nrow(distCohorts) > 0) {
+    if (nrow(distStands) > 0) {
       newDistCohortGroups <- unique(sim$cohortGroupKeep[cohortGroupPrev %in% distCohorts$cohortGroupID, .(cohortGroupID, cohortGroupPrev, pixelIndex)])
       
       # Update CBM parameters
