@@ -489,6 +489,7 @@ annual <- function(sim) {
       missingCohorts <- cohorts[is.na(cohortGroupID), ]
       # Check that the DOM cohorts have live pools close to 0
       if(any(sim$cbm_vars$pools[missingCohorts$cohortGroupPrev, c("Merch", "Foliage", "Other")] > 10^-6)) {
+        browser()
         stop("Some cohorts with positive above ground biomasses are missing.")
       }
       missingCohorts[, gcids := 0]

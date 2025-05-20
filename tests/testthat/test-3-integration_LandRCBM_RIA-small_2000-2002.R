@@ -72,8 +72,16 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
         sppEquiv <- LandR::sppEquivalencies_CA[LandR %in% species]
         sppEquiv <- sppEquiv[KNN != "" & LANDIS_traits != ""]
       },
-      cohortData            = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "cohortData.csv")            |> data.table::fread(),
+      cohortData            = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "cohortData.csv")            |> data.table::fread(stringsAsFactors = TRUE),
       pixelGroupMap         = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "pixelGroupMap.tif")         |> terra::rast(),
+      speciesLayers         = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "speciesLayers.tif")         |> terra::rast(),
+      ecoregionMap          = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "ecoregionMap.tif")          |> terra::rast(),
+      minRelativeB          = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "minRelativeB.csv")          |> data.table::fread(stringsAsFactors = TRUE),
+      ecoregion             = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "ecoregion.csv")             |> 
+        data.table::fread(colClasses = list(factor = c("ecoregionGroup"))),
+      species               = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "species.csv")               |> 
+        data.table::fread(colClasses = list(factor = c("Area", "postfireregen", "hardsoft", "speciesCode"))),
+      speciesEcoregion      = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "speciesEcoregion.csv")      |> data.table::fread(stringsAsFactors = TRUE),
       yieldTablesCumulative = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "yieldTablesCumulative.csv") |> data.table::fread(),
       yieldTablesId         = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "yieldTablesId.csv")         |> data.table::fread(),
       ecozones              = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "ecozones.csv")              |> data.table::fread(),
