@@ -31,7 +31,7 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
       
       modules = c(
         paste0("PredictiveEcology/Biomass_core@",    Sys.getenv("BRANCH_NAME")),
-        paste0("PredictiveEcology/LandRCBM_split3pools@master"),
+        paste0("DominiqueCaron/LandRCBM_split3pools@run-with-CBM"),
         "CBM_core"
       ),
       
