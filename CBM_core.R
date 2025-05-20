@@ -489,7 +489,6 @@ annual <- function(sim) {
       missingCohorts <- cohorts[is.na(cohortGroupID), ]
       # Check that the DOM cohorts have live pools close to 0
       if(any(sim$cbm_vars$pools[missingCohorts$cohortGroupPrev, c("Merch", "Foliage", "Other")] > 10^-6)) {
-        browser()
         stop("Some cohorts with positive above ground biomasses are missing.")
       }
       missingCohorts[, gcids := 0]
@@ -934,6 +933,7 @@ annual <- function(sim) {
   emissionsProducts <- merge(sim$cbm_vars$pools[, .(row_idx, Products)], emissions, by = "row_idx")
 
   # Multiply by group areas
+  browser()
   if (!"area" %in% names(sim$standDT)) stop(
     "standDT requires the \"area\" column to calculate emissions and product totals.")
 
