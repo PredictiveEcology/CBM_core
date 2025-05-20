@@ -4,7 +4,7 @@ if (!testthat::is_testing()) source(testthat::test_path("setup.R"))
 test_that("Multi module: RIA-small with LandR 2000-2002", {
   
   ## Run simInit and spades ----
-  
+  browser()
   # Set times
   times <- list(start = 2000, end = 2002)
   
@@ -31,7 +31,7 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
       
       modules = c(
         paste0("PredictiveEcology/Biomass_core@",    Sys.getenv("BRANCH_NAME")),
-        paste0("PredictiveEcology/LandRCBM_split3pools@", Sys.getenv("BRANCH_NAME")),
+        paste0("PredictiveEcology/LandRCBM_split3pools@master"),
         "CBM_core"
       ),
       
@@ -46,7 +46,7 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
       ),
       
       require = c("terra", "reproducible"),
-      
+
       # Prepare input objects
       studyArea = {
         reproducible::prepInputs(
@@ -116,7 +116,7 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
   
   # Check that all modules initiated in the correct order
   # expect_identical(tail(completed(simTest)[eventType == "init",]$moduleName, 4),
-                   c("CBM_defaults", "CBM_dataPrep_SK", "CBM_vol2biomass", "CBM_core"))
+                   # c("CBM_defaults", "CBM_dataPrep_SK", "CBM_vol2biomass", "CBM_core"))
   
   # CBM_core module: Check events completed in expected order
   # with(
