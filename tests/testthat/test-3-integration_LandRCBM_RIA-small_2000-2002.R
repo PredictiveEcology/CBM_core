@@ -4,7 +4,6 @@ if (!testthat::is_testing()) source(testthat::test_path("setup.R"))
 test_that("Multi module: RIA-small with LandR 2000-2002", {
   
   ## Run simInit and spades ----
-  browser()
   # Set times
   times <- list(start = 2000, end = 2002)
   
@@ -119,31 +118,43 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
   
   expect_s4_class(simTest, "simList")
   
-  
   ## Check completed events ----
   
   # Check that all modules initiated in the correct order
-  # expect_identical(tail(completed(simTest)[eventType == "init",]$moduleName, 4),
-                   # c("CBM_defaults", "CBM_dataPrep_SK", "CBM_vol2biomass", "CBM_core"))
+  expect_identical(
+    tail(completed(simTest)[eventType == "init", ]$moduleName, 3),
+    c("Biomass_core", "LandRCBM_split3pools", "CBM_core")
+  )
   
   # CBM_core module: Check events completed in expected order
-  # with(
-  #   list(
-  #     moduleTest  = "CBM_core",
-  #     eventExpect = c(
-  #       "init"              = times$start,
-  #       "spinup"            = times$start,
-  #       setNames(times$start:times$end, rep("annual", length(times$star:times$end))),
-  #       "accumulateResults" = times$end
-  #     )),
-  #   expect_equal(
-  #     completed(simTest)[moduleName == moduleTest, .(eventTime, eventType)],
-  #     data.table::data.table(
-  #       eventTime = data.table::setattr(eventExpect, "unit", "year"),
-  #       eventType = names(eventExpect)
-  #     ))
-  # )
-  # 
+  with(
+    list(
+      moduleTest  = "CBM_core",
+      eventExpect = c(
+        "init"              = times$start,
+        "spinup"            = times$start,
+        setNames(times$start:times$end, rep("annual", length(times$star:times$end))),
+        "accumulateResults" = times$end,
+        "plot"              = times$end
+      )),
+    expect_equal(
+      completed(simTest)[moduleName == moduleTest, .(eventTime, eventType)],
+      data.table::data.table(
+        eventTime = data.table::setattr(eventExpect, "unit", "year"),
+        eventType = names(eventExpect)
+      ))
+  )
+  
+  # LandRCBM: Check events order at time=1
+  with(
+    list(
+      expectedEventOrder  = c("spinup", "mortalityAndGrowth", "annualIncrements", "annual")
+    ),
+    expect_equal(
+      completed(simTest)[eventTime == times$start & eventType %in% expectedEventOrder, eventType],
+      expectedEventOrder
+    )
+  )
   
   ## Check outputs ----
   
