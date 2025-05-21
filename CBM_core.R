@@ -933,7 +933,6 @@ annual <- function(sim) {
   emissionsProducts <- merge(sim$cbm_vars$pools[, .(row_idx, Products)], emissions, by = "row_idx")
 
   # Multiply by group areas
-  browser()
   if (!"area" %in% names(sim$standDT)) stop(
     "standDT requires the \"area\" column to calculate emissions and product totals.")
 

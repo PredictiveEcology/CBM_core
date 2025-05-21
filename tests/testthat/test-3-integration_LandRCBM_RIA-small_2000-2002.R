@@ -144,7 +144,6 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
         eventType = names(eventExpect)
       ))
   )
-  
   # LandRCBM: Check events order at time=1
   with(
     list(
@@ -157,5 +156,11 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
   )
   
   ## Check outputs ----
-  
+  # species ID are correct
+  expect_equal(head(simTest$cbm_vars$state$species), c(16,31, 6, 16, 31, 6))
+  # spatial unit id is correct
+  expect_true(all(simTest$cbm_vars$state$spatial_unit_id == 42))
+  # area is correct
+  expect_true(all(simTest$cbm_vars$state$area == 1L))
+
 })
