@@ -154,7 +154,7 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
       expectedEventOrder
     )
   )
-  browser()
+
   ## Check outputs ----
   # species ID are correct
   expect_equal(head(simTest$cbm_vars$state$species), c(16,31, 6, 16, 31, 6))
