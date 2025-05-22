@@ -5,7 +5,7 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
   
   ## Run simInit and spades ----
   # Set times
-  times <- list(start = 2000, end = 2002)
+  times <- list(start = 2000, end = 2021)
   
   # Set project path
   projectPath <- file.path(spadesTestPaths$temp$projects, "integration_LandRCBM_RIA-small_2000-2002")
@@ -154,7 +154,7 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
       expectedEventOrder
     )
   )
-  
+  browser()
   ## Check outputs ----
   # species ID are correct
   expect_equal(head(simTest$cbm_vars$state$species), c(16,31, 6, 16, 31, 6))
@@ -162,5 +162,37 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
   expect_true(all(simTest$cbm_vars$state$spatial_unit_id == 42))
   # area is correct
   expect_true(all(simTest$cbm_vars$state$area == 1L))
+  # checks for "active" cohorts
+  with(
+    list(
+      ActiveCohortGroups  = simTest$cohortGroups[gcids != 0, cohortGroupID]
+    ), {
+      # "Active" cohorts should match the above ground biomass equal to LandR
+      expect_equal(
+        simTest$aboveGroundBiomass[,.(Merch = merch, Foliage = foliage, Other = other)],
+        simTest$cbm_vars$pools[ActiveCohortGroups,.(Merch, Foliage, Other)]
+      )
+      expect_equal(
+        simTest$aboveGroundBiomass$age,
+        simTest$cbm_vars$state$age[ActiveCohortGroups]
+      )
+    }
+  )
+  # checks for DOM cohorts
+  with(
+    list(
+      DOMCohortGroups  = simTest$cohortGroups[gcids == 0, cohortGroupID]
+    ), {
+      # DOM cohort groups have 0 above ground biomass
+      expect_true(
+        all(simTest$cbm_vars$pools[DOMCohortGroups, .(Merch, Foliage, Other)] == 0)
+      )
+      # There can't be more than 1 DOM cohort groups per pixel
+      expect_equal(
+        length(DOMCohortGroups),
+        nrow(simTest$cohortGroupKeep[cohortGroupID %in% DOMCohortGroups])
+      )
+    }
+  )
 
 })
