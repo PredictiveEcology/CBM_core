@@ -644,15 +644,15 @@ annual <- function(sim) {
     
     # Update parameters of disturbed cohorts
     if (nrow(distStands) > 0) {
-      newDistCohortGroups <- unique(sim$cohortGroupKeep[cohortGroupPrev %in% distCohorts$cohortGroupID, .(cohortGroupID, cohortGroupPrev, pixelIndex)])
       
-      # Update CBM parameters
-      disturbanceTypes <- merge(
-        newDistCohortGroups,
-        distCohorts,
-        by.x = c("cohortGroupPrev", "pixelIndex"),
-        by.y = c("cohortGroupID", "pixelIndex")
-      )
+      # Get attributes for disturbed cohorts
+      distCohorts <- merge(
+        sim$cohortGroupKeep[, .(cohortID, pixelIndex, cohortGroupPrev, cohortGroupID)],
+        distStands,
+        by = "pixelIndex")
+      # Remove new cohorts
+      distCohorts <- distCohorts[!is.na(cohortGroupPrev)]
+      
       new_cbm_parameters[disturbanceTypes$cohortGroupID, "disturbance_type"] <- disturbanceTypes$eventID
       # DC 29-04-2025: Not sure what should be the increments for disturbed cohorts.
       new_cbm_parameters[disturbanceTypes$cohortGroupID, merch_inc := 0L]
