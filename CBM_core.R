@@ -653,11 +653,11 @@ annual <- function(sim) {
       # Remove new cohorts
       distCohorts <- distCohorts[!is.na(cohortGroupPrev)]
       
-      new_cbm_parameters[disturbanceTypes$cohortGroupID, "disturbance_type"] <- disturbanceTypes$eventID
+      new_cbm_parameters[distCohorts$cohortGroupID, "disturbance_type"] <- disturbanceTypes$eventID
       # DC 29-04-2025: Not sure what should be the increments for disturbed cohorts.
-      new_cbm_parameters[disturbanceTypes$cohortGroupID, merch_inc := 0L]
-      new_cbm_parameters[disturbanceTypes$cohortGroupID, foliage_inc := 0L]
-      new_cbm_parameters[disturbanceTypes$cohortGroupID, other_inc := 0L]
+      new_cbm_parameters[distCohorts$cohortGroupID, merch_inc := 0L]
+      new_cbm_parameters[distCohorts$cohortGroupID, foliage_inc := 0L]
+      new_cbm_parameters[distCohorts$cohortGroupID, other_inc := 0L]
     }
     
     # 4. Prepare cbm state
