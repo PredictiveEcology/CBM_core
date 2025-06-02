@@ -351,38 +351,10 @@ spinup <- function(sim) {
     growthIncr = sim$growth_increments,
     gcIndex    = "gcids"
   ) |> Cache()
-
+  ############
   # Save spinup output
   sim$spinupResult <- spinupOut$output$pools
-
-  # If LandRCBM, adjust biomass values to match LandR.
-  if ("LandRCBM_split3pools" %in% modules(sim)) {
-    # 1. Expand spinup output to have 1 row per cohort
-    spinupOut$output <- lapply(spinupOut$output, function(tbl){
-      tbl <- tbl[spinupOut$key$cohortGroupID,]
-    })
-    
-    # 2. Replace above ground pools with the LandR biomass.
-    spinupOut$output$pools[, c("Merch", "Foliage", "Other")] <- sim$aboveGroundBiomass[,.(merch, foliage, other)]
-    
-    # 3. Update below ground live pools.
-    #### DC 06-05-2025 VALUES ARE HARDCODED - TODO get values from cbm_exn_get_default_parameters?
-    #### Confirm equation are correct and wrap into a CBMutils function?
-    totAGB <- rowSums(spinupOut$output$pools[, c("Merch", "Foliage", "Other")])
-    # convert to mg/ha of total biomass
-    totAGB <- totAGB * 2
-    rootTotBiom <- ifelse(spinupOut$output$state$sw_hw == 1,
-                          0.222 * totAGB,
-                          1.576 * totAGB ^ 0.615)
-    # reconvert to carbon tonnes/ha
-    rootTotC <- rootTotBiom * 0.5
-    fineRootProp <- 0.072 + 0.354 * exp(-0.060212 * rootTotC)
-    spinupOut$output$pools$CoarseRoots <- rootTotC * (1-fineRootProp) 
-    spinupOut$output$pools$FineRoots <- rootTotC * fineRootProp 
-    
-    # 4. Update cohortGroupID
-    spinupOut$key$cohortGroupID <- spinupOut$key$cohortID
-  }
+  sim$spinupKey <- spinupOut$key
   
   # Save cohort group key
   sim$cohortGroupKeep <- merge(spinupOut$key, sim$cohortDT, by = "cohortID")[, .(cohortID, pixelIndex, cohortGroupID)]
@@ -405,7 +377,7 @@ spinup <- function(sim) {
     data.table::setkey(tbl, row_idx)
     tbl
   })
-
+########
   if ("delayRegen" %in% names(sim$cohortGroups)){
     sim$cbm_vars$state$delay <- sim$cohortGroups$delayRegen
     sim$cbm_vars$state[is.na(delay), delay := P(sim)$default_delay_regen]
