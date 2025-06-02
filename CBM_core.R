@@ -21,19 +21,24 @@ defineModule(sim, list(
   ),
   parameters = rbind(
     defineParameter(
-      "default_delay", "integer", default = 0L, min = 0L, max = NA_integer_, desc = paste(
+      "default_delay_spinup", "integer", default = 0L, min = 0L, max = NA_integer_, desc = paste(
+        "The default spinup delay.",
+        "This can instead be set for each cohort with the cohortDT 'delaySpinup' column."
+      )),
+    defineParameter(
+      "default_delay_regen", "integer", default = 0L, min = 0L, max = NA_integer_, desc = paste(
         "The default regeneration delay post disturbance.",
-        "This can instead be set for each cohort with the spatialDT 'delay' column."
+        "This can instead be set for each cohort with the cohortDT 'delayRegen' column."
       )),
     defineParameter(
       "default_historical_disturbance_type", "integer", default = 1L, NA_integer_, NA_integer_, desc = paste(
         "The default historical disturbance type ID. Examples: 1 = wildfire; 2 = clearcut.",
-        "This can instead be set for each stand with the spatialDT 'historical_disturbance_type' column."
+        "This can instead be set for each stand with the cohortDT 'historical_disturbance_type' column."
       )),
     defineParameter(
       "default_last_pass_disturbance_type", "numeric", default = 1L, NA_integer_, NA_integer_, desc = paste(
         "The default last pass disturbance type ID. Examples: 1 = wildfire; 2 = clearcut.",
-        "This can instead be set for each stand with the spatialDT 'last_pass_disturbance_type' column."
+        "This can instead be set for each stand with the cohortDT 'last_pass_disturbance_type' column."
       )),
     defineParameter(
       "emissionsProductsCols", "character", c("CO2", "CH4", "CO", "Emissions"), NA_character_, NA_character_,
@@ -62,12 +67,13 @@ defineModule(sim, list(
       objectName = "cohortDT", objectClass = "data.table", sourceURL = NA,
       desc = "Table of cohort attributes",
       columns = c(
-        cohortID   = "Cohort ID",
-        pixelIndex = "Stand ID",
-        gcids      = "Growth curve ID",
-        ages       = "Cohort age at simulation start",
-        ageSpinup  = "Optional. Alternative cohort age at the simulation start year to use in the spinup",
-        delay      = "Optional. Regeneration delay post disturbance in years. Defaults to the 'default_delay' parameter"
+        cohortID    = "Cohort ID",
+        pixelIndex  = "Stand ID",
+        gcids       = "Growth curve ID",
+        ages        = "Cohort age at simulation start",
+        ageSpinup   = "Optional. Alternative cohort age at the simulation start year to use in the spinup",
+        delaySpinup = "Optional. Spinup delay. Defaults to the 'default_delay_spinup' parameter",
+        delayRegen  = "Optional. Regeneration delay post disturbance in years. Defaults to the 'default_delay_regen' parameter"
       )),
     expectsInput(
       objectName = "gcMeta", objectClass = "data.table", sourceURL = NA,
@@ -167,7 +173,7 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
       sim <- scheduleEvent(sim, start(sim), "CBM_core", "spinup")
 
       # Schedule annual event
-      sim <- scheduleEvent(sim, start(sim), eventPriority = 8, "CBM_core", "annual")
+      sim <- scheduleEvent(sim, start(sim), "CBM_core", "annual", eventPriority = 8)
 
       # need this to be after the saving of outputs -- so very low priority
       ##TODO this is not happening because P(sim)$.plotInterval is NULL
@@ -194,7 +200,7 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
     annual = {
 
       sim <- annual(sim)
-      sim <- scheduleEvent(sim, time(sim) + 1, eventPriority = 8, "CBM_core", "annual")
+      sim <- scheduleEvent(sim, time(sim) + 1, "CBM_core", "annual", eventPriority = 8)
     },
 
     accumulateResults = {
@@ -310,8 +316,8 @@ Init <- function(sim){
 
 spinup <- function(sim) {
 
-  if (!"delay" %in% names(sim$cohortDT)) message(
-    "Spinup using the default regeneration delay: ", P(sim)$default_delay)
+  if (!"delaySpinup" %in% names(sim$cohortDT)) message(
+    "Spinup using the default delay: ", P(sim)$default_delay_spinup)
   if (!"historical_disturbance_type" %in% names(sim$standDT)) message(
     "Spinup using the default historical disturbance type ID: ", P(sim)$default_historical_disturbance_type)
   if (!"last_pass_disturbance_type"  %in% names(sim$standDT)) message(
@@ -325,7 +331,7 @@ spinup <- function(sim) {
     data.table::setnames(cohortDT, c("ages", "ageSpinup"), c("agesReal", "ages"))
   }
 
-  ## Use an area of 1m for each pixel
+  ## Use an area of 1ha for each pixel
   ## Results will later be multiplied by area to total emissions
   cohortSpinup <- cbmExnSpinupCohorts(
     cohortDT      = cohortDT,
@@ -333,7 +339,7 @@ spinup <- function(sim) {
     gcMetaDT      = sim$gcMeta,
     gcIndex       = "gcids",
     default_area  = 1,
-    default_delay = P(sim)$default_delay,
+    default_delay = P(sim)$default_delay_spinup,
     default_historical_disturbance_type = P(sim)$default_historical_disturbance_type,
     default_last_pass_disturbance_type  = P(sim)$default_last_pass_disturbance_type
   )
@@ -384,6 +390,14 @@ spinup <- function(sim) {
   sim$cohortGroupKeep[, spinup          := cohortGroupID]
   data.table::setkey(sim$cohortGroupKeep, cohortID)
 
+  # Prepare cohort group attributes for annual event
+  sim$cohortGroups <- unique(merge(
+    sim$cohortGroupKeep[, .(cohortID, cohortGroupID)],
+    merge(sim$standDT[, .(pixelIndex, spatial_unit_id)], sim$cohortDT, by = "pixelIndex"),
+    by = "cohortID"
+  )[, .SD, .SDcols = !c("cohortID", "pixelIndex")])
+  data.table::setkey(sim$cohortGroups, cohortGroupID)
+
   # Prepare spinup output data for annual event
   ## data.table with row_idx to match cohortGroupID
   sim$cbm_vars <- lapply(spinupOut$output, function(tbl){
@@ -392,13 +406,12 @@ spinup <- function(sim) {
     tbl
   })
 
-  # Prepare cohort group attributes for annual event
-  sim$cohortGroups <- unique(merge(
-    sim$cohortGroupKeep[, .(cohortID, cohortGroupID)],
-    merge(sim$standDT[, .(pixelIndex, spatial_unit_id)], sim$cohortDT, by = "pixelIndex"),
-    by = "cohortID"
-  )[, .SD, .SDcols = !c("cohortID", "pixelIndex")])
-  data.table::setkey(sim$cohortGroups, cohortGroupID)
+  if ("delayRegen" %in% names(sim$cohortGroups)){
+    sim$cbm_vars$state$delay <- sim$cohortGroups$delayRegen
+    sim$cbm_vars$state[is.na(delay), delay := P(sim)$default_delay_regen]
+  }else{
+    sim$cbm_vars$state$delay <- P(sim)$default_delay_regen
+  }
 
   # Return simList
   return(invisible(sim))
@@ -848,6 +861,15 @@ annual <- function(sim) {
       stop("LandR above ground biomass do not match cbm above ground biomass")
     }
   }
+
+  #implement delay
+  delayRows <- with(cbm_vars$state, is.na(time_since_last_disturbance) | time_since_last_disturbance <= delay)
+  if (any(delayRows)) {
+    cbm_vars$state$age[delayRows] <- 0
+    delayGrowth <- c("age", "merch_inc", "foliage_inc", "other_inc")
+    cbm_vars$parameters[delayRows, delayGrowth] <- 0
+  }
+  rm(delayRows)
 
   # Prepare output data for next annual event
   sim$cbm_vars <- lapply(cbm_vars, function(tbl){
