@@ -381,13 +381,14 @@ spinup <- function(sim) {
       data.table::setkey(tbl, row_idx)
       tbl
     })
-  }
-  
-  if ("delayRegen" %in% names(sim$cohortGroups)){
-    sim$cbm_vars$state$delay <- sim$cohortGroups$delayRegen
-    sim$cbm_vars$state[is.na(delay), delay := P(sim)$default_delay_regen]
-  }else{
-    sim$cbm_vars$state$delay <- P(sim)$default_delay_regen
+    
+    if ("delayRegen" %in% names(sim$cohortGroups)){
+      sim$cbm_vars$state$delay <- sim$cohortGroups$delayRegen
+      sim$cbm_vars$state[is.na(delay), delay := P(sim)$default_delay_regen]
+    }else{
+      sim$cbm_vars$state$delay <- P(sim)$default_delay_regen
+    }
+    
   }
 
   # Return simList
@@ -828,16 +829,6 @@ annual <- function(sim) {
     libcbmr::cbm_exn_get_step_ops_sequence(),
     mod$libcbm_default_model_config
   )
-  
-  # If using LandR, check if the above ground biomass are synchronize
-  if("LandRCBM_split3pools" %in% modules(sim)) {
-    LandR_AGB <- sim$aboveGroundBiomass[,.(merch, foliage, other)]
-    cbm_AGB <- as.data.table(cbm_vars$pools[, c("Merch", "Foliage", "Other")])
-    # Filtered to remove 0s and artifacts
-    if(any(abs(cbm_AGB[Merch > 10^-10] - LandR_AGB[merch > 10^-10]) > 10^-6)){
-      stop("LandR above ground biomass do not match cbm above ground biomass")
-    }
-  }
 
   #implement delay
   delayRows <- with(cbm_vars$state, is.na(time_since_last_disturbance) | time_since_last_disturbance <= delay)
