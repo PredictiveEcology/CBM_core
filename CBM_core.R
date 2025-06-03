@@ -46,6 +46,9 @@ defineModule(sim, list(
     defineParameter(
       "poolsToPlot", "character", default = "totalCarbon", NA, NA,
       desc = "which carbon pools to plot, if any. Defaults to total carbon"),
+    defineParameter(
+      "skipCohortGroupHandling", "boolean", default = FALSE, NA, NA,
+      desc = "Whether cohort groups are handled by other modules. E.g., LandRCBM_split3pools."),
     defineParameter(".plotInitialTime", "numeric", start(sim), NA, NA, "Simulation time when the first plot event should occur"),
     defineParameter(".plotInterval",    "numeric", 1L,         NA, NA, "Time interval between plot events"),
     defineParameter(".saveInitialTime", "numeric", NA,         NA, NA, "Simulation time when the first save event should occur"),
@@ -351,33 +354,35 @@ spinup <- function(sim) {
     growthIncr = sim$growth_increments,
     gcIndex    = "gcids"
   ) |> Cache()
-  ############
-  # Save spinup output
-  sim$spinupResult <- spinupOut$output$pools
-  sim$spinupKey <- spinupOut$key
   
-  # Save cohort group key
-  sim$cohortGroupKeep <- merge(spinupOut$key, sim$cohortDT, by = "cohortID")[, .(cohortID, pixelIndex, cohortGroupID)]
-  sim$cohortGroupKeep[, cohortGroupPrev := NA_integer_]
-  sim$cohortGroupKeep[, spinup          := cohortGroupID]
-  data.table::setkey(sim$cohortGroupKeep, cohortID)
-
-  # Prepare cohort group attributes for annual event
-  sim$cohortGroups <- unique(merge(
-    sim$cohortGroupKeep[, .(cohortID, cohortGroupID)],
-    merge(sim$standDT[, .(pixelIndex, spatial_unit_id)], sim$cohortDT, by = "pixelIndex"),
-    by = "cohortID"
-  )[, .SD, .SDcols = !c("cohortID", "pixelIndex")])
-  data.table::setkey(sim$cohortGroups, cohortGroupID)
-
-  # Prepare spinup output data for annual event
-  ## data.table with row_idx to match cohortGroupID
-  sim$cbm_vars <- lapply(spinupOut$output, function(tbl){
-    tbl <- data.table::data.table(row_idx = sort(unique(spinupOut$key$cohortGroupID)), tbl)
-    data.table::setkey(tbl, row_idx)
-    tbl
-  })
-########
+  sim$spinupResult <- spinupOut
+  
+  # Skip cohort group handling
+  
+  if(!P(sim)$skipCohortGroupHandling) {
+    # Save cohort group key
+    sim$cohortGroupKeep <- merge(spinupOut$key, sim$cohortDT, by = "cohortID")[, .(cohortID, pixelIndex, cohortGroupID)]
+    sim$cohortGroupKeep[, cohortGroupPrev := NA_integer_]
+    sim$cohortGroupKeep[, spinup          := cohortGroupID]
+    data.table::setkey(sim$cohortGroupKeep, cohortID)
+    
+    # Prepare cohort group attributes for annual event
+    sim$cohortGroups <- unique(merge(
+      sim$cohortGroupKeep[, .(cohortID, cohortGroupID)],
+      merge(sim$standDT[, .(pixelIndex, spatial_unit_id)], sim$cohortDT, by = "pixelIndex"),
+      by = "cohortID"
+    )[, .SD, .SDcols = !c("cohortID", "pixelIndex")])
+    data.table::setkey(sim$cohortGroups, cohortGroupID)
+    
+    # Prepare spinup output data for annual event
+    ## data.table with row_idx to match cohortGroupID
+    sim$cbm_vars <- lapply(spinupOut$output, function(tbl){
+      tbl <- data.table::data.table(row_idx = sort(unique(spinupOut$key$cohortGroupID)), tbl)
+      data.table::setkey(tbl, row_idx)
+      tbl
+    })
+  }
+  
   if ("delayRegen" %in% names(sim$cohortGroups)){
     sim$cbm_vars$state$delay <- sim$cohortGroups$delayRegen
     sim$cbm_vars$state[is.na(delay), delay := P(sim)$default_delay_regen]
