@@ -557,7 +557,7 @@ annual <- function(sim) {
     
     # 1. Prepare cbm pools
     # Get the pools of cohorts of the previous timestep
-    new_cbm_pools <- merge(sim$cohortGroupKeep[, .(cohortGroupID, cohortGroupPrev)],
+    new_cbm_pools <- merge(unique(sim$cohortGroupKeep[, .(cohortGroupID, cohortGroupPrev)]),
                            sim$cbm_vars$pools,
                            by.x = "cohortGroupPrev",
                            by.y = "row_idx",
@@ -583,7 +583,7 @@ annual <- function(sim) {
     
     # 2. Prepare cbm flux
     # Get the flux of the cohorts of the previous timestep
-    new_cbm_flux <- merge(sim$cohortGroupKeep[, .(cohortGroupID, cohortGroupPrev)],
+    new_cbm_flux <- merge(unique(sim$cohortGroupKeep[, .(cohortGroupID, cohortGroupPrev)]),
                           sim$cbm_vars$flux,
                           by.x = "cohortGroupPrev",
                           by.y = "row_idx",
@@ -653,7 +653,7 @@ annual <- function(sim) {
     
     # 4. Prepare cbm state
     # Get the state of the cohorts of the previous timestep
-    new_cbm_state <-  merge(sim$cohortGroupKeep[, .(cohortGroupID, cohortGroupPrev)],
+    new_cbm_state <-  merge(unique(sim$cohortGroupKeep[, .(cohortGroupID, cohortGroupPrev)]),
                             sim$cbm_vars$state,
                             by.x = "cohortGroupPrev",
                             by.y = "row_idx",
