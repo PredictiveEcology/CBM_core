@@ -628,8 +628,10 @@ annual_preprocessing <- function(sim) {
   } else {
     # add disturbed stands to simList
     browser()
-    sim$standDT[, disturbance_type_id := NA ]
-    sim$standDT[distStands$pixelIndex, disturbance_type_id] <- distStands$disturbance_type_id
+    sim$standDT[, disturbance_type_id := NA_integer_ ]
+    if(nrow(distStands) > 0){
+      sim$standDT[distStands$pixelIndex, "disturbance_type_id"] <- distStands$disturbance_type_id
+    }
   }
   
   # Return simList
