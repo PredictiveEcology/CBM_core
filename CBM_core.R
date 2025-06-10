@@ -676,13 +676,8 @@ annual_carbonDynamics <- function(sim) {
 
   ## ASSEMBLE OUTPUTS -----
 
-  # Set new cohort group ages
-  sim$cohortGroups$ages <- sim$cbm_vars$state$age[
-    match(sim$cohortGroups$cohortGroupID, sim$cbm_vars$state$row_idx)
-  ]
-
   # Set cohort count
-  cohortCount <- sim$cohortGroupKeep[, .(cohortGroupID)][, .N, by = cohortGroupID]
+  cohortCount <- unique(sim$cohortGroupKeep[, .(pixelIndex, cohortGroupID)])[, .N, by = cohortGroupID]
   data.table::setkey(cohortCount, cohortGroupID)
 
   # Update the final simulation horizon table with all the pools/year/cohortGroupID
