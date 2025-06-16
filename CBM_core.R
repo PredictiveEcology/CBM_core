@@ -657,14 +657,14 @@ annual_carbonDynamics <- function(sim) {
     mod$libcbm_default_model_config
   )
 
-  # #implement delay
-  # delayRows <- with(cbm_vars$state, is.na(time_since_last_disturbance) | time_since_last_disturbance <= delay)
-  # if (any(delayRows)) {
-  #   cbm_vars$state$age[delayRows] <- 0
-  #   delayGrowth <- c("age", "merch_inc", "foliage_inc", "other_inc")
-  #   cbm_vars$parameters[delayRows, delayGrowth] <- 0
-  # }
-  # rm(delayRows)
+  #implement delay
+  delayRows <- with(cbm_vars$state, is.na(time_since_last_disturbance) | time_since_last_disturbance <= delay)
+  if (any(delayRows)) {
+    cbm_vars$state$age[delayRows] <- 0
+    delayGrowth <- c("age", "merch_inc", "foliage_inc", "other_inc")
+    cbm_vars$parameters[delayRows, delayGrowth] <- 0
+  }
+  rm(delayRows)
 
   # Prepare output data for next annual event
   sim$cbm_vars <- lapply(cbm_vars, function(tbl){
@@ -675,7 +675,12 @@ annual_carbonDynamics <- function(sim) {
 
 
   ## ASSEMBLE OUTPUTS -----
-
+  
+  # Set new cohort group ages
+  sim$cohortGroups$ages <- sim$cbm_vars$state$age[
+    match(sim$cohortGroups$cohortGroupID, sim$cbm_vars$state$row_idx)
+  ]
+  
   # Set cohort count
   cohortCount <- unique(sim$cohortGroupKeep[, .(pixelIndex, cohortGroupID)])[, .N, by = cohortGroupID]
   data.table::setkey(cohortCount, cohortGroupID)
