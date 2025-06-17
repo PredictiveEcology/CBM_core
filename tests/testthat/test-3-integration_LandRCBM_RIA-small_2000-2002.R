@@ -15,14 +15,6 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
   # Set Github repo branch
   if (!nzchar(Sys.getenv("BRANCH_NAME"))) withr::local_envvar(BRANCH_NAME = "development")
   
-  # Function to get RIA study area
-  getRIA <- function(x) {
-    x <- sf::st_read(x) 
-    ria <- x[x$TSA_NUMBER %in% c('08', '16', '24', '40', '41'),]
-    ria <- sf::st_union(ria)|> sf::st_as_sf()
-    return(ria)
-  }
-  
   # Set up project
   simInitInput <- SpaDEStestMuffleOutput(
     
@@ -47,23 +39,24 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
       require = c("terra", "reproducible"),
 
       # Prepare input objects
-      studyArea = {
-        reproducible::prepInputs(
-          url = "https://drive.google.com/file/d/1LxacDOobTrRUppamkGgVAUFIxNT4iiHU/view?usp=sharing",
-          destinationPath = "inputs",
-          fun = getRIA,
-          overwrite = TRUE
-        )|> sf::st_crop(c(xmin = 1000000, xmax = 1020000, ymin = 1100000, ymax = 1120000))
-      }, 
-      rasterToMatch = {
-        sa <- terra::vect(studyArea)
-        targetCRS <- terra::crs(sa)
-        rtm <- terra::rast(sa, res = c(250, 250))
-        terra::crs(rtm) <- targetCRS
-        rtm[] <- 1
-        rtm <- terra::mask(rtm, sa)
-        rtm
-      },
+      studyArea             = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "studyArea.shp") |> sf::st_read(),
+      rasterToMatch         = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "rasterToMatch.tif") |> terra::rast(),
+      standDT               = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "standDT.csv") |> data.table::fread(),
+      biomassMap            = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "biomassMap.tif") |> terra::rast(), 
+      cohortData            = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "cohortData.csv") |> data.table::fread(stringsAsFactors = TRUE),
+      pixelGroupMap         = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "pixelGroupMap.tif") |> terra::rast(),
+      speciesLayers         = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "speciesLayers.tif") |> terra::rast(),
+      ecoregionMap          = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "ecoregionMap.tif") |> terra::rast(),
+      minRelativeB          = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "minRelativeB.csv") |> data.table::fread(stringsAsFactors = TRUE),
+      ecoregion             = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "ecoregion.csv") |> 
+        data.table::fread(colClasses = list(factor = c("ecoregionGroup"))),
+      species               = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "species.csv") |> 
+        data.table::fread(colClasses = list(factor = c("Area", "postfireregen", "hardsoft", "speciesCode"))),
+      speciesEcoregion      = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "speciesEcoregion.csv") |> data.table::fread(stringsAsFactors = TRUE),
+      yieldTablesCumulative = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "yieldTablesCumulative.csv") |> data.table::fread(),
+      yieldTablesId         = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "yieldTablesId.csv") |> data.table::fread(),
+      pooldef               = file.path(spadesTestPaths$testdata, "SK/input", "pooldef.txt") |> readLines(),
+      spinupSQL             = file.path(spadesTestPaths$testdata, "SK/input", "spinupSQL.csv") |> data.table::fread(),
       sppEquiv = {
         speciesInStudy <- LandR::speciesInStudyArea(studyArea,
                                                     dPath = "inputs")
@@ -71,22 +64,6 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
         sppEquiv <- LandR::sppEquivalencies_CA[LandR %in% species]
         sppEquiv <- sppEquiv[KNN != "" & LANDIS_traits != ""]
       },
-      cohortData            = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "cohortData.csv")            |> data.table::fread(stringsAsFactors = TRUE),
-      pixelGroupMap         = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "pixelGroupMap.tif")         |> terra::rast(),
-      speciesLayers         = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "speciesLayers.tif")         |> terra::rast(),
-      ecoregionMap          = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "ecoregionMap.tif")          |> terra::rast(),
-      minRelativeB          = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "minRelativeB.csv")          |> data.table::fread(stringsAsFactors = TRUE),
-      ecoregion             = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "ecoregion.csv")             |> 
-        data.table::fread(colClasses = list(factor = c("ecoregionGroup"))),
-      species               = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "species.csv")               |> 
-        data.table::fread(colClasses = list(factor = c("Area", "postfireregen", "hardsoft", "speciesCode"))),
-      speciesEcoregion      = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "speciesEcoregion.csv")      |> data.table::fread(stringsAsFactors = TRUE),
-      yieldTablesCumulative = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "yieldTablesCumulative.csv") |> data.table::fread(),
-      yieldTablesId         = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "yieldTablesId.csv")         |> data.table::fread(),
-      ecozones              = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "ecozones.csv")              |> data.table::fread(),
-      jurisdictions         = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "jurisdictions.csv")         |> data.table::fread(),
-      pooldef               = file.path(spadesTestPaths$testdata, "SK/input", "pooldef.txt")                               |> readLines(),
-      spinupSQL             = file.path(spadesTestPaths$testdata, "SK/input", "spinupSQL.csv")                             |> data.table::fread(),
       
       
       outputs = as.data.frame(expand.grid(
@@ -99,6 +76,10 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
         .globals = list(
           dataYear = 2001, #will get kNN 2011 data, and NTEMS 2011 landcover
           sppEquivCol = 'LandR'
+        ),
+        CBM_core = list(
+          skipCohortGroupHandling = TRUE,
+          skipPrepareCBMvars = TRUE
         ))
       
     )
@@ -115,15 +96,14 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
   simTest <- SpaDEStestMuffleOutput(
     SpaDES.core::spades(simTestInit)
   )
-  
   expect_s4_class(simTest, "simList")
   
   ## Check completed events ----
-  
+
   # Check that all modules initiated in the correct order
   expect_identical(
     tail(completed(simTest)[eventType == "init", ]$moduleName, 3),
-    c("Biomass_core", "LandRCBM_split3pools", "CBM_core")
+    c("CBM_core", "Biomass_core", "LandRCBM_split3pools")
   )
   
   # CBM_core module: Check events completed in expected order
@@ -133,7 +113,10 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
       eventExpect = c(
         "init"              = times$start,
         "spinup"            = times$start,
-        setNames(times$start:times$end, rep("annual", length(times$star:times$end))),
+        setNames(
+          rep(times$start:times$end, each = 2), 
+          rep(c("annual_preprocessing", "annual_carbonDynamics"), length(times$star:times$end))
+        ),
         "accumulateResults" = times$end,
         "plot"              = times$end
       )),
@@ -147,7 +130,15 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
   # LandRCBM: Check events order at time=1
   with(
     list(
-      expectedEventOrder  = c("spinup", "mortalityAndGrowth", "annualIncrements", "annual")
+      expectedEventOrder  = c(
+        "spinup", 
+        "postSpinupAdjustBiomass",
+        "mortalityAndGrowth", 
+        "annualIncrements", 
+        "annual_preprocessing", 
+        "prepareCBMvars", 
+        "annual_carbonDynamics",
+        "postAnnualChecks")
     ),
     expect_equal(
       completed(simTest)[eventTime == times$start & eventType %in% expectedEventOrder, eventType],
@@ -157,7 +148,7 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
 
   ## Check outputs ----
   # species ID are correct
-  expect_equal(head(simTest$cbm_vars$state$species), c(16,31, 6, 16, 31, 6))
+  expect_equal(head(simTest$cbm_vars$state$species, 5), c(31, 16, 31, 16, 31))
   # spatial unit id is correct
   expect_true(all(simTest$cbm_vars$state$spatial_unit_id == 42))
   # area is correct

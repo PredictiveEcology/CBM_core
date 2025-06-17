@@ -391,14 +391,6 @@ spinup <- function(sim) {
       data.table::setkey(tbl, row_idx)
       tbl
     })
-    
-    if ("delayRegen" %in% names(sim$cohortGroups)){
-      sim$cbm_vars$state$delay <- sim$cohortGroups$delayRegen
-      sim$cbm_vars$state[is.na(delay), delay := P(sim)$default_delay_regen]
-    }else{
-      sim$cbm_vars$state$delay <- P(sim)$default_delay_regen
-    }
-    
   }
 
   # Return simList
@@ -406,7 +398,17 @@ spinup <- function(sim) {
 }
 
 annual_preprocessing <- function(sim) {
-
+  
+  # Add delay
+  if ("delayRegen" %in% names(sim$cohortGroups)) {
+    if (!("delay" %in% names(sim$cbm_vars$state))) {
+      sim$cbm_vars$state$delay <- sim$cohortGroups$delayRegen
+    }
+    sim$cbm_vars$state[is.na(delay), delay := P(sim)$default_delay_regen]
+  } else{
+    sim$cbm_vars$state$delay <- P(sim)$default_delay_regen
+  }
+  
   ## READ DISTURBANCES ----
 
   # Read disturbance events
@@ -657,14 +659,14 @@ annual_carbonDynamics <- function(sim) {
     mod$libcbm_default_model_config
   )
 
-  # #implement delay
-  # delayRows <- with(cbm_vars$state, is.na(time_since_last_disturbance) | time_since_last_disturbance <= delay)
-  # if (any(delayRows)) {
-  #   cbm_vars$state$age[delayRows] <- 0
-  #   delayGrowth <- c("age", "merch_inc", "foliage_inc", "other_inc")
-  #   cbm_vars$parameters[delayRows, delayGrowth] <- 0
-  # }
-  # rm(delayRows)
+  #implement delay
+  delayRows <- with(cbm_vars$state, is.na(time_since_last_disturbance) | time_since_last_disturbance <= delay)
+  if (any(delayRows)) {
+    cbm_vars$state$age[delayRows] <- 0
+    delayGrowth <- c("age", "merch_inc", "foliage_inc", "other_inc")
+    cbm_vars$parameters[delayRows, delayGrowth] <- 0
+  }
+  rm(delayRows)
 
   # Prepare output data for next annual event
   sim$cbm_vars <- lapply(cbm_vars, function(tbl){
@@ -675,7 +677,12 @@ annual_carbonDynamics <- function(sim) {
 
 
   ## ASSEMBLE OUTPUTS -----
-
+  
+  # Set new cohort group ages
+  sim$cohortGroups$ages <- sim$cbm_vars$state$age[
+    match(sim$cohortGroups$cohortGroupID, sim$cbm_vars$state$row_idx)
+  ]
+  
   # Set cohort count
   cohortCount <- unique(sim$cohortGroupKeep[, .(pixelIndex, cohortGroupID)])[, .N, by = cohortGroupID]
   data.table::setkey(cohortCount, cohortGroupID)
@@ -757,6 +764,11 @@ annual_carbonDynamics <- function(sim) {
   emissionsProducts <- colSums(
     emissionsProducts[, .SD, .SDcols = !"row_idx"] *
       (groupAreas$area[match(emissionsProducts$row_idx, groupAreas$row_idx)] / 10000))
+
+  # making Products yearly rather than cumulative
+  if (!is.null(sim$emissionsProducts)){
+    emissionsProducts["Products"] <- (emissionsProducts["Products"]) - (sum(sim$emissionsProducts[, "Products"]))
+  }
 
   sim$emissionsProducts <- rbind(sim$emissionsProducts, c(simYear = time(sim), emissionsProducts))
 
