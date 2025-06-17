@@ -27,9 +27,6 @@
 
 ## RUN TEST SUBSETS ----
 
-  # Run LandRCBM tests
-  testthat::test_dir("tests/testthat", filter = "LandRCBM")
-  
   # Run module tests
   testthat::test_dir("tests/testthat", filter = "module")
 
@@ -39,4 +36,5 @@
   # Run all SK-small tests
   testthat::test_dir("tests/testthat", filter = "SK-small")
 
-
+  # Run LandRCBM tests
+  testthat::test_dir("tests/testthat", filter = "LandRCBM")

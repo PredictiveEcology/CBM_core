@@ -391,14 +391,6 @@ spinup <- function(sim) {
       data.table::setkey(tbl, row_idx)
       tbl
     })
-    
-    if ("delayRegen" %in% names(sim$cohortGroups)){
-      sim$cbm_vars$state$delay <- sim$cohortGroups$delayRegen
-      sim$cbm_vars$state[is.na(delay), delay := P(sim)$default_delay_regen]
-    }else{
-      sim$cbm_vars$state$delay <- P(sim)$default_delay_regen
-    }
-    
   }
 
   # Return simList
@@ -406,7 +398,17 @@ spinup <- function(sim) {
 }
 
 annual_preprocessing <- function(sim) {
-
+  
+  # Add delay
+  if ("delayRegen" %in% names(sim$cohortGroups)) {
+    if (!("delay" %in% names(sim$cbm_vars$state))) {
+      sim$cbm_vars$state$delay <- sim$cohortGroups$delayRegen
+    }
+    sim$cbm_vars$state[is.na(delay), delay := P(sim)$default_delay_regen]
+  } else{
+    sim$cbm_vars$state$delay <- P(sim)$default_delay_regen
+  }
+  
   ## READ DISTURBANCES ----
 
   # Read disturbance events
