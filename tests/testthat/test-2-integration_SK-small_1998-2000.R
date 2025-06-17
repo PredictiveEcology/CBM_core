@@ -92,9 +92,10 @@ test_that("Multi module: SK-small 1998-2000", {
 
 
   ## Check completed events ----
+
   # Check that all modules initiated in the correct order
-  expect_identical(tail(completed(simTest)[eventType == "init",]$moduleName, 5),
-                   c("CBM_defaults", "CBM_dataPrep_SK", "CBM_dataPrep", "CBM_vol2biomass_SK", "CBM_core"))
+  expect_identical(tail(completed(simTest)[eventType == "init",]$moduleName, 4),
+                   c("CBM_defaults", "CBM_dataPrep_SK", "CBM_vol2biomass", "CBM_core"))
 
   # CBM_core module: Check events completed in expected order
   with(
@@ -103,12 +104,8 @@ test_that("Multi module: SK-small 1998-2000", {
       eventExpect = c(
         "init"              = times$start,
         "spinup"            = times$start,
-        setNames(
-          rep(times$start:times$end, each = 2), 
-          rep(c("annual_preprocessing", "annual_carbonDynamics"), length(times$star:times$end))
-          ),
-        "accumulateResults" = times$end,
-        "plot" = times$end
+        setNames(times$start:times$end, rep("annual", length(times$star:times$end))),
+        "accumulateResults" = times$end
       )),
     expect_equal(
       completed(simTest)[moduleName == moduleTest, .(eventTime, eventType)],
