@@ -15,7 +15,7 @@ defineModule(sim, list(
   documentation = list("README.txt", "CBM_core.Rmd"),
   reqdPkgs = list(
     "data.table", "reticulate",
-    "PredictiveEcology/CBMutils@development",
+    "PredictiveEcology/CBMutils@development (>=2.0.3.0007)",
     "PredictiveEcology/LandR@development (>= 1.1.1)",
     "PredictiveEcology/libcbmr"
   ),
