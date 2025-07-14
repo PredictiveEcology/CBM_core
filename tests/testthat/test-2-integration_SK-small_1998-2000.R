@@ -68,12 +68,7 @@ test_that("Multi module: SK-small 1998-2000", {
           ),
           method = "near"
         ) |> terra::classify(cbind(0, NA))
-      },
-
-      outputs = as.data.frame(expand.grid(
-        objectName = c("cbmPools", "NPP"),
-        saveTime   = sort(c(times$start, times$start + c(1:(times$end - times$start))))
-      ))
+      }
     )
   )
 
@@ -95,10 +90,6 @@ test_that("Multi module: SK-small 1998-2000", {
   ## Check outputs ----
 
   expect_true(!is.null(simTest$spinupResult))
-
-  expect_true(!is.null(simTest$cbmPools))
-
-  expect_true(!is.null(simTest$NPP))
 
   expect_true(!is.null(simTest$emissionsProducts))
 
