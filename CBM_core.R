@@ -386,11 +386,13 @@ spinup <- function(sim) {
 
     # Prepare spinup output data for annual event
     ## data.table with row_idx to match cohortGroupID
-    sim$cbm_vars <- lapply(spinupOut$output, function(tbl){
-      tbl <- data.table::data.table(row_idx = sort(unique(spinupOut$key$cohortGroupID)), tbl)
-      data.table::setkey(tbl, row_idx)
-      tbl
-    })
+    sim$cbm_vars <- spinupOut$output
+    for (i in 1:length(sim$cbm_vars)){
+      sim$cbm_vars[[i]] <- data.table::data.table(
+        row_idx = 1:nrow(sim$cbm_vars[[i]]),
+        sim$cbm_vars[[i]],
+        key = "row_idx")
+    }
   }
 
   # Return simList
@@ -476,42 +478,43 @@ annual_preprocessing <- function(sim) {
         distStands,
         by = "pixelIndex")
       distCohorts <- merge(distCohorts, sim$cohortGroups, by.x = "cohortGroupPrev", by.y = "cohortGroupID")
-      data.table::setkey(distCohorts, cohortID)
 
       # Create new groups that include events and carbon from
       # previous group since that changes the amount and destination of the
       # carbon being moved.
-      cohortGroupCols <- c(
-        setdiff(names(sim$cohortGroups), "cohortGroupID"),
-        "disturbance_type_id", sim$pooldef, "Products")
-
-      distCohortCpools <- merge(
-        distCohorts, sim$cbm_vars$pools,
+      distCohorts <- merge(
+        distCohorts, sim$cbm_vars$pools[, .SD, .SDcols = c("row_idx", sim$pooldef, "Products")],
         by.x = "cohortGroupPrev", by.y = "row_idx", all.x = TRUE)
-      data.table::setkey(distCohortCpools, cohortID)
 
       ##TODO: Check why a bunch of extra columns are being created. remove
       ##unnecessary cols from generatePixelGroups.
-      distCohortCpools$cohortGroupNew <- LandR::generatePixelGroups(
-        distCohortCpools, maxPixelGroup = max(sim$cohortGroupKeep$cohortGroupPrev),
-        columns = cohortGroupCols
+      data.table::setkey(distCohorts, cohortID)
+      distCohorts$cohortGroupNew <- LandR::generatePixelGroups(
+        distCohorts, maxPixelGroup = max(sim$cohortGroupKeep$cohortGroupPrev),
+        columns = setdiff(names(distCohorts), c("cohortID", "pixelIndex", "cohortGroupPrev"))
       )
 
       # Update cohortGroupKeep
       sim$cohortGroupKeep <- merge(
-        sim$cohortGroupKeep, distCohortCpools[, .(cohortID, cohortGroupNew)],
+        sim$cohortGroupKeep, distCohorts[, .(cohortID, cohortGroupNew)],
         by = "cohortID", all.x = TRUE)
       sim$cohortGroupKeep[, cohortGroupID  := data.table::fcoalesce(cohortGroupNew, cohortGroupPrev)]
       sim$cohortGroupKeep[, cohortGroupNew := NULL]
-      setkey(sim$cohortGroupKeep, cohortID)
+      data.table::setkey(sim$cohortGroupKeep, cohortID)
 
       # Update cohortGroups
+      data.table::setnames(distCohorts, "cohortGroupNew", "cohortGroupID")
       sim$cohortGroups <- rbind(
-        sim$cohortGroups,
-        unique(distCohortCpools[, cohortGroupID := cohortGroupNew][, .SD, .SDcols = names(sim$cohortGroups)]))
+        subset(sim$cohortGroups, cohortGroupID %in% sim$cohortGroupKeep$cohortGroupID),
+        unique(distCohorts[, .SD, .SDcols = names(sim$cohortGroups)]))
       data.table::setkey(sim$cohortGroups, cohortGroupID)
 
-      rm(distCohortCpools)
+      # Prepare cohort group disturbance info
+      distStands <- unique(distCohorts[, .(cohortGroupID, cohortGroupPrev, disturbance_type_id)])
+      data.table::setnames(distStands, "cohortGroupID", "row_idx")
+      data.table::setkey(distStands, row_idx)
+
+      rm(distCohorts)
 
     }
 
@@ -522,67 +525,58 @@ annual_preprocessing <- function(sim) {
   ## PREPARE PYTHON INPUTS ----
   if (!P(sim)$skipPrepareCBMvars) { # Standard CBM runs
 
-  # Get data for existing groups
-  cbm_vars <- lapply(sim$cbm_vars, function(tbl) subset(tbl, row_idx %in% sim$cohortGroupKeep$cohortGroupID))
-
   # Set groups as undisturbed in current year
   ## This may contain the disturbance type from the previous year
-  cbm_vars$parameters$disturbance_type <- 0L
+  sim$cbm_vars$parameters$disturbance_type <- 0L
 
   # Set ages from state
-  cbm_vars$parameters$age <- cbm_vars$state$age
+  sim$cbm_vars$parameters$age <- sim$cbm_vars$state$age
 
   # Prepare data for new groups
   if (nrow(distStands) > 0){
 
     cbm_vars_new <- list()
 
-    newRowIDs <- unique(
-      subset(sim$cohortGroupKeep, cohortGroupID != cohortGroupPrev)[
-        , .(row_idx = cohortGroupID, cohortGroupPrev)]
-    )
-    data.table::setkey(newRowIDs, row_idx)
-
     # Set disturbed group parameters
     ## Set age = 1
-    cbm_vars_new[["parameters"]] <- merge(
-      newRowIDs[, .(row_idx)],
-      unique(merge(distCohorts, sim$cohortGroupKeep, by = "cohortID", all.x = TRUE)[
-        , .(row_idx = cohortGroupID, age = 1L, disturbance_type = disturbance_type_id)]),
-      by = "row_idx", all.x = TRUE)
+    cbm_vars_new[["parameters"]] <- data.table::copy(distStands)
+    distStands[, disturbance_type_id := NULL]
+
+    data.table::setnames(cbm_vars_new[["parameters"]], "disturbance_type_id", "disturbance_type")
+    cbm_vars_new[["parameters"]][, age := 1L]
 
     # Set disturbed group pools from data of previous group
     ## Set Input = 1
     cbm_vars_new[["pools"]] <- merge(
-      newRowIDs, sim$cbm_vars[["pools"]], by.x = "cohortGroupPrev", by.y = "row_idx", all.x = TRUE)[
-        , .SD, .SDcols = names(cbm_vars[["pools"]])]
-    cbm_vars_new[["pools"]]$Input <- 1L
+      distStands, sim$cbm_vars[["pools"]], by.x = "cohortGroupPrev", by.y = "row_idx", all.x = TRUE)
+    cbm_vars_new[["pools"]][, Input := 1L]
 
     # Set disturbed group flux from data of previous group
     cbm_vars_new[["flux"]]  <- merge(
-      newRowIDs, sim$cbm_vars[["flux"]], by.x = "cohortGroupPrev", by.y = "row_idx", all.x = TRUE)[
-        , .SD, .SDcols = names(cbm_vars[["flux"]])]
+      distStands, sim$cbm_vars[["flux"]], by.x = "cohortGroupPrev", by.y = "row_idx", all.x = TRUE)
 
     # Set disturbed group state from data of previous group
     ## Clear information about previous disturbances
     cbm_vars_new[["state"]] <- merge(
-      newRowIDs, sim$cbm_vars[["state"]], by.x = "cohortGroupPrev", by.y = "row_idx", all.x = TRUE)[
-        , .SD, .SDcols = names(cbm_vars[["state"]])]
+      distStands, sim$cbm_vars[["state"]], by.x = "cohortGroupPrev", by.y = "row_idx", all.x = TRUE)
     cbm_vars_new[["state"]][, time_since_last_disturbance := NA_real_]
     cbm_vars_new[["state"]][, time_since_land_use_change  := NA_real_]
     cbm_vars_new[["state"]][, last_disturbance_type       := NA_real_]
 
     # Merge new group data
-    for (tableName in names(cbm_vars)){
-      cbm_vars[[tableName]] <- data.table::rbindlist(
-        list(cbm_vars[[tableName]], unique(cbm_vars_new[[tableName]])), fill = TRUE)
-      data.table::setkey(cbm_vars[[tableName]], row_idx)
+    for (tableName in names(sim$cbm_vars)){
+      cbm_vars_new[[tableName]][, cohortGroupPrev := NULL]
+      sim$cbm_vars[[tableName]] <- data.table::rbindlist(
+        list(sim$cbm_vars[[tableName]], unique(cbm_vars_new[[tableName]])),
+        fill = TRUE)
+      data.table::setkey(sim$cbm_vars[[tableName]], row_idx)
     }
+    rm(cbm_vars_new)
   }
 
   # Set mean annual temperature
-  cbm_vars$parameters <- merge(
-    cbm_vars$parameters[, .SD, .SDcols = !"mean_annual_temperature"],
+  sim$cbm_vars$parameters <- merge(
+    sim$cbm_vars$parameters[, .SD, .SDcols = !"mean_annual_temperature"],
     merge(sim$cohortGroups, sim$spinupSQL, by.x = "spatial_unit_id", by.y = "id")[
       , .(row_idx = cohortGroupID, mean_annual_temperature)],
     by = "row_idx", all.x = TRUE)
@@ -595,15 +589,15 @@ annual_preprocessing <- function(sim) {
   ## This handles cases where the cohort ages exceed what is available in the increments
   maxIncr <- subset(growthIncr[growthIncr[, .I[which.max(age)], by = "gcids"]$V1,],
                     gcids %in% sim$cohortGroups$gcids)
-  if (any(maxIncr$age < max(cbm_vars$parameters$age))){
+  if (any(maxIncr$age < max(sim$cbm_vars$parameters$age))){
 
     warning("Cohort ages exceed growth increment ages. ",
             "Increments for the greatest available age have been applied to older cohorts.")
 
     growthIncr <- rbind(
       growthIncr, data.table::rbindlist(
-        lapply(which(maxIncr$age < max(cbm_vars$parameters$age)), function(i){
-          cbind(age = (maxIncr[i,]$age + 1):(max(cbm_vars$parameters$age) + 250),
+        lapply(which(maxIncr$age < max(sim$cbm_vars$parameters$age)), function(i){
+          cbind(age = (maxIncr[i,]$age + 1):(max(sim$cbm_vars$parameters$age) + 250),
                 maxIncr[i,][, -("age")])
         }), use.names = TRUE))
     data.table::setkeyv(growthIncr, c("gcids", "age"))
@@ -612,21 +606,25 @@ annual_preprocessing <- function(sim) {
   }
 
   annualIncr <- merge(
-    cbm_vars$parameters[, .(row_idx, age)],
+    sim$cbm_vars$parameters[, .(row_idx, age)],
     sim$cohortGroups[, .(row_idx = cohortGroupID, gcids)],
     by = "row_idx")
   annualIncr <- merge(annualIncr, growthIncr, by = c("gcids", "age"), all.x = TRUE)
 
-  cbm_vars$parameters <- merge(
-    cbm_vars$parameters[, .SD, .SDcols = !c("merch_inc", "foliage_inc", "other_inc")],
+  sim$cbm_vars$parameters <- merge(
+    sim$cbm_vars$parameters[, .SD, .SDcols = !c("merch_inc", "foliage_inc", "other_inc")],
     unique(annualIncr[, .(row_idx, merch_inc, foliage_inc, other_inc)]),
     by = "row_idx", all.x = TRUE)
-  data.table::setkey(cbm_vars$parameters, row_idx)
+  data.table::setkey(sim$cbm_vars$parameters, row_idx)
 
   rm(annualIncr)
   rm(growthIncr)
 
-  sim$cbm_vars <- cbm_vars
+  # Remove rows for inactive cohort groups
+  for (i in 1:length(sim$cbm_vars)){
+    sim$cbm_vars[[i]] <- subset(sim$cbm_vars[[i]], row_idx %in% sim$cohortGroups$cohortGroupID)
+  }
+
   } else {
     # add disturbed stands to simList
     sim$standDT[, disturbance_type_id := NA_integer_ ]
@@ -643,18 +641,16 @@ annual_carbonDynamics <- function(sim) {
 
   ## RUN PYTHON -----
 
-  cbm_vars <- sim$cbm_vars
-
   # Temporarily remove row_idx column
-  row_idx <- cbm_vars$pools$row_idx
-  cbm_vars <- lapply(cbm_vars, function(tbl) tbl[, -("row_idx")])
+  row_idx <- sim$cbm_vars$pools$row_idx
+  for (i in 1:length(sim$cbm_vars)) sim$cbm_vars[[i]][, row_idx := NULL]
 
   # Call Python
   mod$libcbm_default_model_config <- libcbmr::cbm_exn_get_default_parameters()
-  step_ops <- libcbmr::cbm_exn_step_ops(cbm_vars, mod$libcbm_default_model_config)
+  step_ops <- libcbmr::cbm_exn_step_ops(sim$cbm_vars, mod$libcbm_default_model_config)
 
-  cbm_vars <- libcbmr::cbm_exn_step(
-    cbm_vars,
+  sim$cbm_vars <- libcbmr::cbm_exn_step(
+    sim$cbm_vars,
     step_ops,
     libcbmr::cbm_exn_get_step_disturbance_ops_sequence(),
     libcbmr::cbm_exn_get_step_ops_sequence(),
@@ -662,20 +658,19 @@ annual_carbonDynamics <- function(sim) {
   )
 
   #implement delay
-  delayRows <- with(cbm_vars$state, is.na(time_since_last_disturbance) | time_since_last_disturbance <= delay)
+  delayRows <- with(sim$cbm_vars$state, is.na(time_since_last_disturbance) | time_since_last_disturbance <= delay)
   if (any(delayRows)) {
-    cbm_vars$state$age[delayRows] <- 0
+    sim$cbm_vars$state$age[delayRows] <- 0
     delayGrowth <- c("age", "merch_inc", "foliage_inc", "other_inc")
-    cbm_vars$parameters[delayRows, delayGrowth] <- 0
+    sim$cbm_vars$parameters[delayRows, delayGrowth] <- 0
   }
   rm(delayRows)
 
   # Prepare output data for next annual event
-  sim$cbm_vars <- lapply(cbm_vars, function(tbl){
-    tbl <- data.table::data.table(row_idx = row_idx, tbl)
-    data.table::setkey(tbl, row_idx)
-    tbl
-  })
+  for (i in 1:length(sim$cbm_vars)){
+    sim$cbm_vars[[i]] <- data.table::data.table(row_idx = row_idx, sim$cbm_vars[[i]], key = "row_idx")
+  }
+  rm(row_idx)
 
 
   ## ASSEMBLE OUTPUTS -----
@@ -686,7 +681,7 @@ annual_carbonDynamics <- function(sim) {
   ]
 
   # Set cohort count
-  cohortCount <- unique(sim$cohortGroupKeep[, .(pixelIndex, cohortGroupID)])[, .N, by = cohortGroupID]
+  cohortCount <- sim$cohortGroupKeep[, .N, by = cohortGroupID]
   data.table::setkey(cohortCount, cohortGroupID)
 
   # Update the final simulation horizon table with all the pools/year/cohortGroupID
@@ -757,15 +752,12 @@ annual_carbonDynamics <- function(sim) {
   if (!"area" %in% names(sim$standDT)) stop(
     "standDT requires the \"area\" column to calculate emissions and product totals.")
 
-  groupAreas <- unique(merge(
-    sim$cohortGroupKeep[, .(pixelIndex, row_idx = cohortGroupID)],
-    sim$standDT[, .(pixelIndex, area)],
-    by = "pixelIndex", all.x = TRUE)[, pixelIndex := NULL][
-      , area := sum(area), by = row_idx])
+  groupAreas <- merge(sim$cohortGroupKeep, sim$standDT, by = "pixelIndex")[
+    , .(area = sum(area)), by = cohortGroupID]
 
   emissionsProducts <- colSums(
     emissionsProducts[, .SD, .SDcols = !"row_idx"] *
-      (groupAreas$area[match(emissionsProducts$row_idx, groupAreas$row_idx)] / 10000))
+      (groupAreas$area[match(emissionsProducts$row_idx, groupAreas$cohortGroupID)] / 10000))
 
   # making Products yearly rather than cumulative
   if (!is.null(sim$emissionsProducts)){
