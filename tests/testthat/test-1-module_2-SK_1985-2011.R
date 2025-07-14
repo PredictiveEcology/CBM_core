@@ -28,6 +28,7 @@ test_that("Module: SK 1985-2011", {
         cachePath   = spadesTestPaths$cachePath,
         outputPath  = file.path(projectPath, "outputs")
       ),
+      params = list(CBM_core = list(.plot = FALSE)),
 
       outputs = as.data.frame(expand.grid(
         objectName = c("cbmPools", "NPP"),
