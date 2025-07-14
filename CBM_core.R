@@ -52,8 +52,7 @@ defineModule(sim, list(
     defineParameter(
       "skipPrepareCBMvars", "logical", default = FALSE, NA, NA,
       desc = "Whether the inputs for the cbm annual events are prepared by another module.E.g., LandRCBM_split3pools."),
-    defineParameter(".plotInitialTime", "numeric", start(sim), NA, NA, "Simulation time when the first plot event should occur"),
-    defineParameter(".plotInterval",    "numeric", 1L,         NA, NA, "Time interval between plot events"),
+    defineParameter(".plot", "logical", TRUE, NA, NA, "Plot simulation results"),
     defineParameter(".saveInitialTime", "numeric", NA,         NA, NA, "Simulation time when the first save event should occur"),
     defineParameter(".saveInterval",    "numeric", NA,         NA, NA, "Time interval between save events"),
     defineParameter(".useCache", "logical", FALSE, NA, NA, "Use module caching")
@@ -182,21 +181,11 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
       sim <- scheduleEvent(sim, start(sim), "CBM_core", "annual_preprocessing", eventPriority = 8)
       sim <- scheduleEvent(sim, start(sim), "CBM_core", "annual_carbonDynamics", eventPriority = 8.5)
 
-      # need this to be after the saving of outputs -- so very low priority
-      ##TODO this is not happening because P(sim)$.plotInterval is NULL
-      # sim <- scheduleEvent(sim, min(end(sim), start(sim) + P(sim)$.plotInterval),
-      #                      "CBM_core", "accumulateResults", eventPriority = 11)
-      ##So, I am making this one until we figure out how to do both more
-      ##generically
+      # Accumulate results
       sim <- scheduleEvent(sim, end(sim), "CBM_core", "accumulateResults", eventPriority = 11)
 
       # Schedule plotting
-      sim <- scheduleEvent(sim, end(sim), "CBM_core", "plot", eventPriority = 12)
-
-
-      #sim <- scheduleEvent(sim, P(sim)$.saveInitialTime, "CBM_core", "save")
-      #sim <- scheduleEvent(sim, P(sim)$.plotInitialTime, "CBM_core", "plot", eventPriority = 12 )
-      # sim <- scheduleEvent(sim, end(sim), "CBM_core", "savePools", .last())
+      if (P(sim)$.plot) sim <- scheduleEvent(sim, end(sim), "CBM_core", "plot", eventPriority = 12)
     },
 
     spinup = {

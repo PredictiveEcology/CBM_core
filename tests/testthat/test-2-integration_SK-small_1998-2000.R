@@ -38,6 +38,7 @@ test_that("Multi module: SK-small 1998-2000", {
         cachePath   = spadesTestPaths$cachePath,
         outputPath  = file.path(projectPath, "outputs")
       ),
+      params = list(CBM_core = list(.plot = FALSE)),
 
       require = c("terra", "reproducible"),
 

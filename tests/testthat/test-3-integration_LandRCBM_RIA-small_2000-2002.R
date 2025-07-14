@@ -35,6 +35,7 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
         cachePath   = spadesTestPaths$cachePath,
         outputPath  = file.path(projectPath, "outputs")
       ),
+      params = list(CBM_core = list(.plot = FALSE)),
 
       require = c("terra", "reproducible"),
 
