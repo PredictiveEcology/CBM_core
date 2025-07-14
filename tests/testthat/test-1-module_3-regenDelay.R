@@ -30,11 +30,6 @@ test_that("Module: with regeneration delay", {
       ),
       params = list(CBM_core = list(.plot = FALSE)),
 
-      outputs = as.data.frame(expand.grid(
-        objectName = c("cbmPools", "NPP"),
-        saveTime   = sort(c(times$start, times$start + c(1:(times$end - times$start))))
-      )),
-
       standDT = data.table::data.table(
         pixelIndex      = c(1, 2),
         spatial_unit_id = 28,
@@ -86,10 +81,13 @@ test_that("Module: with regeneration delay", {
   expect_s4_class(simTest, "simList")
 
   # Check result
-  expect_equal(subset(simTest$cbmPools, cohortGroupID == min(cohortGroupID))$age, c(1, 2, 3))
-  expect_equal(subset(simTest$cbmPools, cohortGroupID == max(cohortGroupID))$age, c(0, 0, 1))
+  cohortGroupNPP   <- simTest@.envir$.mods$CBM_core$simCohortGroupNPP(simTest)
+  cohortGroupPools <- simTest@.envir$.mods$CBM_core$simCohortGroupPools(simTest)
+
+  expect_equal(subset(cohortGroupPools, cohortGroupID == min(cohortGroupID))$age, c(1, 2, 3))
+  expect_equal(subset(cohortGroupPools, cohortGroupID == max(cohortGroupID))$age, c(0, 0, 1))
   expect_true(all(
-    subset(simTest$NPP, cohortGroupID == 2)$NPP < subset(simTest$NPP, cohortGroupID == 1)$NPP
+    subset(cohortGroupNPP, cohortGroupID == 2)$NPP < subset(cohortGroupNPP, cohortGroupID == 1)$NPP
   ))
 
 
@@ -118,14 +116,17 @@ test_that("Module: with regeneration delay", {
   expect_s4_class(simTestParam, "simList")
 
   # Check result
-  expect_equal(simTestParam$cbmPools$age, c(0, 0, 1))
+  cohortGroupNPP   <- simTest@.envir$.mods$CBM_core$simCohortGroupNPP(simTest)
+  cohortGroupPools <- simTest@.envir$.mods$CBM_core$simCohortGroupPools(simTest)
+
+  expect_equal(cohortGroupPools$age, c(0, 0, 1))
   expect_equal(
-    simTestParam$cbmPools[, .SD, .SDcols = !c("cohortGroupID", "N")],
-    subset(simTest$cbmPools, cohortGroupID == max(cohortGroupID))[, .SD, .SDcols = !c("cohortGroupID", "N")],
+    cohortGroupPools[, .SD, .SDcols = !c("cohortGroupID", "N")],
+    subset(cohortGroupPools, cohortGroupID == max(cohortGroupID))[, .SD, .SDcols = !c("cohortGroupID", "N")],
     check.attributes = FALSE)
   expect_equal(
-    simTestParam$NPP[, .SD, .SDcols = !c("cohortGroupID", "N")],
-    subset(simTest$NPP, cohortGroupID == max(cohortGroupID))[, .SD, .SDcols = !c("cohortGroupID", "N")],
+    cohortGroupNPP[, .SD, .SDcols = !c("cohortGroupID", "N")],
+    subset(cohortGroupNPP, cohortGroupID == max(cohortGroupID))[, .SD, .SDcols = !c("cohortGroupID", "N")],
     check.attributes = FALSE)
 
 })
