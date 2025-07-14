@@ -30,11 +30,6 @@ test_that("Module: SK 1985-2011", {
       ),
       params = list(CBM_core = list(.plot = FALSE)),
 
-      outputs = as.data.frame(expand.grid(
-        objectName = c("cbmPools", "NPP"),
-        saveTime   = sort(c(times$start, times$start + c(1:(times$end - times$start))))
-      )),
-
       standDT           = data.table::fread(file.path(spadesTestPaths$testdata, "SK/input", "standDT.csv"))[, area := 900],
       cohortDT          = data.table::fread(file.path(spadesTestPaths$testdata, "SK/input", "cohortDT.csv"))[, ageSpinup := sapply(ages, min, 3)],
       disturbanceEvents = file.path(spadesTestPaths$testdata, "SK/input", "disturbanceEvents.csv") |> data.table::fread(),
@@ -71,22 +66,19 @@ test_that("Module: SK 1985-2011", {
     data.table::fread(file.path(spadesTestPaths$testdata, "SK/valid", "spinupResult.csv")),
     check.attributes = FALSE)
 
-  # cbmPools
-  expect_true(!is.null(simTest$cbmPools))
-
-  # NPP
-  expect_true(!is.null(simTest$NPP))
-  expect_equal(
-    simTest$NPP[, (list(NPP = sum(NPP * N))), by = "simYear"],
-    data.table::fread(file.path(spadesTestPaths$testdata, "SK/valid", "NPP_sumByYear.csv")),
-    check.attributes = FALSE)
-
   # emissionsProducts
   expect_true(!is.null(simTest$emissionsProducts))
   expect_equal(
     data.table::as.data.table(simTest$emissionsProducts),
     data.table::fread(file.path(spadesTestPaths$testdata, "SK/valid", "emissionsProducts.csv"))[
       , .SD, .SDcols = colnames(simTest$emissionsProducts)],
+    check.attributes = FALSE)
+
+  # NPP
+  cohortGroupNPP <- simTest@.envir$.mods$CBM_core$simCohortGroupNPP(simTest)
+  expect_equal(
+    cohortGroupNPP[, (list(NPP = sum(NPP * N))), by = "simYear"],
+    data.table::fread(file.path(spadesTestPaths$testdata, "SK/valid", "NPP_sumByYear.csv")),
     check.attributes = FALSE)
 
   # cohortGroups
