@@ -35,7 +35,6 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
         cachePath   = spadesTestPaths$cachePath,
         outputPath  = file.path(projectPath, "outputs")
       ),
-      params = list(CBM_core = list(.plot = FALSE)),
 
       require = c("terra", "reproducible"),
 
@@ -79,6 +78,7 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
           sppEquivCol = 'LandR'
         ),
         CBM_core = list(
+          .plot = FALSE,
           skipCohortGroupHandling = TRUE,
           skipPrepareCBMvars = TRUE
         ))
@@ -116,10 +116,9 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
         "spinup"            = times$start,
         setNames(
           rep(times$start:times$end, each = 2),
-          rep(c("annual_preprocessing", "annual_carbonDynamics"), length(times$star:times$end))
+          rep(c("annual_preprocessing", "annual_carbonDynamics"), length(times$start:times$end))
         ),
-        "accumulateResults" = times$end,
-        "plot"              = times$end
+        "accumulateResults" = times$end
       )),
     expect_equal(
       completed(simTest)[moduleName == moduleTest, .(eventTime, eventType)],
