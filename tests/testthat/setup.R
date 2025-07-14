@@ -5,8 +5,10 @@ if (!testthat::is_testing()){
 }
 
 # 2025-05: Install latest quickPlot from Github required by LandR
+# 2025-07-14: Installing a specific hash of quickPlot
 ## Otherwise SpaDES.core will install and load an older version from CRAN first
-Require::Install("PredictiveEcology/quickPlot@development (>= 1.0.2.9001)")
+# Require::Install("PredictiveEcology/quickPlot@development (>= 1.0.2.9001)")
+Require::Install("PredictiveEcology/quickPlot@5735b68bccdf79a3b032c141d1059950ad9d4334")
 
 # Source work in progress SpaDES module testing functions
 suppressPackageStartupMessages(library(SpaDES.core))
