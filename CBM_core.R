@@ -75,7 +75,7 @@ defineModule(sim, list(
         cohortID    = "Cohort ID",
         pixelIndex  = "Stand ID",
         gcids       = "Growth curve ID",
-        ages        = "Cohort age at simulation start",
+        age         = "Cohort age at simulation start",
         ageSpinup   = "Optional. Alternative cohort age at the simulation start year to use in the spinup",
         delaySpinup = "Optional. Spinup delay. Defaults to the 'default_delay_spinup' parameter",
         delayRegen  = "Optional. Regeneration delay post disturbance in years. Defaults to the 'default_delay_regen' parameter"
@@ -330,7 +330,7 @@ spinup <- function(sim) {
   cohortDT <- sim$cohortDT
   if ("ageSpinup" %in% names(sim$cohortDT)){
     cohortDT <- data.table::copy(cohortDT)
-    data.table::setnames(cohortDT, c("ages", "ageSpinup"), c("agesReal", "ages"))
+    data.table::setnames(cohortDT, c("age", "ageSpinup"), c("agesReal", "age"))
   }
 
   ## Use an area of 1ha for each pixel
@@ -665,7 +665,7 @@ annual_carbonDynamics <- function(sim) {
   ## ASSEMBLE OUTPUTS -----
 
   # Set new cohort group ages
-  sim$cohortGroups$ages <- sim$cbm_vars$state$age[
+  sim$cohortGroups$age <- sim$cbm_vars$state$age[
     match(sim$cohortGroups$cohortGroupID, sim$cbm_vars$state$row_idx)
   ]
 

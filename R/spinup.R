@@ -104,18 +104,12 @@ cbmExnSpinupCohorts <- function(
     standDT  = c("area", "historical_disturbance_type", "last_pass_disturbance_type")
   )
 
-  ## Special case: rename "ages" column
-  if ("ages" %in% names(cohortDT) & !"age" %in% names(cohortDT)){
-    cohortDT <- data.table::copy(cohortDT)[, age := ages][, ages := NULL]
-    cpCH <- FALSE
-  }else cpCH <- TRUE
-
   # Read input tables
   standDT  <- readDataTable(
     standDT,  "standDT", copy = TRUE,
     colRequired = reqCols$standDT,  colKeep = optCols$standDT)
   cohortDT <- readDataTable(
-    cohortDT, "cohortDT", copy = cpCH,
+    cohortDT, "cohortDT", copy = TRUE,
     colRequired = reqCols$cohortDT, colKeep = setdiff(names(cohortDT), names(standDT)))
   gcMetaDT <- readDataTable(
     gcMetaDT, "gcMetaDT", copy = TRUE,
