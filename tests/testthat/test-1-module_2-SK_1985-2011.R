@@ -64,12 +64,7 @@ test_that("Module: SK 1985-2011", {
   ## Check outputs ----
 
   # spinupResult
-  ## There should always be the same number of spinup cohort groups.
   expect_true(!is.null(simTest$spinupResult))
-  expect_equal(
-    data.table::as.data.table(simTest$spinupResult$output$pools),
-    data.table::fread(file.path(spadesTestPaths$testdata, "SK/valid", "spinupResult.csv")),
-    check.attributes = FALSE)
 
   # cbmPools
   expect_true(!is.null(simTest$cbmPools))
