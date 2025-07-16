@@ -24,12 +24,12 @@ cbmExnSpinup <- function(cohortDT, spinupSQL, growthIncr, gcIndex = "gcIndex"){
 
   # Create cohort groups: groups of cohorts with the same attributes
   ## Allow all cohortDT attributes to be considered in unique groupings
-  cohortGroupCols <- setdiff(names(cohortDT), c("cohortID", "pixelIndex"))
-  cohortDT$pixelIndex <- cohortDT$cohortID ## LandR expects 'pixelGroup' column
-  cohortDT$cohortGroupID <- LandR::generatePixelGroups(cohortDT, maxPixelGroup = 0, columns = cohortGroupCols)
+  groupCols <- setdiff(names(cohortDT), c("cohortID", "pixelIndex"))
+  cohortDT[, cohortGroupID := .GRP, by = groupCols]
+  on.exit(cohortDT[, cohortGroupID := NULL])
 
   # Isolate unique groups and join with spatial unit data
-  cohortGroups <- unique(cohortDT[, .SD, .SDcols = c("cohortGroupID", setdiff(reqCols$cohortDT, "cohortID"))])
+  cohortGroups <- unique(cohortDT[, .SD, .SDcols = c("cohortGroupID", groupCols)])
   cohortGroups <- merge(cohortGroups, spinupSQL, by.x = "spatial_unit_id", by.y = "id", all.x = TRUE)
   setkeyv(cohortGroups, "cohortGroupID")
 
