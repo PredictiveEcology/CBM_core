@@ -16,7 +16,6 @@ defineModule(sim, list(
   reqdPkgs = list(
     "data.table", "reticulate",
     "PredictiveEcology/CBMutils@development (>=2.0.3.0007)",
-    "PredictiveEcology/LandR@development (>= 1.1.1)",
     "PredictiveEcology/libcbmr"
   ),
   parameters = rbind(
@@ -474,14 +473,10 @@ annual_preprocessing <- function(sim) {
       distCohorts <- merge(
         distCohorts, sim$cbm_vars$pools[, .SD, .SDcols = c("row_idx", sim$pooldef, "Products")],
         by.x = "cohortGroupPrev", by.y = "row_idx", all.x = TRUE)
-
-      ##TODO: Check why a bunch of extra columns are being created. remove
-      ##unnecessary cols from generatePixelGroups.
       data.table::setkey(distCohorts, cohortID)
-      distCohorts$cohortGroupNew <- LandR::generatePixelGroups(
-        distCohorts, maxPixelGroup = max(sim$cohortGroupKeep$cohortGroupPrev),
-        columns = setdiff(names(distCohorts), c("cohortID", "pixelIndex", "cohortGroupPrev"))
-      )
+
+      groupCols <- setdiff(names(distCohorts), c("cohortID", "pixelIndex", "cohortGroupPrev"))
+      distCohorts[, cohortGroupNew := .GRP + max(sim$cohortGroupKeep$cohortGroupPrev), by = groupCols]
 
       # Update cohortGroupKeep
       sim$cohortGroupKeep <- merge(
