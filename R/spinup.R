@@ -16,26 +16,15 @@ cbmExnSpinupCBM <- function(
     data.table::setkeyv(cohortDT, cohortInput$key)
   })
 
-  # Set required columns
-  reqCols <- list(
-    cohortDT = list(
-      req = c("cohortID", "pixelIndex", colname_gc, colname_age),
-      opt = names(cohortDT)
-    ),
-    standDT = list(
-      req = c("pixelIndex", "spatial_unit_id"),
-      opt = c("historical_disturbance_type", "last_pass_disturbance_type")
-    ),
-    gcMetaDT = list(
-      req = c(colname_gc, "species_id", "sw_hw"),
-      opt = c()
-    )
-  )
-
   # Read input tables
-  cohortDT <- readDataTable(cohortDT, "cohortDT", colRequired = reqCols$cohortDT$req, colKeep = reqCols$cohortDT$opt)
-  standDT  <- readDataTable(standDT,  "standDT",  colRequired = reqCols$standDT$req,  colKeep = reqCols$standDT$opt)
-  gcMetaDT <- readDataTable(gcMetaDT, "gcMetaDT", colRequired = reqCols$gcMetaDT$req, colKeep = reqCols$gcMetaDT$opt)
+  reqCols <- list(
+    cohortDT = c("cohortID", "pixelIndex", colname_gc, colname_age),
+    standDT  = c("pixelIndex", "spatial_unit_id"),
+    gcMetaDT = c(colname_gc, "species_id", "sw_hw")
+  )
+  cohortDT <- readDataTable(cohortDT, "cohortDT", colRequired = reqCols$cohortDT)
+  standDT  <- readDataTable(standDT,  "standDT",  colRequired = reqCols$standDT)
+  gcMetaDT <- readDataTable(gcMetaDT, "gcMetaDT", colRequired = reqCols$gcMetaDT)
 
   # Join all cohort data
   cohortDT <- cohortDT |>
@@ -74,15 +63,13 @@ cbmExnSpinup <- function(cohortDT, growthIncr, spinupSQL, colname_gc = "gcids",
 
   ## Prepare input for spinup ----
 
-  # Set required columns
+  # Read input tables
   reqCols <- list(
     cohortDT   = c("cohortID", "spatial_unit_id", colname_gc, "species_id", "sw_hw", "age"),
     growthIncr = c(colname_gc, "age", "merch_inc", "foliage_inc", "other_inc"),
     spinupSQL  = c("id", "return_interval", "min_rotations", "max_rotations", "mean_annual_temperature")
   )
-
-  # Read input tables
-  cohortDT   <- readDataTable(cohortDT,   "cohortDT",   colRequired = reqCols$cohortDT, colKeep = names(cohortDT))
+  cohortDT   <- readDataTable(cohortDT,   "cohortDT",   colRequired = reqCols$cohortDT)
   growthIncr <- readDataTable(growthIncr, "growthIncr", colRequired = reqCols$growthIncr)
   spinupSQL  <- readDataTable(spinupSQL,  "spinupSQL",  colRequired = reqCols$spinupSQL)
 
@@ -101,9 +88,10 @@ cbmExnSpinup <- function(cohortDT, growthIncr, spinupSQL, colname_gc = "gcids",
   data.table::setnames(cohortGroups, "species_id", "species")
   if (is.character(cohortGroups$sw_hw)) cohortGroups$sw_hw <- as.integer(cohortGroups$sw_hw == "sw")
 
-  # Set defaults
-  if (!"area" %in% names(cohortGroups)) cohortGroups$area <- 1L # 1ha
+  # Set area to 1ha
+  cohortGroups$area <- 1L # 1ha
 
+  # Set defaults
   if ("delay" %in% names(cohortGroups)){
     cohortGroups$delay[is.na(delay), delay := default_delay]
   }else{
@@ -163,7 +151,7 @@ cbmExnSpinup <- function(cohortDT, growthIncr, spinupSQL, colname_gc = "gcids",
 }
 
 # Helper function: read as data.table and check for required columns
-readDataTable <- function(table = NULL, tableName = NULL, copy = FALSE, colRequired = NULL, colKeep = NULL){
+readDataTable <- function(table, tableName = NULL, colRequired = NULL, copy = FALSE){
 
   if (is.null(table)) stop(c(tableName, "table")[[1]], " not found")
 
@@ -181,8 +169,6 @@ readDataTable <- function(table = NULL, tableName = NULL, copy = FALSE, colRequi
     if (!all(colRequired %in% names(table))) stop(
       c(tableName, "table")[[1]], " missing column(s): ",
       paste(shQuote(setdiff(colRequired, names(table))), collapse = ", "))
-
-    table <- table[, .SD, .SDcols = unique(c(colRequired, intersect(colKeep, names(table))))]
   }
 
   if (copy) table <- data.table::copy(table)
