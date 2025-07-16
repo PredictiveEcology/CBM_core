@@ -324,33 +324,19 @@ spinup <- function(sim) {
   if (!"last_pass_disturbance_type"  %in% names(sim$standDT)) message(
     "Spinup using the default last pass disturbance type ID: ", P(sim)$default_last_pass_disturbance_type)
 
-  # Use alternative ages for spinup
-  ##TODO: confirm if still the case where CBM_vol2biomass won't translate <3 years old
-  cohortDT <- sim$cohortDT
-  if ("ageSpinup" %in% names(sim$cohortDT)){
-    cohortDT <- data.table::copy(cohortDT)
-    data.table::setnames(cohortDT, c("age", "ageSpinup"), c("agesReal", "age"))
-  }
-
-  ## Use an area of 1ha for each pixel
-  ## Results will later be multiplied by area to total emissions
-  cohortSpinup <- cbmExnSpinupCohorts(
-    cohortDT      = cohortDT,
-    standDT       = sim$standDT[, .SD, .SD = setdiff(names(sim$standDT), "area")],
+  # Spinup
+  spinupOut <- cbmExnSpinupCBM(
+    cohortDT      = sim$cohortDT,
+    standDT       = sim$standDT,
     gcMetaDT      = sim$gcMeta,
-    gcIndex       = "gcids",
-    default_area  = 1,
+    growthIncr    = sim$growth_increments,
+    spinupSQL     = sim$spinupSQL,
+    colname_gc    = "gcids",
+    colname_age   = ifelse("ageSpinup"   %in% names(sim$cohortDT), "ageSpinup",   "age"),
+    colname_delay = ifelse("delaySpinup" %in% names(sim$cohortDT), "delaySpinup", "delay"),
     default_delay = P(sim)$default_delay_spinup,
     default_historical_disturbance_type = P(sim)$default_historical_disturbance_type,
     default_last_pass_disturbance_type  = P(sim)$default_last_pass_disturbance_type
-  )
-
-  # Spinup
-  spinupOut <- cbmExnSpinup(
-    cohortDT   = cohortSpinup,
-    spinupSQL  = sim$spinupSQL[, mean_annual_temperature := historic_mean_temperature],
-    growthIncr = sim$growth_increments,
-    gcIndex    = "gcids"
   ) |> Cache()
 
   sim$spinupResult <- spinupOut
