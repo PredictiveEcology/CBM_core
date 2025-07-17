@@ -324,36 +324,57 @@ spinup <- function(sim) {
   if (!"last_pass_disturbance_type"  %in% names(sim$standDT)) message(
     "Spinup using the default last pass disturbance type ID: ", P(sim)$default_last_pass_disturbance_type)
 
+  # Join all cohort data
+  ## On exit: restore cohortDT table
+  cohortInput <- list(key = data.table::key(sim$cohortDT), cols = names(sim$cohortDT))
+  on.exit({
+    sim$cohortDT[, c(setdiff(names(sim$cohortDT), cohortInput$cols)) := NULL]
+    data.table::setkeyv(sim$cohortDT, cohortInput$key)
+  })
+
+  spinupCols <- list(
+    standDT = c("pixelIndex", "spatial_unit_id", "historical_disturbance_type", "last_pass_disturbance_type"),
+    gcMeta  = c("gcids", "species_id", "sw_hw")
+  )
+  sim$cohortDT <- sim$cohortDT |>
+    data.table::merge.data.table(
+      sim$standDT[, .SD, .SDcols = intersect(names(sim$standDT), spinupCols$standDT)],
+      by = "pixelIndex", suffixes = c("", ".y"), all.x = TRUE) |>
+    data.table::merge.data.table(
+      sim$gcMeta[, .SD, .SDcols = intersect(names(sim$gcMeta), spinupCols$gcMeta)],
+      by = "gcids",      suffixes = c("", ".y"), all.x = TRUE)
+  data.table::setkey(sim$cohortDT, cohortID)
+
   # Spinup
-  spinupOut <- cbmExnSpinupCBM(
-    cohortDT      = sim$cohortDT,
-    standDT       = sim$standDT,
-    gcMetaDT      = sim$gcMeta,
-    growthIncr    = sim$growth_increments,
-    spinupSQL     = sim$spinupSQL,
-    colname_gc    = "gcids",
-    colname_age   = ifelse("ageSpinup"   %in% names(sim$cohortDT), "ageSpinup",   "age"),
-    colname_delay = ifelse("delaySpinup" %in% names(sim$cohortDT), "delaySpinup", "delay"),
-    default_delay = P(sim)$default_delay_spinup,
+  spinupOut <- cbmExnSpinup(
+    cohortDT        = sim$cohortDT,
+    spuParams       = sim$spinupSQL,
+    growthIncr      = sim$growth_increments,
+    colname_gc      = "gcids",
+    colname_species = "species_id",
+    colname_age     = ifelse("ageSpinup"   %in% names(sim$cohortDT), "ageSpinup",   "age"),
+    colname_delay   = ifelse("delaySpinup" %in% names(sim$cohortDT), "delaySpinup", "delay"),
+    default_delay   = P(sim)$default_delay_spinup,
     default_historical_disturbance_type = P(sim)$default_historical_disturbance_type,
     default_last_pass_disturbance_type  = P(sim)$default_last_pass_disturbance_type
   ) |> Cache()
 
+  # Save spinup result
   sim$spinupResult <- spinupOut
+  sim$spinupResult$key <- sim$spinupResult$key[, .(cohortID, cohortGroupID)]
 
-  # Skip cohort group handling
+  if (!P(sim)$skipCohortGroupHandling){
 
-  if(!P(sim)$skipCohortGroupHandling) {
     # Save cohort group key
-    sim$cohortGroupKeep <- merge(spinupOut$key, sim$cohortDT, by = "cohortID")[, .(cohortID, pixelIndex, cohortGroupID)]
+    sim$cohortGroupKeep <- spinupOut$key
     sim$cohortGroupKeep[, cohortGroupPrev := NA_integer_]
     sim$cohortGroupKeep[, spinup          := cohortGroupID]
     data.table::setkey(sim$cohortGroupKeep, cohortID)
 
     # Prepare cohort group attributes for annual event
-    sim$cohortGroups <- unique(merge(
+    sim$cohortGroups <- unique(data.table::merge.data.table(
       sim$cohortGroupKeep[, .(cohortID, cohortGroupID)],
-      merge(sim$standDT[, .(pixelIndex, spatial_unit_id)], sim$cohortDT, by = "pixelIndex"),
+      sim$cohortDT,
       by = "cohortID"
     )[, .SD, .SDcols = !c("cohortID", "pixelIndex")])
     data.table::setkey(sim$cohortGroups, cohortGroupID)
@@ -545,11 +566,8 @@ annual_preprocessing <- function(sim) {
   }
 
   # Set mean annual temperature
-  sim$cbm_vars$parameters <- merge(
-    sim$cbm_vars$parameters[, .SD, .SDcols = !"mean_annual_temperature"],
-    merge(sim$cohortGroups, sim$spinupSQL, by.x = "spatial_unit_id", by.y = "id")[
-      , .(row_idx = cohortGroupID, mean_annual_temperature)],
-    by = "row_idx", all.x = TRUE)
+  sim$cbm_vars$parameters$mean_annual_temperature <- sim$spinupSQL$mean_annual_temperature[
+    match(sim$cbm_vars$state$spatial_unit_id, sim$spinupSQL$id)]
 
   # Set growth increments: join via spinup cohort group IDs and age
   growthIncr <- sim$growth_increments
