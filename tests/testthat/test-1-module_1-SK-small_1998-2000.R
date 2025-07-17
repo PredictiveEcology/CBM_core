@@ -35,8 +35,8 @@ test_that("Module: SK-small 1998-2000", {
         saveTime   = sort(c(times$start, times$start + c(1:(times$end - times$start))))
       )),
 
-      standDT           = data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/input", "standDT.csv"))[, area := 900],
       cohortDT          = data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/input", "cohortDT.csv")),
+      standDT           = data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/input", "standDT.csv"))[, area := 900],
       disturbanceEvents = file.path(spadesTestPaths$testdata, "SK-small/input", "disturbanceEvents.csv") |> data.table::fread(),
       disturbanceMeta   = file.path(spadesTestPaths$testdata, "SK/input", "disturbanceMeta.csv")   |> data.table::fread(),
       gcMeta            = file.path(spadesTestPaths$testdata, "SK/input", "gcMeta.csv")            |> data.table::fread(),
@@ -59,6 +59,35 @@ test_that("Module: SK-small 1998-2000", {
   )
 
   expect_s4_class(simTest, "simList")
+
+
+  ## Check inputs ----
+
+  ## Check that input tables are not altered by module.
+  expect_equal(
+    simTest$cohortDT,
+    data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/input", "cohortDT.csv")),
+    check.attributes = FALSE)
+  expect_equal(
+    simTest$standDT,
+    data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/input", "standDT.csv"))[, area := 900],
+    check.attributes = FALSE)
+  expect_equal(
+    simTest$disturbanceEvents,
+    data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/input", "disturbanceEvents.csv")),
+    check.attributes = FALSE)
+  expect_equal(
+    simTest$disturbanceMeta,
+    data.table::fread(file.path(spadesTestPaths$testdata, "SK/input", "disturbanceMeta.csv")),
+    check.attributes = FALSE)
+  expect_equal(
+    simTest$gcMeta,
+    data.table::fread(file.path(spadesTestPaths$testdata, "SK/input", "gcMeta.csv")),
+    check.attributes = FALSE)
+  expect_equal(
+    simTest$growth_increments,
+    data.table::fread(file.path(spadesTestPaths$testdata, "SK/input", "growth_increments.csv")),
+    check.attributes = FALSE)
 
 
   ## Check outputs ----
@@ -98,6 +127,7 @@ test_that("Module: SK-small 1998-2000", {
   # cohortGroups
   ## There should always be the same number of total cohort groups.
   expect_true(!is.null(simTest$cohortGroups))
+  expect_equal(max(simTest$cohortGroups$cohortGroupID), 43)
   expect_equal(nrow(simTest$cohortGroups), 43)
 
   # cohortGroupKeep

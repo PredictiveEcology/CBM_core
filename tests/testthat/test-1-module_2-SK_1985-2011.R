@@ -35,8 +35,8 @@ test_that("Module: SK 1985-2011", {
         saveTime   = sort(c(times$start, times$start + c(1:(times$end - times$start))))
       )),
 
-      standDT           = data.table::fread(file.path(spadesTestPaths$testdata, "SK/input", "standDT.csv"))[, area := 900],
       cohortDT          = data.table::fread(file.path(spadesTestPaths$testdata, "SK/input", "cohortDT.csv"))[, ageSpinup := sapply(age, min, 3)],
+      standDT           = data.table::fread(file.path(spadesTestPaths$testdata, "SK/input", "standDT.csv"))[, area := 900],
       disturbanceEvents = file.path(spadesTestPaths$testdata, "SK/input", "disturbanceEvents.csv") |> data.table::fread(),
       disturbanceMeta   = file.path(spadesTestPaths$testdata, "SK/input", "disturbanceMeta.csv")   |> data.table::fread(),
       gcMeta            = file.path(spadesTestPaths$testdata, "SK/input", "gcMeta.csv")            |> data.table::fread(),
@@ -87,7 +87,7 @@ test_that("Module: SK 1985-2011", {
   # cohortGroups
   ## There should always be the same number of total cohort groups.
   expect_true(!is.null(simTest$cohortGroups))
-  expect_equal(max(simTest$cohortGroups), 1703)
+  expect_equal(max(simTest$cohortGroups$cohortGroupID), 1703)
   expect_equal(nrow(simTest$cohortGroups), 1702) # One cohort group eliminated by disturbances
 
   # cohortGroupKeep

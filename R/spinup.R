@@ -28,8 +28,8 @@ cbmExnSpinupCBM <- function(
 
   # Join all cohort data
   cohortDT <- cohortDT |>
-    merge(standDT,  by = "pixelIndex", all.x = TRUE) |>
-    merge(gcMetaDT, by = colname_gc,   all.x = TRUE)
+    merge(standDT,  by = "pixelIndex", suffixes = c("", ".y"), all.x = TRUE) |>
+    merge(gcMetaDT[, .SD, .SDcols = reqCols$gcMetaDT], by = colname_gc, suffixes = c("", ".y"), all.x = TRUE)
   data.table::setkey(cohortDT, cohortID)
 
   # Set age column
