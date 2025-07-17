@@ -144,9 +144,8 @@ cbmExnSpinup <- function(cohortDT, growthIncr, spinupSQL, colname_gc = "gcids",
 
   # Return input and results
   list(
-    key        = data.table::setkey(cohortDT[, .(cohortID, cohortGroupID)], cohortID),
-    increments = growthIncrGroups,
-    output     = cbm_vars
+    key    = data.table::setkey(cohortDT[, .(cohortID, cohortGroupID)], cohortID),
+    output = cbm_vars
   )
 }
 
