@@ -2,123 +2,96 @@
 #' Spinup
 #'
 #' Spinup cohort data with libcbmr.
-cbmExnSpinupCBM <- function(
-    cohortDT, standDT, gcMetaDT,
-    colname_gc    = "gcids",
-    colname_age   = "age",
-    colname_delay = "delay",
-    ...){
-
-  # On exit: restore cohortDT table
-  cohortInput <- list(key = data.table::key(cohortDT), cols = names(cohortDT))
-  on.exit({
-    cohortDT <- cohortDT[, .SD, .SDcols = cohortInput$cols]
-    data.table::setkeyv(cohortDT, cohortInput$key)
-  })
-
-  # Read input tables
-  reqCols <- list(
-    cohortDT = c("cohortID", "pixelIndex", colname_gc, colname_age),
-    standDT  = c("pixelIndex", "spatial_unit_id"),
-    gcMetaDT = c(colname_gc, "species_id", "sw_hw")
-  )
-  cohortDT <- readDataTable(cohortDT, "cohortDT", colRequired = reqCols$cohortDT)
-  standDT  <- readDataTable(standDT,  "standDT",  colRequired = reqCols$standDT)
-  gcMetaDT <- readDataTable(gcMetaDT, "gcMetaDT", colRequired = reqCols$gcMetaDT)
-
-  # Join all cohort data
-  cohortDT <- cohortDT |>
-    merge(standDT,  by = "pixelIndex", suffixes = c("", ".y"), all.x = TRUE) |>
-    merge(gcMetaDT[, .SD, .SDcols = reqCols$gcMetaDT], by = colname_gc, suffixes = c("", ".y"), all.x = TRUE)
-  data.table::setkey(cohortDT, cohortID)
-
-  # Set age column
-  if (colname_age != "age"){
-    data.table::setnames(cohortDT, c("age", colname_age), c("age_in", "age"), skip_absent = TRUE)
-    on.exit(
-      data.table::setnames(cohortDT, c("age_in", "age"), c("age", colname_age), skip_absent = TRUE),
-      add = TRUE, after = FALSE)
-  }
-
-  # Set delay column
-  if (colname_delay != "delay"){
-    data.table::setnames(cohortDT, c("delay", colname_delay), c("delay_in", "delay"), skip_absent = TRUE)
-    on.exit(
-      data.table::setnames(cohortDT, c("delay_in", "delay"), c("delay", colname_delay), skip_absent = TRUE),
-      add = TRUE, after = FALSE)
-  }
-
-  # Spinup
-  cbmExnSpinup(cohortDT = cohortDT, colname_gc = colname_gc, ...)
-}
-
-
-#' Spinup
-#'
-#' Spinup cohort data with libcbmr.
-cbmExnSpinup <- function(cohortDT, growthIncr, spinupSQL, colname_gc = "gcids",
-                         default_delay = 0L,
+cbmExnSpinup <- function(cohortDT, spuMeta, growthMeta, growthIncr,
+                         colname_gc      = "gcids",
+                         colname_species = "species",
+                         colname_age     = "age",
+                         colname_delay   = "delay",
+                         default_delay   = 0L,
                          default_historical_disturbance_type = 1L,
-                         default_last_pass_disturbance_type  = 1L){
+                         default_last_pass_disturbance_type  = 1L,
+                         ...){
 
   ## Prepare input for spinup ----
 
   # Read input tables
   reqCols <- list(
-    cohortDT   = c("cohortID", "spatial_unit_id", colname_gc, "species_id", "sw_hw", "age"),
-    growthIncr = c(colname_gc, "age", "merch_inc", "foliage_inc", "other_inc"),
-    spinupSQL  = c("id", "return_interval", "min_rotations", "max_rotations", "mean_annual_temperature")
+    cohortDT   = c("cohortID", "spatial_unit_id", colname_gc, colname_age),
+    spuMeta    = c("id", "return_interval", "min_rotations", "max_rotations", "mean_annual_temperature"),
+    growthMeta = c(colname_gc, colname_species, "sw_hw"),
+    growthIncr = c(colname_gc, "age", "merch_inc", "foliage_inc", "other_inc")
   )
   cohortDT   <- readDataTable(cohortDT,   "cohortDT",   colRequired = reqCols$cohortDT)
+  spuMeta    <- readDataTable(spuMeta,    "spuMeta",    colRequired = reqCols$spuMeta)
+  growthMeta <- readDataTable(growthMeta, "growthMeta", colRequired = reqCols$growthMeta)
   growthIncr <- readDataTable(growthIncr, "growthIncr", colRequired = reqCols$growthIncr)
-  spinupSQL  <- readDataTable(spinupSQL,  "spinupSQL",  colRequired = reqCols$spinupSQL)
 
   # Create cohort groups: groups of cohorts with the same attributes
   ## Allow all cohortDT attributes to be considered in unique groupings
-  groupCols <- setdiff(names(cohortDT), c("cohortID", "pixelIndex"))
+  groupCols <- setdiff(names(cohortDT), c(
+    "cohortID", "pixelIndex", "area",
+    if (colname_species != "species" && "species" %in% names(cohortDT)) "species",
+    if (colname_delay   != "delay"   && "delay"   %in% names(cohortDT)) "delay"
+  ))
   cohortDT[, cohortGroupID := .GRP, by = groupCols]
   on.exit(cohortDT[, cohortGroupID := NULL])
 
-  # Isolate unique groups and join with spatial unit data
+  # Isolate unique groups and join with parameters
   cohortGroups <- unique(cohortDT[, .SD, .SDcols = c("cohortGroupID", groupCols)])
-  cohortGroups <- merge(cohortGroups, spinupSQL, by.x = "spatial_unit_id", by.y = "id", all.x = TRUE)
+  cohortGroups <- cohortGroups |>
+    data.table::merge.data.table(spuMeta, by.x = "spatial_unit_id", by.y = "id",
+                                 suffixes = c("", ".y"), all.x = TRUE) |>
+    data.table::merge.data.table(growthMeta, by = colname_gc,
+                                 suffixes = c("", ".y"), all.x = TRUE)
+  cohortGroups[, which(grepl("\\.y$", names(cohortGroups))) := NULL]
   setkey(cohortGroups, cohortGroupID)
 
-  # Prepare sw_hw column for Python
-  data.table::setnames(cohortGroups, "species_id", "species")
-  if (is.character(cohortGroups$sw_hw)) cohortGroups$sw_hw <- as.integer(cohortGroups$sw_hw == "sw")
-
   # Set area to 1ha
-  cohortGroups$area <- 1L # 1ha
+  cohortGroups[, area := 1L] # 1ha
+
+  # Prepare sw_hw column for Python
+  if (is.character(cohortGroups$sw_hw)) cohortGroups[, sw_hw := as.integer(sw_hw == "sw")]
+
+  # Set column names for Python
+  if (colname_species != "species"){
+    if ("species" %in% names(cohortGroups)) cohortGroups[, species := NULL]
+    data.table::setnames(cohortGroups, colname_species, "species")
+  }
+  if (colname_age != "age"){
+    if ("age" %in% names(cohortGroups)) cohortGroups[, age := NULL]
+    data.table::setnames(cohortGroups, colname_age, "age")
+  }
+  if (colname_delay != "delay" && colname_delay %in% names(cohortGroups)){
+    data.table::setnames(cohortGroups, colname_delay, "delay")
+  }
 
   # Set defaults
   if ("delay" %in% names(cohortGroups)){
-    cohortGroups$delay[is.na(delay), delay := default_delay]
+    cohortGroups[is.na(delay), delay := default_delay]
   }else{
-    cohortGroups$delay <- default_delay
+    cohortGroups[, delay := default_delay]
   }
   if ("historical_disturbance_type" %in% names(cohortGroups)){
-    cohortGroups[is.na(historical_disturbance_type), historical_disturbance_type := default_historical_disturbance_type]
+    cohortGroups[is.na(historical_disturbance_type),
+                 historical_disturbance_type := default_historical_disturbance_type]
   }else{
-    cohortGroups$historical_disturbance_type <- default_historical_disturbance_type
+    cohortGroups[, historical_disturbance_type := default_historical_disturbance_type]
   }
   if ("last_pass_disturbance_type" %in% names(cohortGroups)){
-    cohortGroups[is.na(last_pass_disturbance_type), last_pass_disturbance_type := default_last_pass_disturbance_type]
+    cohortGroups[is.na(last_pass_disturbance_type),
+                 last_pass_disturbance_type := default_last_pass_disturbance_type]
   }else{
-    cohortGroups$last_pass_disturbance_type <- default_last_pass_disturbance_type
+    cohortGroups[, last_pass_disturbance_type := default_last_pass_disturbance_type]
   }
 
   # Join growth increments with cohort group IDs
   ## Drop growth increments age <= 0
-  growthIncrGroups <- merge(
+  growthIncrGroups <- data.table::merge.data.table(
     cohortGroups[, .SD, .SDcols = c("cohortGroupID", colname_gc)],
     subset(growthIncr, age > 0),
-    by = colname_gc, allow.cartesian = TRUE)
-
-  growthIncrGroups <- data.table::data.table(
-    row_idx = growthIncrGroups$cohortGroupID,
-    growthIncrGroups[, -("cohortGroupID")])
-  data.table::setkeyv(growthIncrGroups, c("row_idx", "age"))
+    by = colname_gc, allow.cartesian = TRUE)[, gcids := NULL]
+  data.table::setnames(growthIncrGroups, "cohortGroupID", "row_idx")
+  data.table::setkey(growthIncrGroups, row_idx, age)
 
 
   ## Spinup ----
@@ -142,9 +115,12 @@ cbmExnSpinup <- function(cohortDT, growthIncr, spinupSQL, colname_gc = "gcids",
     mod$libcbm_default_model_config
   )
 
-  # Return input and results
+  # Return results
+  cohortKey <- cohortDT[, .SD, .SDcols = intersect(
+    c("cohortID", "pixelIndex", "cohortGroupID"), names(cohortDT))]
+  data.table::setkey(cohortKey, cohortID)
   list(
-    key    = data.table::setkey(cohortDT[, .(cohortID, cohortGroupID)], cohortID),
+    key    = cohortKey,
     output = cbm_vars
   )
 }
