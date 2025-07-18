@@ -370,6 +370,13 @@ spinup <- function(sim) {
     )[, .SD, .SDcols = !c("cohortID", "pixelIndex")])
     data.table::setkey(sim$cohortGroups, cohortGroupID)
 
+    # Set age as the spinup age
+    ## TODO: verify this
+    if ("ageSpinup" %in% names(sim$cohortGroups)){
+      sim$cohortGroups[, age := NULL]
+      data.table::setnames(sim$cohortGroups, "ageSpinup", "age")
+    }
+
     # Prepare spinup output data for annual event
     ## data.table with row_idx to match cohortGroupID
     sim$cbm_vars <- spinupOut$output

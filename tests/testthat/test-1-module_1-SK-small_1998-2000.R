@@ -122,7 +122,11 @@ test_that("Module: SK-small 1998-2000", {
   ## There should always be the same number of total cohort groups.
   expect_true(!is.null(simTest$cohortGroups))
   expect_equal(max(simTest$cohortGroups$cohortGroupID), 43)
-  expect_equal(nrow(simTest$cohortGroups), 43)
+  expect_equal(nrow(simTest$cohortGroups),        43)
+  expect_equal(nrow(simTest$cbm_vars$parameters), 43)
+  expect_equal(nrow(simTest$cbm_vars$state),      43)
+  expect_equal(nrow(simTest$cbm_vars$flux),       43)
+  expect_equal(nrow(simTest$cbm_vars$pool),       43)
 
   # cohortGroupKeep
   expect_true(!is.null(simTest$cohortGroupKeep))
