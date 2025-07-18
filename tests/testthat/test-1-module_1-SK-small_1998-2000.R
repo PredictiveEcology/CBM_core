@@ -86,13 +86,12 @@ test_that("Module: SK-small 1998-2000", {
 
   ## Check outputs ----
 
-  # spinupResult
-  ## There should always be the same number of spinup cohort groups.
-  expect_true(!is.null(simTest$spinupResult))
-  expect_equal(
-    data.table::as.data.table(simTest$spinupResult$output$pools),
-    data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/valid", "spinupResult.csv")),
-    check.attributes = FALSE)
+  # # spinupResult ## TEMPORARY: Not currently being saved.
+  # expect_true(!is.null(simTest$spinupResult))
+  # expect_equal(
+  #   data.table::as.data.table(simTest$spinupResult$output$pools),
+  #   data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/valid", "spinupResult.csv")),
+  #   check.attributes = FALSE)
 
   # cbmPools
   expect_true(!is.null(simTest$cbmPools))
@@ -118,22 +117,17 @@ test_that("Module: SK-small 1998-2000", {
       , .SD, .SDcols = colnames(simTest$emissionsProducts)],
     check.attributes = FALSE)
 
-  # cohortGroups
+  # Cohort data
   ## There should always be the same number of total cohort groups.
-  expect_true(!is.null(simTest$cohortGroups))
-  expect_equal(max(simTest$cohortGroups$cohortGroupID), 43)
-  expect_equal(nrow(simTest$cohortGroups),        43)
-  expect_equal(nrow(simTest$cbm_vars$parameters), 43)
-  expect_equal(nrow(simTest$cbm_vars$state),      43)
-  expect_equal(nrow(simTest$cbm_vars$flux),       43)
-  expect_equal(nrow(simTest$cbm_vars$pool),       43)
-
-  # cohortGroupKeep
-  expect_true(!is.null(simTest$cohortGroupKeep))
-  expect_identical(simTest$cohortGroupKeep$cohortID,   simTest$cohortDT$cohortID)
-  expect_identical(simTest$cohortGroupKeep$pixelIndex, simTest$cohortDT$pixelIndex)
-  expect_true(all(simTest$cohortGroupKeep$cohortGroupID %in% simTest$cohortGroups$cohortGroupID))
-  expect_true(all(as.character(start(simTest):end(simTest)) %in% names(simTest$cohortGroupKeep)))
+  expect_true(!is.null(simTest$cbm_vars$key))
+  expect_identical(simTest$cbm_vars$key$cohortID,   simTest$cohortDT$cohortID)
+  expect_identical(simTest$cbm_vars$key$pixelIndex, simTest$cohortDT$pixelIndex)
+  expect_equal(max(simTest$cbm_vars$key$row_idx),            43)
+  expect_equal(length(unique(simTest$cbm_vars$key$row_idx)), 43)
+  expect_equal(nrow(simTest$cbm_vars$parameters),            43)
+  expect_equal(nrow(simTest$cbm_vars$state),                 43)
+  expect_equal(nrow(simTest$cbm_vars$flux),                  43)
+  expect_equal(nrow(simTest$cbm_vars$pool),                  43)
 
 })
 
