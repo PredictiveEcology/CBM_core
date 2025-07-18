@@ -64,30 +64,24 @@ test_that("Module: SK-small 1998-2000", {
   ## Check inputs ----
 
   ## Check that input tables are not altered by module.
-  expect_equal(
+  expect_mapequal(
     simTest$cohortDT,
-    data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/input", "cohortDT.csv")),
-    check.attributes = FALSE)
-  expect_equal(
+    data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/input", "cohortDT.csv")))
+  expect_mapequal(
     simTest$standDT,
-    data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/input", "standDT.csv"))[, area := 900],
-    check.attributes = FALSE)
-  expect_equal(
+    data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/input", "standDT.csv"))[, area := 900])
+  expect_mapequal(
     simTest$disturbanceEvents,
-    data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/input", "disturbanceEvents.csv")),
-    check.attributes = FALSE)
-  expect_equal(
+    data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/input", "disturbanceEvents.csv")))
+  expect_mapequal(
     simTest$disturbanceMeta,
-    data.table::fread(file.path(spadesTestPaths$testdata, "SK/input", "disturbanceMeta.csv")),
-    check.attributes = FALSE)
-  expect_equal(
+    data.table::fread(file.path(spadesTestPaths$testdata, "SK/input", "disturbanceMeta.csv")))
+  expect_mapequal(
     simTest$gcMeta,
-    data.table::fread(file.path(spadesTestPaths$testdata, "SK/input", "gcMeta.csv")),
-    check.attributes = FALSE)
-  expect_equal(
+    data.table::fread(file.path(spadesTestPaths$testdata, "SK/input", "gcMeta.csv")))
+  expect_mapequal(
     simTest$growth_increments,
-    data.table::fread(file.path(spadesTestPaths$testdata, "SK/input", "growth_increments.csv")),
-    check.attributes = FALSE)
+    data.table::fread(file.path(spadesTestPaths$testdata, "SK/input", "growth_increments.csv")))
 
 
   ## Check outputs ----
