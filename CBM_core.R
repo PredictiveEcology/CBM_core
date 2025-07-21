@@ -240,7 +240,7 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
         if (!is.null(sim$masterRaster)){
           nPlotStart <- NPPplot(
             NPP = sim$NPP,
-            years = start(sim),
+            year = start(sim),
             masterRaster = sim$masterRaster,
             cohortGroupKeep = sim$cohortGroupKeep)
           SpaDES.core::Plots(nPlotStart,
@@ -250,7 +250,7 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
                              types = "png")
           nPlotEnd <- NPPplot(
             NPP = sim$NPP,
-            years = end(sim),
+            year = end(sim),
             masterRaster = sim$masterRaster,
             cohortGroupKeep = sim$cohortGroupKeep)
           SpaDES.core::Plots(nPlotEnd,
@@ -264,7 +264,7 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
       if (!is.null(sim$masterRaster)){
         sPlotStart <- spatialPlot(
           cbmPools = sim$cbmPools,
-          years = start(sim),
+          year = start(sim),
           masterRaster = sim$masterRaster,
           cohortGroupKeep = sim$cohortGroupKeep
         )
@@ -275,7 +275,7 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
                            types = "png")
         sPlotEnd <- spatialPlot(
           cbmPools = sim$cbmPools,
-          years = end(sim),
+          year = end(sim),
           masterRaster = sim$masterRaster,
           cohortGroupKeep = sim$cohortGroupKeep
         )
