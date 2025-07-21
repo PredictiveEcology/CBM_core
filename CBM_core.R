@@ -428,8 +428,11 @@ annual_preprocessing <- function(sim) {
     sim$cbm_vars$key[, row_idx_prev := row_idx]
 
     # Create new cohort groups for disturbed cohorts
-    distCohorts <- subset(sim$cbm_vars$key, !is.na(disturbance_type_id))
-    if (nrow(distCohorts) > 0){
+    sim$cbm_vars$key <- split(sim$cbm_vars$key, is.na(sim$cbm_vars$key$disturbance_type_id))
+    distCohorts      <- sim$cbm_vars$key$`FALSE`
+    sim$cbm_vars$key <- sim$cbm_vars$key$`TRUE`
+
+    if (!is.null(distCohorts)){
 
       # Create new groups that share attributes, events,
       # and carbon previous group since that changes the amount and destination of the
@@ -448,15 +451,16 @@ annual_preprocessing <- function(sim) {
       distCohorts <- distCohorts[, .SD, .SDcols = names(sim$cbm_vars$key)]
 
       # Update cohortGroupKey
-      sim$cbm_vars$key <- rbind(
-        subset(sim$cbm_vars$key, is.na(disturbance_type_id)),
-        distCohorts)
+      sim$cbm_vars$key <- data.table::rbindlist(list(
+        sim$cbm_vars$key, distCohorts
+      ))
       data.table::setkey(sim$cbm_vars$key, cohortID)
     }
 
     # Set cohort group IDs for current year
     sim$cbm_vars$key[[as.character(time(sim))]] <- sim$cbm_vars$key$row_idx
   }
+
 
   ## PREPARE PYTHON INPUTS ----
 
@@ -467,7 +471,7 @@ annual_preprocessing <- function(sim) {
   sim$cbm_vars$parameters$disturbance_type <- 0L
 
   # Prepare data for new groups
-  if (nrow(distCohorts) > 0){
+  if (!is.null(distCohorts)){
 
     cbm_vars_new <- list()
 
