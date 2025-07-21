@@ -254,13 +254,13 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
             masterRaster = sim$masterRaster,
             cohortGroupKeep = sim$cohortGroupKeep)
           SpaDES.core::Plots(nPlotEnd,
-                             filename = "NPPStart",
+                             filename = "NPPEnd",
                              path = figPath,
                              ggsaveArgs = list(width = 7, height = 5, units = "in", dpi = 300),
                              types = "png")
         }
       }
-
+browser()
       if (!is.null(sim$masterRaster)){
         sPlotStart <- spatialPlot(
           cbmPools = sim$cbmPools,
