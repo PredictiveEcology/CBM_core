@@ -15,7 +15,8 @@ defineModule(sim, list(
   documentation = list("README.txt", "CBM_core.Rmd"),
   reqdPkgs = list(
     "data.table", "reticulate",
-    "PredictiveEcology/CBMutils@development (>=2.0.3.0007)",
+    "PredictiveEcology/CBMutils@development (>=2.0.3.0013)",
+    "PredictiveEcology/LandR@development (>= 1.1.1)",
     "PredictiveEcology/libcbmr"
   ),
   parameters = rbind(
@@ -220,6 +221,7 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
     plot = {
       figPath <- file.path(outputPath(sim), "CBM_core_figures")
       if (time(sim) != start(sim)) {
+        browser()
         cPlot <- carbonOutPlot(
           emissionsProducts = sim$emissionsProducts)
         SpaDES.core::Plots(cPlot,
@@ -237,12 +239,23 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
                            types = "png")
 
         if (!is.null(sim$masterRaster)){
-          nPlot <- NPPplot(
-            cohortGroupKeep = sim$cohortGroupKeep,
+          nPlotStart <- NPPplot(
             NPP = sim$NPP,
-            masterRaster = sim$masterRaster)
-          SpaDES.core::Plots(nPlot,
-                             filename = "NPPTest",
+            years = start(sim),
+            masterRaster = sim$masterRaster,
+            cohortGroupKeep = sim$cohortGroupKeep)
+          SpaDES.core::Plots(nPlotStart,
+                             filename = "NPPStart",
+                             path = figPath,
+                             ggsaveArgs = list(width = 7, height = 5, units = "in", dpi = 300),
+                             types = "png")
+          nPlotEnd <- NPPplot(
+            NPP = sim$NPP,
+            years = end(sim),
+            masterRaster = sim$masterRaster,
+            cohortGroupKeep = sim$cohortGroupKeep)
+          SpaDES.core::Plots(nPlotEnd,
+                             filename = "NPPStart",
                              path = figPath,
                              ggsaveArgs = list(width = 7, height = 5, units = "in", dpi = 300),
                              types = "png")
