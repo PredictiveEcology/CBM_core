@@ -221,7 +221,6 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
     plot = {
       figPath <- file.path(outputPath(sim), "CBM_core_figures")
       if (time(sim) != start(sim)) {
-        browser()
         cPlot <- carbonOutPlot(
           emissionsProducts = sim$emissionsProducts)
         SpaDES.core::Plots(cPlot,
