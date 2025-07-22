@@ -181,8 +181,8 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
 
     annual_preprocessing = {
 
-      sim <- annual_disturbances(sim)
-      if (!P(sim)$skipPrepareCBMvars) sim <- annual_preprocessing(sim)
+      sim <- annual_prepDisturbances(sim)
+      if (!P(sim)$skipPrepareCBMvars) sim <- annual_prepCohortGroups(sim)
 
       sim <- scheduleEvent(sim, time(sim) + 1, "CBM_core", "annual_preprocessing", eventPriority = 8)
     },
@@ -365,7 +365,7 @@ spinup <- function(sim) {
   return(invisible(sim))
 }
 
-annual_disturbances <- function(sim){
+annual_prepDisturbances <- function(sim){
 
   if (!is.null(sim$disturbanceEvents)){
 
@@ -411,7 +411,7 @@ annual_disturbances <- function(sim){
   return(invisible(sim))
 }
 
-annual_preprocessing <- function(sim) {
+annual_prepCohortGroups <- function(sim) {
 
   # Set cohort group IDs for previous year
   sim$cbm_vars$key[, row_idx_prev := row_idx]
