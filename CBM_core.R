@@ -16,7 +16,6 @@ defineModule(sim, list(
   reqdPkgs = list(
     "data.table", "reticulate",
     "PredictiveEcology/CBMutils@development (>=2.0.3.0013)",
-    "PredictiveEcology/LandR@development (>= 1.1.1)",
     "PredictiveEcology/libcbmr"
   ),
   parameters = rbind(
