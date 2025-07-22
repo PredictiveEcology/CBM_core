@@ -101,6 +101,20 @@ test_that("Module: SK 1985-2011", {
   expect_true(all(simTest$cohortGroupKeep$cohortGroupID %in% simTest$cohortGroups$cohortGroupID))
   expect_true(all(as.character(start(simTest):end(simTest)) %in% names(simTest$cohortGroupKeep)))
 
+  # Check mean_annual_temperature is correct for each spatial unit
+  pixelSPUs <- split(simTest$standDT$pixelIndex, simTest$standDT$spatial_unit_id)
+  expect_in(
+    subset(
+      simTest$cbm_vars$parameters,
+      row_idx %in% subset(simTest$cohortGroupKeep, pixelIndex %in% pixelSPUs$`27`)$cohortGroupID
+    )$mean_annual_temperature,
+    simTest$spinupSQL[id == 27,]$mean_annual_temperature)
+  expect_in(
+    subset(
+      simTest$cbm_vars$parameters,
+      row_idx %in% subset(simTest$cohortGroupKeep, pixelIndex %in% pixelSPUs$`28`)$cohortGroupID
+    )$mean_annual_temperature,
+    simTest$spinupSQL[id == 28,]$mean_annual_temperature)
 })
 
 
