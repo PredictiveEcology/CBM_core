@@ -137,8 +137,7 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
         "annualIncrements",
         "annual_preprocessing",
         "prepareCBMvars",
-        "annual_carbonDynamics",
-        "postAnnualChecks")
+        "annual_carbonDynamics")
     ),
     expect_equal(
       completed(simTest)[eventTime == times$start & eventType %in% expectedEventOrder, eventType],
@@ -156,7 +155,7 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
   # checks for "active" cohorts
   with(
     list(
-      ActiveCohortGroups  = simTest$cohortGroups[gcids != 0, cohortGroupID]
+      ActiveCohortGroups  = simTest$cbm_vars$state[gcids != 0, row_idx]
     ), {
       # "Active" cohorts should match the above ground biomass equal to LandR
       expect_equal(
@@ -172,7 +171,7 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
   # checks for DOM cohorts
   with(
     list(
-      DOMCohortGroups  = simTest$cohortGroups[gcids == 0, cohortGroupID]
+      DOMCohortGroups  = simTest$cbm_vars$state[gcids == 0, row_idx]
     ), {
       # DOM cohort groups have 0 above ground biomass
       expect_true(
@@ -181,7 +180,7 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
       # There can't be more than 1 DOM cohort groups per pixel
       expect_equal(
         length(DOMCohortGroups),
-        nrow(simTest$cohortGroupKeep[cohortGroupID %in% DOMCohortGroups])
+        nrow(simTest$cbm_vars$key[row_idx %in% DOMCohortGroups])
       )
     }
   )

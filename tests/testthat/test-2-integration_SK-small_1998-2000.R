@@ -73,7 +73,8 @@ test_that("Multi module: SK-small 1998-2000", {
 
   ## Check outputs ----
 
-  expect_true(!is.null(simTest$spinupResult))
+  # # spinupResult ## TEMPORARY: Not currently being saved.
+  # expect_true(!is.null(simTest$spinupResult))
 
   expect_true(!is.null(simTest$cbmPools))
 

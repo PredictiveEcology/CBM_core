@@ -63,8 +63,8 @@ test_that("Module: SK 1985-2011", {
 
   ## Check outputs ----
 
-  # spinupResult
-  expect_true(!is.null(simTest$spinupResult))
+  # # spinupResult ## TEMPORARY: Not currently being saved.
+  # expect_true(!is.null(simTest$spinupResult))
 
   # cbmPools
   expect_true(!is.null(simTest$cbmPools))
@@ -84,35 +84,30 @@ test_that("Module: SK 1985-2011", {
       , .SD, .SDcols = colnames(simTest$emissionsProducts)],
     check.attributes = FALSE)
 
-  # cohortGroups
+  # Cohort data
   ## There should always be the same number of total cohort groups.
-  expect_true(!is.null(simTest$cohortGroups))
-  expect_equal(max(simTest$cohortGroups$cohortGroupID), 4401)
-  expect_equal(nrow(simTest$cohortGroups),        4354) # Cohort groups eliminated by disturbances
-  expect_equal(nrow(simTest$cbm_vars$parameters), 4354)
-  expect_equal(nrow(simTest$cbm_vars$state),      4354)
-  expect_equal(nrow(simTest$cbm_vars$flux),       4354)
-  expect_equal(nrow(simTest$cbm_vars$pool),       4354)
-
-  # cohortGroupKeep
-  expect_true(!is.null(simTest$cohortGroupKeep))
-  expect_identical(simTest$cohortGroupKeep$cohortID,   simTest$cohortDT$cohortID)
-  expect_identical(simTest$cohortGroupKeep$pixelIndex, simTest$cohortDT$pixelIndex)
-  expect_true(all(simTest$cohortGroupKeep$cohortGroupID %in% simTest$cohortGroups$cohortGroupID))
-  expect_true(all(as.character(start(simTest):end(simTest)) %in% names(simTest$cohortGroupKeep)))
+  expect_true(!is.null(simTest$cbm_vars$key))
+  expect_identical(simTest$cbm_vars$key$cohortID,   simTest$cohortDT$cohortID)
+  expect_identical(simTest$cbm_vars$key$pixelIndex, simTest$cohortDT$pixelIndex)
+  expect_equal(max(simTest$cbm_vars$key$row_idx),            4401)
+  expect_equal(length(unique(simTest$cbm_vars$key$row_idx)), 4354) # Cohort groups eliminated by disturbances
+  expect_equal(nrow(simTest$cbm_vars$parameters),            4354)
+  expect_equal(nrow(simTest$cbm_vars$state),                 4354)
+  expect_equal(nrow(simTest$cbm_vars$flux),                  4354)
+  expect_equal(nrow(simTest$cbm_vars$pool),                  4354)
 
   # Check mean_annual_temperature is correct for each spatial unit
   pixelSPUs <- split(simTest$standDT$pixelIndex, simTest$standDT$spatial_unit_id)
   expect_in(
     subset(
       simTest$cbm_vars$parameters,
-      row_idx %in% subset(simTest$cohortGroupKeep, pixelIndex %in% pixelSPUs$`27`)$cohortGroupID
+      row_idx %in% subset(simTest$cbm_vars$key, pixelIndex %in% pixelSPUs$`27`)$row_idx
     )$mean_annual_temperature,
     simTest$spinupSQL[id == 27,]$mean_annual_temperature)
   expect_in(
     subset(
       simTest$cbm_vars$parameters,
-      row_idx %in% subset(simTest$cohortGroupKeep, pixelIndex %in% pixelSPUs$`28`)$cohortGroupID
+      row_idx %in% subset(simTest$cbm_vars$key, pixelIndex %in% pixelSPUs$`28`)$row_idx
     )$mean_annual_temperature,
     simTest$spinupSQL[id == 28,]$mean_annual_temperature)
 })
