@@ -46,9 +46,6 @@ defineModule(sim, list(
       "poolsToPlot", "character", default = "totalCarbon", NA, NA,
       desc = "which carbon pools to plot, if any. Defaults to total carbon"),
     defineParameter(
-      "skipCohortGroupHandling", "logical", default = FALSE, NA, NA,
-      desc = "Whether cohort groups are handled by other modules. E.g., LandRCBM_split3pools."),
-    defineParameter(
       "skipPrepareCBMvars", "logical", default = FALSE, NA, NA,
       desc = "Whether the inputs for the cbm annual events are prepared by another module.E.g., LandRCBM_split3pools."),
     defineParameter(".plot", "logical", TRUE, NA, NA, "Plot simulation results"),
@@ -184,7 +181,9 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
 
     annual_preprocessing = {
 
-      sim <- annual_preprocessing(sim)
+      sim <- annual_disturbances(sim)
+      if (!P(sim)$skipPrepareCBMvars) sim <- annual_preprocessing(sim)
+
       sim <- scheduleEvent(sim, time(sim) + 1, "CBM_core", "annual_preprocessing", eventPriority = 8)
     },
 
@@ -366,162 +365,132 @@ spinup <- function(sim) {
   return(invisible(sim))
 }
 
-annual_preprocessing <- function(sim) {
-
-  ## READ DISTURBANCES ----
+annual_disturbances <- function(sim){
 
   if (!is.null(sim$disturbanceEvents)){
 
     if (!all(c("pixelIndex", "year", "eventID") %in% names(sim$disturbanceEvents))) stop(
       "'disturbanceEvents' table requires columns: 'pixelIndex', year', 'eventID'")
 
-    distStands <- subset(sim$disturbanceEvents, year == as.character(time(sim)))
+    distEvents <- sim$disturbanceEvents[year == as.character(time(sim)),]
 
-  }else distStands <- data.table()
+  }else distEvents <- data.table()
 
-  if (nrow(distStands) > 0){
-
-    # Read disturbance metadata
-    if (is.null(sim$disturbanceMeta)) stop("'disturbanceMeta' input not found")
-    if (!all(c("eventID", "disturbance_type_id") %in% names(sim$disturbanceMeta))) stop(
-      "'disturbanceMeta' table requires columns: 'eventID', 'disturbance_type_id'")
-
-    if ("priority" %in% names(sim$disturbanceMeta)){
-      distMeta <- unique(sim$disturbanceMeta[, .(eventID, disturbance_type_id, priority)])
-    }else{
-      distMeta <- unique(sim$disturbanceMeta[, .(eventID, disturbance_type_id, priority = 1)])
-    }
-
-    # Choose disturbance events by priority
-    distStands <- merge(
-      distStands[, .(pixelIndex, eventID)],
-      distMeta[,   .(eventID, priority)],
-      by = "eventID", all.x = TRUE)
-
-    if (any(duplicated(distStands$pixelIndex))){
-
-      distStands <- merge(
-        distStands,
-        distStands[, .(priority = max(priority)), by = pixelIndex],
-        by  = c("pixelIndex", "priority"),
-        all = FALSE)
-
-      if (any(duplicated(distStands$pixelIndex))) stop(
-        "Multiple disturbance events found in one or more pixels for year ", time(sim), ". ",
-        "Use the 'disturbanceMeta' \"priority\" field to set event precendence.")
-    }
-
-    distStands <- merge(distStands, distMeta, by = "eventID")
-
-    if ("disturbance_type_id" %in% names(sim$cbm_vars$key)) sim$cbm_vars$key[, disturbance_type_id := NULL]
-    sim$cbm_vars$key <- merge(
-      sim$cbm_vars$key,
-      distStands[, .(pixelIndex, disturbance_type_id)],
-      by = "pixelIndex",
-      all.x = TRUE)
-    data.table::setkey(sim$cbm_vars$key, cohortID)
-
-  }else{
-
+  if (nrow(distEvents) == 0){
     message("No disturbance events for year ", time(sim))
     sim$cbm_vars$key[, disturbance_type_id := NA_integer_]
+    return(invisible(sim))
   }
 
-  rm(distStands)
+  # Read disturbance metadata
+  if (is.null(sim$disturbanceMeta)) stop("'disturbanceMeta' input not found")
+  if (!all(c("eventID", "disturbance_type_id") %in% names(sim$disturbanceMeta))) stop(
+    "'disturbanceMeta' table requires columns: 'eventID', 'disturbance_type_id'")
 
+  distMeta <- unique(sim$disturbanceMeta[, .SD, .SDcols = intersect(
+    c("eventID", "disturbance_type_id", "priority"), names(sim$disturbanceMeta))])
 
-  ## SET COHORT GROUPS ----
+  # Choose disturbance events by priority
+  distEvents[, year := NULL]
+  distEvents <- data.table::merge.data.table(distEvents, distMeta, by = "eventID", all.x = TRUE)
 
-  if(!P(sim)$skipCohortGroupHandling) {
+  if (any(duplicated(distEvents$pixelIndex))){
 
-    # Set cohort group IDs for previous year
-    sim$cbm_vars$key[, row_idx_prev := row_idx]
+    if ("priority" %in% names(distEvents)){
+      data.table::setkey(distEvents, pixelIndex, priority)
 
-    # Create new cohort groups for disturbed cohorts
-    sim$cbm_vars$key <- split(sim$cbm_vars$key, is.na(sim$cbm_vars$key$disturbance_type_id))
-    if (is.null(sim$cbm_vars$key$`TRUE`)) sim$cbm_vars$key$`TRUE` <- sim$cbm_vars$key$`FALSE`[0,]
-    distCohorts      <- sim$cbm_vars$key$`FALSE`
-    sim$cbm_vars$key <- sim$cbm_vars$key$`TRUE`
-
-    if (!is.null(distCohorts)){
-
-      # Create new groups that share attributes, events,
-      # and carbon previous group since that changes the amount and destination of the
-      # carbon being moved.
-      distCohorts <- merge(
-        distCohorts,
-        cbind(sim$cbm_vars$state, sim$cbm_vars$pools[, -1]),
-        by.x = "row_idx_prev", by.y = "row_idx")
-      data.table::setkey(distCohorts, cohortID)
-
-      groupCols <- intersect(c(
-        "disturbance_type_id", "spatial_unit_id", "gcids", "age", "delay",
-        sim$pooldef, "Products"
-      ), names(distCohorts))
-      distCohorts[, row_idx := .GRP + max(sim$cbm_vars$state$row_idx), by = groupCols]
-      distCohorts <- distCohorts[, .SD, .SDcols = names(sim$cbm_vars$key)]
-
-      # Update key
-      sim$cbm_vars$key <- data.table::rbindlist(list(sim$cbm_vars$key, distCohorts))
-      data.table::setkey(sim$cbm_vars$key, cohortID)
-    }
-
-    # Set cohort group IDs for current year
-    sim$cbm_vars$key[[as.character(time(sim))]] <- sim$cbm_vars$key$row_idx
+    }else stop(
+      "Multiple disturbance events found in one or more pixels for year ", time(sim), ". ",
+      "Use the 'disturbanceMeta' \"priority\" field to set event precendence.")
   }
 
+  # Save disturbance events
+  sim$cbm_vars$key[, disturbance_type_id := distEvents$disturbance_type_id[
+    match(sim$cbm_vars$key$pixelIndex, distEvents$pixelIndex)]]
 
-  ## PREPARE PYTHON INPUTS ----
+  # Return simList
+  return(invisible(sim))
+}
 
-  if (!P(sim)$skipPrepareCBMvars) { # Standard CBM runs
+annual_preprocessing <- function(sim) {
+
+  # Set cohort group IDs for previous year
+  sim$cbm_vars$key[, row_idx_prev := row_idx]
 
   # Set disturbance type IDs for undisturbed groups
   ## This may contain the disturbance type from the previous year
   sim$cbm_vars$parameters$disturbance_type <- 0L
 
-  # Prepare data for new groups
+  # Set data for disturbed cohorts
+  sim$cbm_vars$key <- split(sim$cbm_vars$key, is.na(sim$cbm_vars$key$disturbance_type_id))
+  if (is.null(sim$cbm_vars$key$`TRUE`)) sim$cbm_vars$key$`TRUE` <- sim$cbm_vars$key$`FALSE`[0,]
+  distCohorts      <- sim$cbm_vars$key$`FALSE`
+  sim$cbm_vars$key <- sim$cbm_vars$key$`TRUE`
+
   if (!is.null(distCohorts)){
 
+    # Create new groups that share attributes, events, and carbon with previous groups
+    # since that changes the amount and destination of the carbon being moved.
+    distCohorts <- merge(
+      distCohorts,
+      cbind(sim$cbm_vars$state, sim$cbm_vars$pools[, -1]),
+      by.x = "row_idx_prev", by.y = "row_idx")
+    data.table::setkey(distCohorts, cohortID)
+
+    groupCols <- intersect(c(
+      "disturbance_type_id", "spatial_unit_id", "gcids", "age", "delay",
+      sim$pooldef, "Products"
+    ), names(distCohorts))
+    distCohorts[, row_idx := .GRP + max(sim$cbm_vars$state$row_idx), by = groupCols]
+    distCohorts <- distCohorts[, .SD, .SDcols = names(sim$cbm_vars$key)]
+
+    # Update key
+    sim$cbm_vars$key <- data.table::rbindlist(list(sim$cbm_vars$key, distCohorts))
+    data.table::setkey(sim$cbm_vars$key, cohortID)
+
+    # Prepare data for new groups
     cbm_vars_new <- list()
 
-    cbm_vars_new[["parameters"]] <- unique(distCohorts[, .(
-      row_idx, row_idx_prev, disturbance_type = disturbance_type_id)])
-
-    distCohorts <- cbm_vars_new[["parameters"]][, .(row_idx, row_idx_prev)]
-
-    # Set disturbed group pools from data of previous group
-    ## Set Input = 1
-    cbm_vars_new[["pools"]] <- merge(
-      distCohorts, sim$cbm_vars[["pools"]],
-      by.x = "row_idx_prev", by.y = "row_idx", all.x = TRUE)
-    cbm_vars_new[["pools"]][, Input := 1L]
-
-    # Set disturbed group flux from data of previous group
-    cbm_vars_new[["flux"]]  <- merge(
-      distCohorts, sim$cbm_vars[["flux"]],
-      by.x = "row_idx_prev", by.y = "row_idx", all.x = TRUE)
+    distCohorts <- unique(distCohorts[, .(row_idx, row_idx_prev, disturbance_type = disturbance_type_id)])
+    cbm_vars_new[["parameters"]] <- distCohorts
+    cbm_vars_new[["state"]] <- cbm_vars_new[["flux"]] <- cbm_vars_new[["pools"]] <-
+      distCohorts[, .(row_idx, row_idx_prev)]
+    rm(distCohorts)
 
     # Set disturbed group state from data of previous group
     ## Clear information about previous disturbances
     cbm_vars_new[["state"]] <- merge(
-      distCohorts, sim$cbm_vars[["state"]],
+      cbm_vars_new[["state"]], sim$cbm_vars[["state"]],
       by.x = "row_idx_prev", by.y = "row_idx", all.x = TRUE)
     cbm_vars_new[["state"]][, age := 1L]
     cbm_vars_new[["state"]][, time_since_last_disturbance := NA_real_]
     cbm_vars_new[["state"]][, time_since_land_use_change  := NA_real_]
     cbm_vars_new[["state"]][, last_disturbance_type       := NA_real_]
 
+    # Set disturbed group flux from data of previous group
+    cbm_vars_new[["flux"]]  <- merge(
+      cbm_vars_new[["flux"]], sim$cbm_vars[["flux"]],
+      by.x = "row_idx_prev", by.y = "row_idx", all.x = TRUE)
+
+    # Set disturbed group pools from data of previous group
+    ## Set Input = 1
+    cbm_vars_new[["pools"]] <- merge(
+      cbm_vars_new[["pools"]], sim$cbm_vars[["pools"]],
+      by.x = "row_idx_prev", by.y = "row_idx", all.x = TRUE)
+    cbm_vars_new[["pools"]][, Input := 1L]
+
     # Merge new group data
     for (tableName in names(cbm_vars_new)){
+
       cbm_vars_new[[tableName]][, setdiff(
         names(cbm_vars_new[[tableName]]), names(sim$cbm_vars[[tableName]])) := NULL]
       sim$cbm_vars[[tableName]] <- data.table::rbindlist(
         list(sim$cbm_vars[[tableName]], unique(cbm_vars_new[[tableName]])),
         fill = TRUE)
       data.table::setkey(sim$cbm_vars[[tableName]], row_idx)
+
+      cbm_vars_new[[tableName]] <- NULL
     }
-    rm(cbm_vars_new)
-    rm(distCohorts)
   }
 
   # Set parameters from state
@@ -566,10 +535,8 @@ annual_preprocessing <- function(sim) {
   sim$cbm_vars$parameters[, foliage_inc := annualIncr$foliage_inc]
   sim$cbm_vars$parameters[, other_inc   := annualIncr$other_inc]
 
-  rm(annualIncr)
-  rm(growthIncr)
-
-  }
+  # Set cohort group IDs for current year
+  sim$cbm_vars$key[[as.character(time(sim))]] <- sim$cbm_vars$key$row_idx
 
   # Return simList
   return(invisible(sim))
@@ -595,7 +562,7 @@ annual_carbonDynamics <- function(sim) {
     mod$libcbm_default_model_config
   )
 
-  #implement delay
+  # Implement delay
   delayRows <- with(sim$cbm_vars$state, is.na(time_since_last_disturbance) | time_since_last_disturbance <= delay)
   if (any(delayRows)) {
     sim$cbm_vars$state$age[delayRows] <- 0
