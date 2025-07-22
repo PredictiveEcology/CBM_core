@@ -260,7 +260,6 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
                              types = "png")
         }
       }
-browser()
       if (!is.null(sim$masterRaster)){
         sPlotStart <- spatialPlot(
           cbmPools = sim$cbmPools,
