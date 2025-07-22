@@ -391,7 +391,6 @@ annual_disturbances <- function(sim){
     c("eventID", "disturbance_type_id", "priority"), names(sim$disturbanceMeta))])
 
   # Choose disturbance events by priority
-  distEvents[, year := NULL]
   distEvents <- data.table::merge.data.table(distEvents, distMeta, by = "eventID", all.x = TRUE)
 
   if (any(duplicated(distEvents$pixelIndex))){
@@ -422,12 +421,9 @@ annual_preprocessing <- function(sim) {
   sim$cbm_vars$parameters$disturbance_type <- 0L
 
   # Set data for disturbed cohorts
-  sim$cbm_vars$key <- split(sim$cbm_vars$key, is.na(sim$cbm_vars$key$disturbance_type_id))
-  if (is.null(sim$cbm_vars$key$`TRUE`)) sim$cbm_vars$key$`TRUE` <- sim$cbm_vars$key$`FALSE`[0,]
-  distCohorts      <- sim$cbm_vars$key$`FALSE`
-  sim$cbm_vars$key <- sim$cbm_vars$key$`TRUE`
+  distCohorts <- subset(sim$cbm_vars$key, !is.na(disturbance_type_id))
 
-  if (!is.null(distCohorts)){
+  if (nrow(distCohorts) > 0){
 
     # Create new groups that share attributes, events, and carbon with previous groups
     # since that changes the amount and destination of the carbon being moved.
@@ -442,25 +438,22 @@ annual_preprocessing <- function(sim) {
       sim$pooldef, "Products"
     ), names(distCohorts))
     distCohorts[, row_idx := .GRP + max(sim$cbm_vars$state$row_idx), by = groupCols]
-    distCohorts <- distCohorts[, .SD, .SDcols = names(sim$cbm_vars$key)]
 
     # Update key
-    sim$cbm_vars$key <- data.table::rbindlist(list(sim$cbm_vars$key, distCohorts))
-    data.table::setkey(sim$cbm_vars$key, cohortID)
+    sim$cbm_vars$key[!is.na(disturbance_type_id), row_idx := distCohorts$row_idx]
 
     # Prepare data for new groups
-    cbm_vars_new <- list()
-
-    distCohorts <- unique(distCohorts[, .(row_idx, row_idx_prev, disturbance_type = disturbance_type_id)])
-    cbm_vars_new[["parameters"]] <- distCohorts
-    cbm_vars_new[["state"]] <- cbm_vars_new[["flux"]] <- cbm_vars_new[["pools"]] <-
-      distCohorts[, .(row_idx, row_idx_prev)]
-    rm(distCohorts)
+    distCohorts <- distCohorts[, .(
+      row_idx_prev     = data.table::first(row_idx_prev),
+      disturbance_type = data.table::first(disturbance_type_id)
+    ), by = "row_idx"]
+    cbm_vars_new <- list(parameters = distCohorts)
 
     # Set disturbed group state from data of previous group
     ## Clear information about previous disturbances
     cbm_vars_new[["state"]] <- merge(
-      cbm_vars_new[["state"]], sim$cbm_vars[["state"]],
+      cbm_vars_new[["parameters"]][, .(row_idx, row_idx_prev)],
+      sim$cbm_vars[["state"]],
       by.x = "row_idx_prev", by.y = "row_idx", all.x = TRUE)
     cbm_vars_new[["state"]][, age := 1L]
     cbm_vars_new[["state"]][, time_since_last_disturbance := NA_real_]
@@ -469,27 +462,28 @@ annual_preprocessing <- function(sim) {
 
     # Set disturbed group flux from data of previous group
     cbm_vars_new[["flux"]]  <- merge(
-      cbm_vars_new[["flux"]], sim$cbm_vars[["flux"]],
+      cbm_vars_new[["parameters"]][, .(row_idx, row_idx_prev)],
+      sim$cbm_vars[["flux"]],
       by.x = "row_idx_prev", by.y = "row_idx", all.x = TRUE)
 
     # Set disturbed group pools from data of previous group
     ## Set Input = 1
     cbm_vars_new[["pools"]] <- merge(
-      cbm_vars_new[["pools"]], sim$cbm_vars[["pools"]],
+      cbm_vars_new[["parameters"]][, .(row_idx, row_idx_prev)],
+      sim$cbm_vars[["pools"]],
       by.x = "row_idx_prev", by.y = "row_idx", all.x = TRUE)
     cbm_vars_new[["pools"]][, Input := 1L]
 
     # Merge new group data
     for (tableName in names(cbm_vars_new)){
 
-      cbm_vars_new[[tableName]][, setdiff(
-        names(cbm_vars_new[[tableName]]), names(sim$cbm_vars[[tableName]])) := NULL]
+      cbm_vars_new[[tableName]][, row_idx_prev := NULL]
       sim$cbm_vars[[tableName]] <- data.table::rbindlist(
-        list(sim$cbm_vars[[tableName]], unique(cbm_vars_new[[tableName]])),
+        list(sim$cbm_vars[[tableName]], cbm_vars_new[[tableName]]),
         fill = TRUE)
-      data.table::setkey(sim$cbm_vars[[tableName]], row_idx)
-
       cbm_vars_new[[tableName]] <- NULL
+
+      data.table::setkey(sim$cbm_vars[[tableName]], row_idx)
     }
   }
 
