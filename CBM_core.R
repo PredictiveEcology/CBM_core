@@ -243,18 +243,6 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
                            path = figPath,
                            ggsaveArgs = list(width = 7, height = 5, units = "in", dpi = 300),
                            types = "png")
-
-
-
-        nPlot <- NPPplot(
-          cohortGroupKeep = sim$cohortGroupKeep,
-          NPP = cohortGroupNPP,
-          masterRaster = sim$masterRaster)
-        SpaDES.core::Plots(nPlot,
-                           filename = "NPPTest",
-                           path = figPath,
-                           ggsaveArgs = list(width = 7, height = 5, units = "in", dpi = 300),
-                           types = "png")
       }
 
       if (!is.null(sim$masterRaster)){
@@ -417,8 +405,6 @@ annual_prepDisturbances <- function(sim){
   # Return simList
   return(invisible(sim))
 }
-
-
 
 annual_prepCohortGroups <- function(sim) {
 
