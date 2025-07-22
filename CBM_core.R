@@ -14,7 +14,7 @@ defineModule(sim, list(
   citation = list("citation.bib"),
   documentation = list("README.txt", "CBM_core.Rmd"),
   reqdPkgs = list(
-    "data.table", "reticulate",
+    "data.table", "reticulate", "arrow", "dplyr",
     "PredictiveEcology/CBMutils@development (>=2.0.3.0013)",
     "PredictiveEcology/libcbmr"
   ),
@@ -48,10 +48,10 @@ defineModule(sim, list(
     defineParameter(
       "skipPrepareCBMvars", "logical", default = FALSE, NA, NA,
       desc = "Whether the inputs for the cbm annual events are prepared by another module.E.g., LandRCBM_split3pools."),
-    defineParameter(".plot", "logical", TRUE, NA, NA, "Plot simulation results"),
-    defineParameter(".saveInitialTime", "numeric", NA,         NA, NA, "Simulation time when the first save event should occur"),
-    defineParameter(".saveInterval",    "numeric", NA,         NA, NA, "Time interval between save events"),
-    defineParameter(".useCache", "logical", FALSE, NA, NA, "Use module caching")
+    defineParameter(".plot",       "logical", TRUE,  NA, NA, "Plot simulation results"),
+    defineParameter(".saveSpinup", "logical", TRUE,  NA, NA, "Save spinup result to outputs database"),
+    defineParameter(".saveAll",    "logical", FALSE, NA, NA, "Save all data to outputs database"),
+    defineParameter(".useCache",   "logical", FALSE, NA, NA, "Cache module events")
   ),
   inputObjects = bindrows(
     expectsInput(
@@ -138,11 +138,8 @@ defineModule(sim, list(
         "Emissions and product totals for each simulation year.",
         "Choose which columns to return with the 'emissionsProductsCols' parameter.")),
     createsOutput(
-      objectName = "cbmPools", objectClass = "data.frame",
-      desc = "Cohort group ages and pools"),
-    createsOutput(
-      objectName = "NPP", objectClass = "data.table",
-      desc = "Cohort group NPP"),
+      objectName = "cbmOutputsDB", objectClass = "character",
+      desc = "Path to a directory containing simulation results in parquet files"),
     createsOutput(
       objectName = "cbm_vars", objectClass = "list",
       desc = paste(
@@ -167,9 +164,6 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
       sim <- scheduleEvent(sim, start(sim), "CBM_core", "annual_preprocessing", eventPriority = 8)
       sim <- scheduleEvent(sim, start(sim), "CBM_core", "annual_carbonDynamics", eventPriority = 8.5)
 
-      # Accumulate results
-      sim <- scheduleEvent(sim, end(sim), "CBM_core", "accumulateResults", eventPriority = 11)
-
       # Schedule plotting
       if (P(sim)$.plot) sim <- scheduleEvent(sim, end(sim), "CBM_core", "plot", eventPriority = 12)
     },
@@ -177,6 +171,11 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
     spinup = {
 
       sim <- spinup(sim)
+
+      if (P(sim)$.saveSpinup){
+        message("Saving spinup results")
+        simSaveOutputs(sim, year = 0, all = P(sim)$.saveAll, yearly = P(sim)$skipCohortGroupHandling)
+      }
     },
 
     annual_preprocessing = {
@@ -190,67 +189,65 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
     annual_carbonDynamics = {
 
       sim <- annual_carbonDynamics(sim)
+
+      message("Saving annual results")
+      simSaveOutputs(sim, all = P(sim)$.saveAll, yearly = P(sim)$skipCohortGroupHandling)
+
       sim <- scheduleEvent(sim, time(sim) + 1, "CBM_core", "annual_carbonDynamics", eventPriority = 8.5)
     },
 
-    accumulateResults = {
-      outputDetails <- as.data.table(outputs(sim))
-      objsToLoad <- c("cbmPools", "NPP")
-      for (objToLoad in objsToLoad) {
-        if (any(outputDetails$objectName == objToLoad)) {
-          out <- lapply(outputDetails[objectName == objToLoad & saved == TRUE]$file, function(f) {
-            readRDS(f)
-          })
-          sim[[objToLoad]] <- rbindlist(out)
-        }
-      }
-    },
-
     plot = {
-      figPath <- file.path(outputPath(sim), "CBM_core_figures")
-      if (time(sim) != start(sim)) {
-        cPlot <- carbonOutPlot(
-          emissionsProducts = sim$emissionsProducts)
-        SpaDES.core::Plots(cPlot,
-                           filename = "carbonOutPlot",
-                           path = figPath,
-                           ggsaveArgs = list(width = 14, height = 5, units = "in", dpi = 300),
-                           types = "png")
 
-        bPlot <- barPlot(
-          cbmPools = sim$cbmPools)
-        SpaDES.core::Plots(bPlot,
-                           filename = "barPlot",
+      figPath <- file.path(outputPath(sim), "CBM_core_figures")
+
+      # Query results
+      ## TODO: use more specific queries to get result summaries required for each plot.
+      cohortGroupNPP   <- simCohortGroupNPP(sim)
+      cohortGroupPools <- simCohortGroupPools(sim)
+
+      cPlot <- carbonOutPlot(
+        emissionsProducts = sim$emissionsProducts)
+      SpaDES.core::Plots(cPlot,
+                         filename = "carbonOutPlot",
+                         path = figPath,
+                         ggsaveArgs = list(width = 14, height = 5, units = "in", dpi = 300),
+                         types = "png")
+
+      bPlot <- barPlot(
+        cbmPools = cohortGroupPools)
+      SpaDES.core::Plots(bPlot,
+                         filename = "barPlot",
+                         path = figPath,
+                         ggsaveArgs = list(width = 7, height = 5, units = "in", dpi = 300),
+                         types = "png")
+
+      if (!is.null(sim$masterRaster)){
+
+        nPlotStart <- NPPplot(
+          NPP = cohortGroupNPP,
+          year = start(sim),
+          masterRaster = sim$masterRaster,
+          cohortGroupKeep = sim$cbm_vars$key)
+        SpaDES.core::Plots(nPlotStart,
+                           filename = "NPPStart",
                            path = figPath,
                            ggsaveArgs = list(width = 7, height = 5, units = "in", dpi = 300),
                            types = "png")
-
-        if (!is.null(sim$masterRaster)){
-          nPlotStart <- NPPplot(
-            NPP = sim$NPP,
-            year = start(sim),
-            masterRaster = sim$masterRaster,
-            cohortGroupKeep = sim$cbm_vars$key)
-          SpaDES.core::Plots(nPlotStart,
-                             filename = "NPPStart",
-                             path = figPath,
-                             ggsaveArgs = list(width = 7, height = 5, units = "in", dpi = 300),
-                             types = "png")
-          nPlotEnd <- NPPplot(
-            NPP = sim$NPP,
-            year = end(sim),
-            masterRaster = sim$masterRaster,
-            cohortGroupKeep = sim$cbm_vars$key)
-          SpaDES.core::Plots(nPlotEnd,
-                             filename = "NPPEnd",
-                             path = figPath,
-                             ggsaveArgs = list(width = 7, height = 5, units = "in", dpi = 300),
-                             types = "png")
-        }
+        nPlotEnd <- NPPplot(
+          NPP = cohortGroupNPP,
+          year = end(sim),
+          masterRaster = sim$masterRaster,
+          cohortGroupKeep = sim$cbm_vars$key)
+        SpaDES.core::Plots(nPlotEnd,
+                           filename = "NPPEnd",
+                           path = figPath,
+                           ggsaveArgs = list(width = 7, height = 5, units = "in", dpi = 300),
+                           types = "png")
       }
+
       if (!is.null(sim$masterRaster)){
         sPlotStart <- spatialPlot(
-          cbmPools = sim$cbmPools,
+          cbmPools = cohortGroupPools,
           year = start(sim),
           masterRaster = sim$masterRaster,
           cohortGroupKeep = sim$cbm_vars$key
@@ -261,7 +258,7 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
                            ggsaveArgs = list(width = 7, height = 5, units = "in", dpi = 300),
                            types = "png")
         sPlotEnd <- spatialPlot(
-          cbmPools = sim$cbmPools,
+          cbmPools = cohortGroupPools,
           year = end(sim),
           masterRaster = sim$masterRaster,
           cohortGroupKeep = sim$cbm_vars$key
@@ -274,19 +271,17 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
       }
     },
 
-    savePools = {
-
-      data.table::fwrite(
-        sim$cbmPools[, .SD, .SDcols = c("simYear", "cohortGroupID", "N", "age", sim$pooldef)],
-        file.path(outputPath(sim), "cPoolsPixelYear.csv"))
-    },
-
     warning(noEventWarning(sim))
   )
   return(invisible(sim))
 }
 
 Init <- function(sim){
+
+  # Create database directory
+  sim$cbmOutputsDB <- file.path(outputPath(sim), "CBM_core", "db")
+  unlink(sim$cbmOutputsDB, recursive = TRUE)
+  dir.create(sim$cbmOutputsDB, recursive = TRUE, showWarnings = FALSE)
 
   # Set up Python virtual environment
   reticulate::virtualenv_create(
@@ -574,41 +569,7 @@ annual_carbonDynamics <- function(sim) {
 
   ## ASSEMBLE OUTPUTS -----
 
-  # Set cohort count
-  cohortCount <- sim$cbm_vars$key[, .N, by = row_idx]
-  data.table::setkey(cohortCount, row_idx)
-
-  # Update the final simulation horizon table with all the pools/year/row_idx
-  sim$cbmPools <- cbind(
-    simYear = as.integer(time(sim)),
-    merge(
-      cohortCount,
-      cbind(sim$cbm_vars$state, sim$cbm_vars$pools[,-1]),
-      by = "row_idx")[, .SD, .SDcols = c(names(cohortCount), "age", sim$pooldef)]
-  )
-  data.table::setnames(sim$cbmPools, "row_idx", "cohortGroupID")
-
-  # NPP
-  ## NPP used in building sim$NPP and for plotting
-  NPP <- (
-    sim$cbm_vars$flux$DeltaBiomass_AG
-    + sim$cbm_vars$flux$DeltaBiomass_BG
-    + sim$cbm_vars$flux$TurnoverMerchLitterInput
-    + sim$cbm_vars$flux$TurnoverFolLitterInput
-    + sim$cbm_vars$flux$TurnoverOthLitterInput
-    + sim$cbm_vars$flux$TurnoverCoarseLitterInput
-    + sim$cbm_vars$flux$TurnoverFineLitterInput
-  )
-  sim$NPP <- cbind(
-    simYear = as.integer(time(sim)),
-    merge(
-      cohortCount,
-      data.table::data.table(row_idx = sim$cbm_vars$flux$row_idx, NPP = NPP),
-      by = "row_idx")
-  )
-  data.table::setnames(sim$NPP, "row_idx", "cohortGroupID")
-
-  ############# Update emissions and products
+  # Save yearly emissions and products
   #Note: details of which source and sink pools goes into each of the columns in
   #cbm_vars$flux can be found here:
   #https://cat-cfs.github.io/libcbm_py/cbm_exn_custom_ops.html

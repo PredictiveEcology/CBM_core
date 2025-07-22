@@ -30,11 +30,6 @@ test_that("Module: SK-small 1998-2000", {
       ),
       params = list(CBM_core = list(.plot = FALSE)),
 
-      outputs = as.data.frame(expand.grid(
-        objectName = c("cbmPools", "NPP"),
-        saveTime   = sort(c(times$start, times$start + c(1:(times$end - times$start))))
-      )),
-
       cohortDT          = data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/input", "cohortDT.csv")),
       standDT           = data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/input", "standDT.csv"))[, area := 900],
       disturbanceEvents = file.path(spadesTestPaths$testdata, "SK-small/input", "disturbanceEvents.csv") |> data.table::fread(),
@@ -93,28 +88,28 @@ test_that("Module: SK-small 1998-2000", {
   #   data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/valid", "spinupResult.csv")),
   #   check.attributes = FALSE)
 
-  # cbmPools
-  expect_true(!is.null(simTest$cbmPools))
-  expect_equal(
-    simTest$cbmPools,
-    data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/valid", "cbmPools.csv"))[
-      , .SD, .SDcols = names(simTest$cbmPools)],
-    check.attributes = FALSE)
-
-  # NPP
-  expect_true(!is.null(simTest$NPP))
-  expect_equal(
-    simTest$NPP,
-    data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/valid", "NPP.csv"))[
-      , .SD, .SDcols = names(simTest$NPP)],
-    check.attributes = FALSE)
-
   # emissionsProducts
   expect_true(!is.null(simTest$emissionsProducts))
   expect_equal(
     data.table::as.data.table(simTest$emissionsProducts),
     data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/valid", "emissionsProducts.csv"))[
       , .SD, .SDcols = colnames(simTest$emissionsProducts)],
+    check.attributes = FALSE)
+
+  # cbmPools
+  cohortGroupPools <- simTest@.envir$.mods$CBM_core$simCohortGroupPools(simTest)
+  expect_equal(
+    cohortGroupPools,
+    data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/valid", "cbmPools.csv"))[
+      , .SD, .SDcols = names(cohortGroupPools)],
+    check.attributes = FALSE)
+
+  # NPP
+  cohortGroupNPP <- simTest@.envir$.mods$CBM_core$simCohortGroupNPP(simTest)
+  expect_equal(
+    cohortGroupNPP,
+    data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/valid", "NPP.csv"))[
+      , .SD, .SDcols = names(cohortGroupNPP)],
     check.attributes = FALSE)
 
   # Cohort data
