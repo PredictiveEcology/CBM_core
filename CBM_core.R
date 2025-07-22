@@ -439,6 +439,7 @@ annual_preprocessing <- function(sim) {
 
     # Create new cohort groups for disturbed cohorts
     sim$cbm_vars$key <- split(sim$cbm_vars$key, is.na(sim$cbm_vars$key$disturbance_type_id))
+    if (is.null(sim$cbm_vars$key$`TRUE`)) sim$cbm_vars$key$`TRUE` <- sim$cbm_vars$key$`FALSE`[0,]
     distCohorts      <- sim$cbm_vars$key$`FALSE`
     sim$cbm_vars$key <- sim$cbm_vars$key$`TRUE`
 
@@ -451,19 +452,17 @@ annual_preprocessing <- function(sim) {
         distCohorts,
         cbind(sim$cbm_vars$state, sim$cbm_vars$pools[, -1]),
         by.x = "row_idx_prev", by.y = "row_idx")
-      data.table::setkey(distCohorts, row_idx)
+      data.table::setkey(distCohorts, cohortID)
 
-      groupCols <- intersect(names(distCohorts), c(
+      groupCols <- intersect(c(
         "disturbance_type_id", "spatial_unit_id", "gcids", "age", "delay",
         sim$pooldef, "Products"
-      ))
-      distCohorts[, row_idx := .GRP + max(sim$cbm_vars$key$row_idx_prev), by = groupCols]
+      ), names(distCohorts))
+      distCohorts[, row_idx := .GRP + max(sim$cbm_vars$state$row_idx), by = groupCols]
       distCohorts <- distCohorts[, .SD, .SDcols = names(sim$cbm_vars$key)]
 
-      # Update cohortGroupKey
-      sim$cbm_vars$key <- data.table::rbindlist(list(
-        sim$cbm_vars$key, distCohorts
-      ))
+      # Update key
+      sim$cbm_vars$key <- data.table::rbindlist(list(sim$cbm_vars$key, distCohorts))
       data.table::setkey(sim$cbm_vars$key, cohortID)
     }
 
