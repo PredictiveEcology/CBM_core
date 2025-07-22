@@ -35,7 +35,7 @@ test_that("Module: SK 1985-2011", {
         saveTime   = sort(c(times$start, times$start + c(1:(times$end - times$start))))
       )),
 
-      cohortDT          = data.table::fread(file.path(spadesTestPaths$testdata, "SK/input", "cohortDT.csv"))[, ageSpinup := sapply(age, min, 3)],
+      cohortDT          = data.table::fread(file.path(spadesTestPaths$testdata, "SK/input", "cohortDT.csv"))[, ageSpinup := sapply(age, max, 3)],
       standDT           = data.table::fread(file.path(spadesTestPaths$testdata, "SK/input", "standDT.csv"))[, area := 900],
       disturbanceEvents = file.path(spadesTestPaths$testdata, "SK/input", "disturbanceEvents.csv") |> data.table::fread(),
       disturbanceMeta   = file.path(spadesTestPaths$testdata, "SK/input", "disturbanceMeta.csv")   |> data.table::fread(),
@@ -89,12 +89,12 @@ test_that("Module: SK 1985-2011", {
   expect_true(!is.null(simTest$cbm_vars$key))
   expect_identical(simTest$cbm_vars$key$cohortID,   simTest$cohortDT$cohortID)
   expect_identical(simTest$cbm_vars$key$pixelIndex, simTest$cohortDT$pixelIndex)
-  expect_equal(max(simTest$cbm_vars$key$row_idx),            1684)
-  expect_equal(length(unique(simTest$cbm_vars$key$row_idx)), 1683) # One cohort group eliminated by disturbances
-  expect_equal(nrow(simTest$cbm_vars$parameters),            1683)
-  expect_equal(nrow(simTest$cbm_vars$state),                 1683)
-  expect_equal(nrow(simTest$cbm_vars$flux),                  1683)
-  expect_equal(nrow(simTest$cbm_vars$pool),                  1683)
+  expect_equal(max(simTest$cbm_vars$key$row_idx),            4401)
+  expect_equal(length(unique(simTest$cbm_vars$key$row_idx)), 4354) # Cohort groups eliminated by disturbances
+  expect_equal(nrow(simTest$cbm_vars$parameters),            4354)
+  expect_equal(nrow(simTest$cbm_vars$state),                 4354)
+  expect_equal(nrow(simTest$cbm_vars$flux),                  4354)
+  expect_equal(nrow(simTest$cbm_vars$pool),                  4354)
 
   # Check mean_annual_temperature is correct for each spatial unit
   pixelSPUs <- split(simTest$standDT$pixelIndex, simTest$standDT$spatial_unit_id)
