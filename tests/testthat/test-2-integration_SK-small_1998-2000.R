@@ -40,35 +40,14 @@ test_that("Multi module: SK-small 1998-2000", {
       ),
       params = list(CBM_core = list(.plot = FALSE)),
 
-      require = c("terra", "reproducible"),
+      require = "terra",
 
-      masterRaster = {
-
-        # Set study area extent and resolution
-        mrAOI <- list(
-          ext = c(xmin = -687696, xmax = -681036, ymin = 711955, ymax = 716183),
-          res = 30
-        )
-
-        # Align SK master raster with study area
-        mrSource <- terra::rast(
-          reproducible::preProcess(
-            destinationPath = spadesTestPaths$temp$inputs,
-            url             = "https://drive.google.com/file/d/1zUyFH8k6Ef4c_GiWMInKbwAl6m6gvLJW",
-            targetFile      = "ldSp_TestArea.tif"
-          )$targetFilePath)
-
-        reproducible::postProcess(
-          mrSource,
-          to = terra::rast(
-            extent     = mrAOI$ext,
-            resolution = mrAOI$res,
-            crs        = terra::crs(mrSource),
-            vals       = 1
-          ),
-          method = "near"
-        ) |> terra::classify(cbind(0, NA))
-      },
+      masterRaster = terra::rast(
+        ext  = c(xmin = -687696, xmax = -681036, ymin = 711955, ymax = 716183),
+        res  = 30,
+        vals = 0L,
+        crs  = "EPSG:3979"
+      ),
 
       outputs = as.data.frame(expand.grid(
         objectName = c("cbmPools", "NPP"),
