@@ -96,6 +96,20 @@ test_that("Module: SK 1985-2011", {
   expect_equal(nrow(simTest$cbm_vars$flux),                  1683)
   expect_equal(nrow(simTest$cbm_vars$pool),                  1683)
 
+  # Check mean_annual_temperature is correct for each spatial unit
+  pixelSPUs <- split(simTest$standDT$pixelIndex, simTest$standDT$spatial_unit_id)
+  expect_in(
+    subset(
+      simTest$cbm_vars$parameters,
+      row_idx %in% subset(simTest$cbm_vars$key, pixelIndex %in% pixelSPUs$`27`)$row_idx
+    )$mean_annual_temperature,
+    simTest$spinupSQL[id == 27,]$mean_annual_temperature)
+  expect_in(
+    subset(
+      simTest$cbm_vars$parameters,
+      row_idx %in% subset(simTest$cbm_vars$key, pixelIndex %in% pixelSPUs$`28`)$row_idx
+    )$mean_annual_temperature,
+    simTest$spinupSQL[id == 28,]$mean_annual_temperature)
 })
 
 
