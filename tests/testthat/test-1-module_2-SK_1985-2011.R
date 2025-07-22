@@ -35,7 +35,7 @@ test_that("Module: SK 1985-2011", {
         saveTime   = sort(c(times$start, times$start + c(1:(times$end - times$start))))
       )),
 
-      cohortDT          = data.table::fread(file.path(spadesTestPaths$testdata, "SK/input", "cohortDT.csv"))[, ageSpinup := sapply(age, min, 3)],
+      cohortDT          = data.table::fread(file.path(spadesTestPaths$testdata, "SK/input", "cohortDT.csv"))[, ageSpinup := sapply(age, max, 3)],
       standDT           = data.table::fread(file.path(spadesTestPaths$testdata, "SK/input", "standDT.csv"))[, area := 900],
       disturbanceEvents = file.path(spadesTestPaths$testdata, "SK/input", "disturbanceEvents.csv") |> data.table::fread(),
       disturbanceMeta   = file.path(spadesTestPaths$testdata, "SK/input", "disturbanceMeta.csv")   |> data.table::fread(),
@@ -87,12 +87,12 @@ test_that("Module: SK 1985-2011", {
   # cohortGroups
   ## There should always be the same number of total cohort groups.
   expect_true(!is.null(simTest$cohortGroups))
-  expect_equal(max(simTest$cohortGroups$cohortGroupID), 1684)
-  expect_equal(nrow(simTest$cohortGroups),        1683) # One cohort group eliminated by disturbances
-  expect_equal(nrow(simTest$cbm_vars$parameters), 1683)
-  expect_equal(nrow(simTest$cbm_vars$state),      1683)
-  expect_equal(nrow(simTest$cbm_vars$flux),       1683)
-  expect_equal(nrow(simTest$cbm_vars$pool),       1683)
+  expect_equal(max(simTest$cohortGroups$cohortGroupID), 4401)
+  expect_equal(nrow(simTest$cohortGroups),        4354) # Cohort groups eliminated by disturbances
+  expect_equal(nrow(simTest$cbm_vars$parameters), 4354)
+  expect_equal(nrow(simTest$cbm_vars$state),      4354)
+  expect_equal(nrow(simTest$cbm_vars$flux),       4354)
+  expect_equal(nrow(simTest$cbm_vars$pool),       4354)
 
   # cohortGroupKeep
   expect_true(!is.null(simTest$cohortGroupKeep))
