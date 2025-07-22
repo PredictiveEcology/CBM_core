@@ -38,3 +38,4 @@
 
   # Run LandRCBM tests
   testthat::test_dir("tests/testthat", filter = "LandRCBM")
+

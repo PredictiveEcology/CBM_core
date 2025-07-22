@@ -39,7 +39,7 @@ test_that("Module: with regeneration delay", {
         cohortID   = c(1, 2),
         pixelIndex = c(1, 2),
         gcids      = 1,
-        ages       = 10,
+        age        = 10,
         delayRegen = c(0, 2)
       ),
       disturbanceEvents = data.table::data.table(

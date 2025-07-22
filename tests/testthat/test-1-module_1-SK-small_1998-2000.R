@@ -30,8 +30,8 @@ test_that("Module: SK-small 1998-2000", {
       ),
       params = list(CBM_core = list(.plot = FALSE)),
 
-      standDT           = data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/input", "standDT.csv"))[, area := 900],
       cohortDT          = data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/input", "cohortDT.csv")),
+      standDT           = data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/input", "standDT.csv"))[, area := 900],
       disturbanceEvents = file.path(spadesTestPaths$testdata, "SK-small/input", "disturbanceEvents.csv") |> data.table::fread(),
       disturbanceMeta   = file.path(spadesTestPaths$testdata, "SK/input", "disturbanceMeta.csv")   |> data.table::fread(),
       gcMeta            = file.path(spadesTestPaths$testdata, "SK/input", "gcMeta.csv")            |> data.table::fread(),
@@ -56,15 +56,37 @@ test_that("Module: SK-small 1998-2000", {
   expect_s4_class(simTest, "simList")
 
 
+  ## Check inputs ----
+
+  ## Check that input tables are not altered by module.
+  expect_mapequal(
+    simTest$cohortDT,
+    data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/input", "cohortDT.csv")))
+  expect_mapequal(
+    simTest$standDT,
+    data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/input", "standDT.csv"))[, area := 900])
+  expect_mapequal(
+    simTest$disturbanceEvents,
+    data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/input", "disturbanceEvents.csv")))
+  expect_mapequal(
+    simTest$disturbanceMeta,
+    data.table::fread(file.path(spadesTestPaths$testdata, "SK/input", "disturbanceMeta.csv")))
+  expect_mapequal(
+    simTest$gcMeta,
+    data.table::fread(file.path(spadesTestPaths$testdata, "SK/input", "gcMeta.csv")))
+  expect_mapequal(
+    simTest$growth_increments,
+    data.table::fread(file.path(spadesTestPaths$testdata, "SK/input", "growth_increments.csv")))
+
+
   ## Check outputs ----
 
-  # spinupResult
-  ## There should always be the same number of spinup cohort groups.
-  expect_true(!is.null(simTest$spinupResult))
-  expect_equal(
-    data.table::as.data.table(simTest$spinupResult$output$pools),
-    data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/valid", "spinupResult.csv")),
-    check.attributes = FALSE)
+  # # spinupResult ## TEMPORARY: Not currently being saved.
+  # expect_true(!is.null(simTest$spinupResult))
+  # expect_equal(
+  #   data.table::as.data.table(simTest$spinupResult$output$pools),
+  #   data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/valid", "spinupResult.csv")),
+  #   check.attributes = FALSE)
 
   # emissionsProducts
   expect_true(!is.null(simTest$emissionsProducts))
@@ -90,17 +112,17 @@ test_that("Module: SK-small 1998-2000", {
       , .SD, .SDcols = names(cohortGroupNPP)],
     check.attributes = FALSE)
 
-  # cohortGroups
+  # Cohort data
   ## There should always be the same number of total cohort groups.
-  expect_true(!is.null(simTest$cohortGroups))
-  expect_equal(nrow(simTest$cohortGroups), 43)
-
-  # cohortGroupKeep
-  expect_true(!is.null(simTest$cohortGroupKeep))
-  expect_identical(simTest$cohortGroupKeep$cohortID,   simTest$cohortDT$cohortID)
-  expect_identical(simTest$cohortGroupKeep$pixelIndex, simTest$cohortDT$pixelIndex)
-  expect_true(all(simTest$cohortGroupKeep$cohortGroupID %in% simTest$cohortGroups$cohortGroupID))
-  expect_true(all(as.character(start(simTest):end(simTest)) %in% names(simTest$cohortGroupKeep)))
+  expect_true(!is.null(simTest$cbm_vars$key))
+  expect_identical(simTest$cbm_vars$key$cohortID,   simTest$cohortDT$cohortID)
+  expect_identical(simTest$cbm_vars$key$pixelIndex, simTest$cohortDT$pixelIndex)
+  expect_equal(max(simTest$cbm_vars$key$row_idx),            43)
+  expect_equal(length(unique(simTest$cbm_vars$key$row_idx)), 43)
+  expect_equal(nrow(simTest$cbm_vars$parameters),            43)
+  expect_equal(nrow(simTest$cbm_vars$state),                 43)
+  expect_equal(nrow(simTest$cbm_vars$flux),                  43)
+  expect_equal(nrow(simTest$cbm_vars$pool),                  43)
 
 })
 

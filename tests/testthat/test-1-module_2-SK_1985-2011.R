@@ -30,8 +30,8 @@ test_that("Module: SK 1985-2011", {
       ),
       params = list(CBM_core = list(.plot = FALSE)),
 
+      cohortDT          = data.table::fread(file.path(spadesTestPaths$testdata, "SK/input", "cohortDT.csv"))[, ageSpinup := sapply(age, max, 3)],
       standDT           = data.table::fread(file.path(spadesTestPaths$testdata, "SK/input", "standDT.csv"))[, area := 900],
-      cohortDT          = data.table::fread(file.path(spadesTestPaths$testdata, "SK/input", "cohortDT.csv"))[, ageSpinup := sapply(ages, min, 3)],
       disturbanceEvents = file.path(spadesTestPaths$testdata, "SK/input", "disturbanceEvents.csv") |> data.table::fread(),
       disturbanceMeta   = file.path(spadesTestPaths$testdata, "SK/input", "disturbanceMeta.csv")   |> data.table::fread(),
       gcMeta            = file.path(spadesTestPaths$testdata, "SK/input", "gcMeta.csv")            |> data.table::fread(),
@@ -58,13 +58,8 @@ test_that("Module: SK 1985-2011", {
 
   ## Check outputs ----
 
-  # spinupResult
-  ## There should always be the same number of spinup cohort groups.
-  expect_true(!is.null(simTest$spinupResult))
-  expect_equal(
-    data.table::as.data.table(simTest$spinupResult$output$pools),
-    data.table::fread(file.path(spadesTestPaths$testdata, "SK/valid", "spinupResult.csv")),
-    check.attributes = FALSE)
+  # # spinupResult ## TEMPORARY: Not currently being saved.
+  # expect_true(!is.null(simTest$spinupResult))
 
   # emissionsProducts
   expect_true(!is.null(simTest$emissionsProducts))
@@ -81,19 +76,32 @@ test_that("Module: SK 1985-2011", {
     data.table::fread(file.path(spadesTestPaths$testdata, "SK/valid", "NPP_sumByYear.csv")),
     check.attributes = FALSE)
 
-  # cohortGroups
+  # Cohort data
   ## There should always be the same number of total cohort groups.
-  expect_true(!is.null(simTest$cohortGroups))
-  expect_equal(max(simTest$cohortGroups), 1703)
-  expect_equal(nrow(simTest$cohortGroups), 1702) # One cohort group eliminated by disturbances
+  expect_true(!is.null(simTest$cbm_vars$key))
+  expect_identical(simTest$cbm_vars$key$cohortID,   simTest$cohortDT$cohortID)
+  expect_identical(simTest$cbm_vars$key$pixelIndex, simTest$cohortDT$pixelIndex)
+  expect_equal(max(simTest$cbm_vars$key$row_idx),            4401)
+  expect_equal(length(unique(simTest$cbm_vars$key$row_idx)), 4354) # Cohort groups eliminated by disturbances
+  expect_equal(nrow(simTest$cbm_vars$parameters),            4354)
+  expect_equal(nrow(simTest$cbm_vars$state),                 4354)
+  expect_equal(nrow(simTest$cbm_vars$flux),                  4354)
+  expect_equal(nrow(simTest$cbm_vars$pool),                  4354)
 
-  # cohortGroupKeep
-  expect_true(!is.null(simTest$cohortGroupKeep))
-  expect_identical(simTest$cohortGroupKeep$cohortID,   simTest$cohortDT$cohortID)
-  expect_identical(simTest$cohortGroupKeep$pixelIndex, simTest$cohortDT$pixelIndex)
-  expect_true(all(simTest$cohortGroupKeep$cohortGroupID %in% simTest$cohortGroups$cohortGroupID))
-  expect_true(all(as.character(start(simTest):end(simTest)) %in% names(simTest$cohortGroupKeep)))
-
+  # Check mean_annual_temperature is correct for each spatial unit
+  pixelSPUs <- split(simTest$standDT$pixelIndex, simTest$standDT$spatial_unit_id)
+  expect_in(
+    subset(
+      simTest$cbm_vars$parameters,
+      row_idx %in% subset(simTest$cbm_vars$key, pixelIndex %in% pixelSPUs$`27`)$row_idx
+    )$mean_annual_temperature,
+    simTest$spinupSQL[id == 27,]$mean_annual_temperature)
+  expect_in(
+    subset(
+      simTest$cbm_vars$parameters,
+      row_idx %in% subset(simTest$cbm_vars$key, pixelIndex %in% pixelSPUs$`28`)$row_idx
+    )$mean_annual_temperature,
+    simTest$spinupSQL[id == 28,]$mean_annual_temperature)
 })
 
 

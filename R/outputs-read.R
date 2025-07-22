@@ -9,25 +9,25 @@ cbmOutputsDB_cohortGroupNPP <- function(cbmOutputsDB){
 
   pqTbl <- dplyr::left_join(
 
-    arrow::open_dataset(file.path(cbmOutputsDB, "cohortGroupKeep")) |>
+    arrow::open_dataset(file.path(cbmOutputsDB, "key")) |>
       dplyr::filter(year != 0) |>
-      dplyr::select(year, cohortGroupID) |>
+      dplyr::select(year, row_idx) |>
       dplyr::collect() |>
-      dplyr::group_by(year, cohortGroupID) |>
+      dplyr::group_by(year, row_idx) |>
       dplyr::summarize(N = dplyr::n()),
 
     arrow::open_dataset(file.path(cbmOutputsDB, "flux")) |>
       dplyr::filter(year != 0) |>
-      dplyr::group_by(year, cohortGroupID) |>
+      dplyr::group_by(year, row_idx) |>
       dplyr::collect() |>
       dplyr::summarize(NPP = sum(
         DeltaBiomass_AG, DeltaBiomass_BG,
         TurnoverMerchLitterInput, TurnoverFolLitterInput,
         TurnoverOthLitterInput, TurnoverCoarseLitterInput, TurnoverFineLitterInput)),
 
-    by = c("year", "cohortGroupID"))
+    by = c("year", "row_idx"))
 
-  pqTbl <- dplyr::rename(pqTbl, simYear = year)
+  pqTbl <- dplyr::rename(pqTbl, simYear = year, cohortGroupID = row_idx)
   pqTbl <- data.table::as.data.table(pqTbl, key = c("simYear", "cohortGroupID"))
   pqTbl
 
@@ -43,24 +43,24 @@ cbmOutputsDB_cohortGroupPools <- function(cbmOutputsDB, poolsCols = NULL){
 
   pqTbl <- dplyr::left_join(
 
-    arrow::open_dataset(file.path(cbmOutputsDB, "cohortGroupKeep")) |>
+    arrow::open_dataset(file.path(cbmOutputsDB, "key")) |>
       dplyr::filter(year != 0) |>
-      dplyr::select(year, cohortGroupID) |>
+      dplyr::select(year, row_idx) |>
       dplyr::collect() |>
-      dplyr::group_by(year, cohortGroupID) |>
+      dplyr::group_by(year, row_idx) |>
       dplyr::summarize(N = dplyr::n()),
 
     dplyr::left_join(
 
       arrow::open_dataset(file.path(cbmOutputsDB, "state")) |>
         dplyr::filter(year != 0) |>
-        dplyr::select(year, cohortGroupID, age) |>
+        dplyr::select(year, row_idx, age) |>
         dplyr::collect(),
 
       if (!is.null(poolsCols)){
         arrow::open_dataset(file.path(cbmOutputsDB, "pools")) |>
           dplyr::filter(year != 0) |>
-          dplyr::select(c("year", "cohortGroupID", poolsCols)) |>
+          dplyr::select(c("year", "row_idx", poolsCols)) |>
           dplyr::collect()
       }else{
         arrow::open_dataset(file.path(cbmOutputsDB, "pools")) |>
@@ -68,11 +68,11 @@ cbmOutputsDB_cohortGroupPools <- function(cbmOutputsDB, poolsCols = NULL){
           dplyr::collect()
       },
 
-      by = c("year", "cohortGroupID")),
+      by = c("year", "row_idx")),
 
-    by = c("year", "cohortGroupID"))
+    by = c("year", "row_idx"))
 
-  pqTbl <- dplyr::rename(pqTbl, simYear = year)
+  pqTbl <- dplyr::rename(pqTbl, simYear = year, cohortGroupID = row_idx)
   pqTbl <- data.table::as.data.table(pqTbl, key = c("simYear", "cohortGroupID"))
   pqTbl
 }
