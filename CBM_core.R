@@ -621,8 +621,9 @@ annual_carbonDynamics <- function(sim) {
   # Get pixel group areas
   if ("area" %in% names(sim$standDT)){
 
-    groupAreas <- merge(sim$cbm_vars$key, sim$standDT, by = "pixelIndex")[
-      , .(area = sum(area)), by = row_idx]$area
+    groupAreas <- data.table::merge.data.table(
+      sim$cbm_vars$key, sim$standDT, by = "pixelIndex")[
+        , .(area = sum(area) / 10000), by = row_idx][order(row_idx)]$area
 
   }else{
 
