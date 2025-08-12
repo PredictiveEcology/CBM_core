@@ -608,62 +608,49 @@ annual_carbonDynamics <- function(sim) {
   )
   data.table::setnames(sim$NPP, "row_idx", "cohortGroupID")
 
-  ############# Update emissions and products
+  # Summarize yearly emissions and products
   #Note: details of which source and sink pools goes into each of the columns in
   #cbm_vars$flux can be found here:
   #https://cat-cfs.github.io/libcbm_py/cbm_exn_custom_ops.html
   ##TODO double-check with Scott Morken that the cbm_vars$flux are in metric
   ##tonnes of carbon per ha like the rest of the values produced.
-
-  # Summarize emissions
-  emissions <- sim$cbm_vars$flux[, .(
-    row_idx,
-    DisturbanceBioCO2Emission, DisturbanceBioCH4Emission,DisturbanceBioCOEmission,
-    DecayDOMCO2Emission,
-    DisturbanceDOMCO2Emission, DisturbanceDOMCH4Emission,DisturbanceDOMCOEmission)]
-
-  emissions[, `:=`(Emissions, (DisturbanceBioCO2Emission + DisturbanceBioCH4Emission +
-                                 DisturbanceBioCOEmission + DecayDOMCO2Emission +
-                                 DisturbanceDOMCO2Emission + DisturbanceDOMCH4Emission +
-                                 DisturbanceDOMCOEmission))]
-  ##TODO: this combined emissions column might not be needed.
-
-  ##NOTE: SK: CH4 and CO are 0 in 1999 and 2000
-  emissions[, `:=`(CO2, (DisturbanceBioCO2Emission + DecayDOMCO2Emission + DisturbanceDOMCO2Emission))]
-  emissions[, `:=`(CH4, (DisturbanceBioCH4Emission + DisturbanceDOMCH4Emission))]
-  emissions[, `:=`(CO,  (DisturbanceBioCOEmission  + DisturbanceDOMCOEmission))]
-
-  ## Choose emissions columns
-  reqCols <- c("CO2", "CH4", "CO", "Emissions")
-  epCols  <- intersect(names(emissions), c(P(sim)$emissionsProductsCols, reqCols))
-  if (!identical(sort(P(sim)$emissionsProductsCols), sort(epCols))) warning(
-    "'emissionsProducts' including required columns: ", paste(shQuote(reqCols), collapse = ", "))
-  emissions <- emissions[, .SD, .SDcols = c("row_idx", epCols)]
-
-  # Merge with products
-  emissionsProducts <- merge(sim$cbm_vars$pools[, .(row_idx, Products)], emissions, by = "row_idx")
-
-  # Multiply by group areas
-  if (!"area" %in% names(sim$standDT)) stop(
-    "standDT requires the \"area\" column to calculate emissions and product totals.")
-
-  groupAreas <- merge(sim$cbm_vars$key, sim$standDT, by = "pixelIndex")[
-    , .(area = sum(area)), by = row_idx]
-
-  emissionsProducts <- colSums(
-    emissionsProducts[, .SD, .SDcols = !"row_idx"] *
-      (groupAreas$area[match(emissionsProducts$row_idx, groupAreas$row_idx)] / 10000))
-
-  # making Products yearly rather than cumulative
-  if (!is.null(sim$emissionsProducts)){
-    emissionsProducts["Products"] <- (emissionsProducts["Products"]) - (sum(sim$emissionsProducts[, "Products"]))
-  }
-
-  sim$emissionsProducts <- rbind(sim$emissionsProducts, c(simYear = time(sim), emissionsProducts))
-
   ##TODO need to track emissions and products. First check that cbm_vars$fluxes
   ##are yearly (question for Scott or we found out by mapping the Python
   ##functions ourselves)
+
+  # Get pixel group areas
+  if ("area" %in% names(sim$standDT)){
+
+    groupAreas <- merge(sim$cbm_vars$key, sim$standDT, by = "pixelIndex")[
+      , .(area = sum(area)), by = row_idx]$area
+
+  }else{
+
+    if (time(sim) == start(sim)) warning(
+      "standDT does not have an \"area\" column; ",
+      "area assumed to be 1 ha when calculating emissions and product totals.")
+    groupAreas <- 1L
+  }
+
+  # Summarize total emissions
+  #TODO: combined emissions column might not be needed.
+  emissions <- (sim$cbm_vars$flux * groupAreas)[, lapply(.SD, sum), .SDcols = !"row_idx"]
+  emissions[, CO2 := sum(DisturbanceBioCO2Emission, DecayDOMCO2Emission, DisturbanceDOMCO2Emission)]
+  emissions[, CH4 := sum(DisturbanceBioCH4Emission, DisturbanceDOMCH4Emission)]
+  emissions[, CO  := sum(DisturbanceBioCOEmission,  DisturbanceDOMCOEmission)]
+  emissions[, Emissions := sum(CO2, CH4, CO)]
+
+  # Summarize yearly (non-cumulative) products
+  emissions[["Products"]] <- sum(sim$cbm_vars$pools$Products * groupAreas)
+  if (!is.null(sim$emissionsProducts)){
+    emissions[["Products"]] <- emissions[["Products"]] - sum(sim$emissionsProducts[, "Products"])
+  }
+
+  # Add to results
+  sim$emissionsProducts <- rbind(
+    sim$emissionsProducts,
+    cbind(simYear = time(sim), emissions[, .SD, .SDcols = unique(
+      c("Products", "Emissions", "CO2", "CH4", "CO", P(sim)$emissionsProductsCols))]))
 
 
   ## RETURN SIMLIST -----
