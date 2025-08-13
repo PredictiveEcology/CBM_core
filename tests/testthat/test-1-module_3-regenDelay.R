@@ -86,11 +86,10 @@ test_that("Module: with regeneration delay", {
   expect_s4_class(simTest, "simList")
 
   # Check result
-  expect_equal(subset(simTest$cbmPools, cohortGroupID == min(cohortGroupID))$age, c(1, 2, 3))
-  expect_equal(subset(simTest$cbmPools, cohortGroupID == max(cohortGroupID))$age, c(0, 0, 1))
-  expect_true(all(
-    subset(simTest$NPP, cohortGroupID == 2)$NPP < subset(simTest$NPP, cohortGroupID == 1)$NPP
-  ))
+  expect_equal(nrow(simTest$cbm_vars$state), 2)
+  expect_equal(simTest$cbm_vars$state$age[[1]], 3)
+  expect_equal(simTest$cbm_vars$state$age[[2]], 1)
+  expect_gt(simTest$cbm_vars$pools$Merch[[1]], simTest$cbm_vars$pools$Merch[[2]])
 
 
   ## Test: regeneration delay set by parameter ----
@@ -118,15 +117,9 @@ test_that("Module: with regeneration delay", {
   expect_s4_class(simTestParam, "simList")
 
   # Check result
-  expect_equal(simTestParam$cbmPools$age, c(0, 0, 1))
-  expect_equal(
-    simTestParam$cbmPools[, .SD, .SDcols = !c("cohortGroupID", "N")],
-    subset(simTest$cbmPools, cohortGroupID == max(cohortGroupID))[, .SD, .SDcols = !c("cohortGroupID", "N")],
-    check.attributes = FALSE)
-  expect_equal(
-    simTestParam$NPP[, .SD, .SDcols = !c("cohortGroupID", "N")],
-    subset(simTest$NPP, cohortGroupID == max(cohortGroupID))[, .SD, .SDcols = !c("cohortGroupID", "N")],
-    check.attributes = FALSE)
+  expect_equal(nrow(simTestParam$cbm_vars$state), 1)
+  expect_equal(simTestParam$cbm_vars$state$age, 1)
+  expect_equal(simTestParam$cbm_vars$pools[, -1], simTest$cbm_vars$pools[2, -1])
 
 })
 
