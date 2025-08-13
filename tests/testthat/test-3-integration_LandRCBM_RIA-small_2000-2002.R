@@ -150,8 +150,7 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
   expect_equal(head(simTest$cbm_vars$state$species, 5), c(31, 16, 31, 16, 31))
   # spatial unit id is correct
   expect_true(all(simTest$cbm_vars$state$spatial_unit_id == 42))
-  # area is correct
-  expect_true(all(simTest$cbm_vars$state$area == 1L))
+
   # checks for "active" cohorts
   with(
     list(

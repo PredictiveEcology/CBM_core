@@ -571,6 +571,19 @@ annual_carbonDynamics <- function(sim) {
   }
   rm(row_idx)
 
+  # Set total cohort group area in cbm_vars$state table
+  if ("area" %in% names(sim$standDT)){
+
+    groupAreas <- data.table::merge.data.table(
+      sim$cbm_vars$key, sim$standDT, by = "pixelIndex")[
+        , .(area = sum(area) / 10000), by = row_idx]
+    data.table::setkey(groupAreas, row_idx)
+    sim$cbm_vars$state$area <- groupAreas$area
+
+  }else if (time(sim) == start(sim)) warning(
+    "standDT does not have an \"area\" column; ",
+    "area assumed to be 1 ha when calculating emissions and product totals.")
+
 
   ## ASSEMBLE OUTPUTS -----
 
@@ -618,31 +631,16 @@ annual_carbonDynamics <- function(sim) {
   ##are yearly (question for Scott or we found out by mapping the Python
   ##functions ourselves)
 
-  # Get pixel group areas
-  if ("area" %in% names(sim$standDT)){
-
-    groupAreas <- data.table::merge.data.table(
-      sim$cbm_vars$key, sim$standDT, by = "pixelIndex")[
-        , .(area = sum(area) / 10000), by = row_idx][order(row_idx)]$area
-
-  }else{
-
-    if (time(sim) == start(sim)) warning(
-      "standDT does not have an \"area\" column; ",
-      "area assumed to be 1 ha when calculating emissions and product totals.")
-    groupAreas <- 1L
-  }
-
   # Summarize total emissions
   #TODO: combined emissions column might not be needed.
-  emissions <- (sim$cbm_vars$flux * groupAreas)[, lapply(.SD, sum), .SDcols = !"row_idx"]
+  emissions <- (sim$cbm_vars$flux * sim$cbm_vars$state$area)[, lapply(.SD, sum), .SDcols = !"row_idx"]
   emissions[, CO2 := sum(DisturbanceBioCO2Emission, DecayDOMCO2Emission, DisturbanceDOMCO2Emission)]
   emissions[, CH4 := sum(DisturbanceBioCH4Emission, DisturbanceDOMCH4Emission)]
   emissions[, CO  := sum(DisturbanceBioCOEmission,  DisturbanceDOMCOEmission)]
   emissions[, Emissions := sum(CO2, CH4, CO)]
 
   # Summarize yearly (non-cumulative) products
-  emissions[["Products"]] <- sum(sim$cbm_vars$pools$Products * groupAreas)
+  emissions[["Products"]] <- sum(sim$cbm_vars$pools$Products * sim$cbm_vars$state$area)
   if (!is.null(sim$emissionsProducts)){
     emissions[["Products"]] <- emissions[["Products"]] - sum(sim$emissionsProducts[, "Products"])
   }
