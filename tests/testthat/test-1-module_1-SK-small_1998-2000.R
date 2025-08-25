@@ -86,6 +86,14 @@ test_that("Module: SK-small 1998-2000", {
 
   ## Check outputs ----
 
+  # emissionsProducts
+  expect_true(!is.null(simTest$emissionsProducts))
+  expect_equal(
+    data.table::as.data.table(simTest$emissionsProducts),
+    data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/valid", "emissionsProducts.csv"))[
+      , .(simYear = year, Products, Emissions, CO2, CH4, CO)],
+    check.attributes = FALSE)
+
   # # spinupResult ## TEMPORARY: Not currently being saved.
   # expect_true(!is.null(simTest$spinupResult))
   # expect_equal(
@@ -95,27 +103,33 @@ test_that("Module: SK-small 1998-2000", {
 
   # cbmPools
   expect_true(!is.null(simTest$cbmPools))
-  expect_equal(
-    simTest$cbmPools,
-    data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/valid", "cbmPools.csv"))[
-      , .SD, .SDcols = names(simTest$cbmPools)],
-    check.attributes = FALSE)
+  for (year in times$start:times$end){
+    expect_equal(
+      subset(simTest$cbmPools, simYear == year)[, .(row_idx = cohortGroupID, N)][order(row_idx)],
+      qs::qread(file.path(spadesTestPaths$testdata, "SK-small/valid/cbm_vars", paste0(year, "_key.qs")))[, .N, by = row_idx][order(row_idx)],
+      check.attributes = FALSE)
+    expect_equal(
+      subset(simTest$cbmPools, simYear == year)[, -c("simYear", "cohortGroupID", "N", "age")],
+      qs::qread(file.path(spadesTestPaths$testdata, "SK-small/valid/cbm_vars", paste0(year, "_pools.qs")))[, -c("row_idx", "Products")],
+      check.attributes = FALSE)
+  }
 
   # NPP
   expect_true(!is.null(simTest$NPP))
-  expect_equal(
-    simTest$NPP,
-    data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/valid", "NPP.csv"))[
-      , .SD, .SDcols = names(simTest$NPP)],
-    check.attributes = FALSE)
-
-  # emissionsProducts
-  expect_true(!is.null(simTest$emissionsProducts))
-  expect_equal(
-    data.table::as.data.table(simTest$emissionsProducts),
-    data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/valid", "emissionsProducts.csv"))[
-      , .SD, .SDcols = colnames(simTest$emissionsProducts)],
-    check.attributes = FALSE)
+  for (year in times$start:times$end){
+    expect_equal(
+      subset(simTest$NPP, simYear == year)[, .(row_idx = cohortGroupID, N)][order(row_idx)],
+      qs::qread(file.path(spadesTestPaths$testdata, "SK-small/valid/cbm_vars", paste0(year, "_key.qs")))[, .N, by = row_idx][order(row_idx)],
+      check.attributes = FALSE)
+    expect_equal(
+      subset(simTest$NPP, simYear == year)[, .(row_idx = cohortGroupID, NPP)],
+      qs::qread(file.path(spadesTestPaths$testdata, "SK-small/valid/cbm_vars", paste0(year, "_flux.qs")))[, .(
+        NPP = sum(DeltaBiomass_AG, DeltaBiomass_BG,
+                  TurnoverMerchLitterInput, TurnoverFolLitterInput, TurnoverOthLitterInput,
+                  TurnoverCoarseLitterInput, TurnoverFineLitterInput)
+      ), by = row_idx],
+      check.attributes = FALSE)
+  }
 
   # Cohort data
   ## There should always be the same number of total cohort groups.

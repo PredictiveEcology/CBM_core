@@ -63,6 +63,14 @@ test_that("Module: SK 1985-2011", {
 
   ## Check outputs ----
 
+  # emissionsProducts
+  expect_true(!is.null(simTest$emissionsProducts))
+  expect_equal(
+    data.table::as.data.table(simTest$emissionsProducts),
+    data.table::fread(file.path(spadesTestPaths$testdata, "SK/valid", "emissionsProducts.csv"))[
+      , .(simYear = year, Products, Emissions, CO2, CH4, CO)],
+    check.attributes = FALSE)
+
   # # spinupResult ## TEMPORARY: Not currently being saved.
   # expect_true(!is.null(simTest$spinupResult))
 
@@ -72,16 +80,8 @@ test_that("Module: SK 1985-2011", {
   # NPP
   expect_true(!is.null(simTest$NPP))
   expect_equal(
-    simTest$NPP[, (list(NPP = sum(NPP * N))), by = "simYear"],
-    data.table::fread(file.path(spadesTestPaths$testdata, "SK/valid", "NPP_sumByYear.csv")),
-    check.attributes = FALSE)
-
-  # emissionsProducts
-  expect_true(!is.null(simTest$emissionsProducts))
-  expect_equal(
-    data.table::as.data.table(simTest$emissionsProducts),
-    data.table::fread(file.path(spadesTestPaths$testdata, "SK/valid", "emissionsProducts.csv"))[
-      , .SD, .SDcols = colnames(simTest$emissionsProducts)],
+    simTest$NPP[, .(NPP = sum(NPP * N)), by = "simYear"][, .(year = simYear, NPP)],
+    data.table::fread(file.path(spadesTestPaths$testdata, "SK/valid", "NPP.csv")),
     check.attributes = FALSE)
 
   # Cohort data
