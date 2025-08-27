@@ -4,36 +4,29 @@ if (!testthat::is_testing()) source(testthat::test_path("setup.R"))
 test_that("Multi module: RIA-small with LandR 2000-2002", {
 
   ## Run simInit and spades ----
-  # Set times
-  times <- list(start = 2000, end = 2021)
-
-  # Set project path
-  projectPath <- file.path(spadesTestPaths$temp$projects, "integration_LandRCBM_RIA-small_2000-2002")
-  dir.create(projectPath)
-  withr::local_dir(projectPath)
-
-  # Set Github repo branch
-  if (!nzchar(Sys.getenv("BRANCH_NAME"))) withr::local_envvar(BRANCH_NAME = "development")
 
   # Set up project
+  projectName <- "integration_LandRCBM_RIA-small_2000-2002"
+  times       <- list(start = 2000, end = 2021)
+
   simInitInput <- SpaDEStestMuffleOutput(
 
     SpaDES.project::setupProject(
 
       modules = c(
-        paste0("PredictiveEcology/Biomass_core@", Sys.getenv("BRANCH_NAME")),
+        paste0("PredictiveEcology/Biomass_core@", Sys.getenv("BRANCH_NAME", "development")),
         "PredictiveEcology/LandRCBM_split3pools@main",
         "CBM_core"
       ),
 
       times   = times,
       paths   = list(
-        projectPath = projectPath,
+        projectPath = spadesTestPaths$projectPath,
         modulePath  = spadesTestPaths$temp$modules,
         packagePath = spadesTestPaths$packagePath,
         inputPath   = spadesTestPaths$inputPath,
         cachePath   = spadesTestPaths$cachePath,
-        outputPath  = file.path(projectPath, "outputs")
+        outputPath  = file.path(spadesTestPaths$temp$outputs, projectName)
       ),
 
       require = c("terra", "reproducible"),

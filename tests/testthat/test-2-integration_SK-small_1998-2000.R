@@ -5,38 +5,30 @@ test_that("Multi module: SK-small 1998-2000", {
 
   ## Run simInit and spades ----
 
-  # Set times
-  times <- list(start = 1998, end = 2000)
-
-  # Set project path
-  projectPath <- file.path(spadesTestPaths$temp$projects, "integration_SK-small_1998-2000")
-  dir.create(projectPath)
-  withr::local_dir(projectPath)
-
-  # Set Github repo branch
-  if (!nzchar(Sys.getenv("BRANCH_NAME"))) withr::local_envvar(BRANCH_NAME = "development")
-
   # Set up project
+  projectName <- "integration_SK-small_1998-2000"
+  times       <- list(start = 1998, end = 2000)
+
   simInitInput <- SpaDEStestMuffleOutput(
 
     SpaDES.project::setupProject(
 
       modules = c(
-        paste0("PredictiveEcology/CBM_defaults@",       Sys.getenv("BRANCH_NAME")),
-        paste0("PredictiveEcology/CBM_dataPrep_SK@",    Sys.getenv("BRANCH_NAME")),
-        paste0("PredictiveEcology/CBM_dataPrep@",       Sys.getenv("BRANCH_NAME")),
-        paste0("PredictiveEcology/CBM_vol2biomass_SK@", Sys.getenv("BRANCH_NAME")),
+        paste0("PredictiveEcology/CBM_defaults@",       Sys.getenv("BRANCH_NAME", "development")),
+        paste0("PredictiveEcology/CBM_dataPrep_SK@",    Sys.getenv("BRANCH_NAME", "development")),
+        paste0("PredictiveEcology/CBM_dataPrep@",       Sys.getenv("BRANCH_NAME", "development")),
+        paste0("PredictiveEcology/CBM_vol2biomass_SK@", Sys.getenv("BRANCH_NAME", "development")),
         "CBM_core"
       ),
 
       times   = times,
       paths   = list(
-        projectPath = projectPath,
+        projectPath = spadesTestPaths$projectPath,
         modulePath  = spadesTestPaths$temp$modules,
         packagePath = spadesTestPaths$packagePath,
         inputPath   = spadesTestPaths$inputPath,
         cachePath   = spadesTestPaths$cachePath,
-        outputPath  = file.path(projectPath, "outputs")
+        outputPath  = file.path(spadesTestPaths$temp$outputs, projectName)
       ),
       params = list(CBM_core = list(.plot = FALSE)),
 

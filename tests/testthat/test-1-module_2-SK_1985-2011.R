@@ -5,15 +5,10 @@ test_that("Module: SK 1985-2011", {
 
   ## Run simInit and spades ----
 
-  # Set times
-  times <- list(start = 1985, end = 2011)
-
-  # Set project path
-  projectPath <- file.path(spadesTestPaths$temp$projects, "module_SK_1985-2011")
-  dir.create(projectPath)
-  withr::local_dir(projectPath)
-
   # Set up project
+  projectName <- "module_SK_1985-2011"
+  times       <- list(start = 1985, end = 2011)
+
   simInitInput <- SpaDEStestMuffleOutput(
 
     SpaDES.project::setupProject(
@@ -21,12 +16,12 @@ test_that("Module: SK 1985-2011", {
       modules = "CBM_core",
       times   = times,
       paths   = list(
-        projectPath = projectPath,
+        projectPath = spadesTestPaths$projectPath,
         modulePath  = spadesTestPaths$modulePath,
         packagePath = spadesTestPaths$packagePath,
         inputPath   = spadesTestPaths$inputPath,
         cachePath   = spadesTestPaths$cachePath,
-        outputPath  = file.path(projectPath, "outputs")
+        outputPath  = file.path(spadesTestPaths$temp$outputs, projectName)
       ),
       params = list(CBM_core = list(.plot = FALSE)),
 

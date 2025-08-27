@@ -5,15 +5,10 @@ test_that("Module: with regeneration delay", {
 
   ## Test: regeneration delay set by cohortDT column ----
 
-  # Set times
-  times <- list(start = 2000, end = 2002)
-
-  # Set project path
-  projectPath <- file.path(spadesTestPaths$temp$projects, "module_regenDelayCol")
-  dir.create(projectPath)
-  withr::local_dir(projectPath)
-
   # Set up project
+  projectName <- "module_regenDelayCol"
+  times       <- list(start = 2000, end = 2002)
+
   simInitInput <- SpaDEStestMuffleOutput(
 
     SpaDES.project::setupProject(
@@ -21,12 +16,12 @@ test_that("Module: with regeneration delay", {
       modules = "CBM_core",
       times   = times,
       paths   = list(
-        projectPath = projectPath,
+        projectPath = spadesTestPaths$projectPath,
         modulePath  = spadesTestPaths$modulePath,
         packagePath = spadesTestPaths$packagePath,
         inputPath   = spadesTestPaths$inputPath,
         cachePath   = spadesTestPaths$cachePath,
-        outputPath  = file.path(projectPath, "outputs")
+        outputPath  = file.path(spadesTestPaths$temp$outputs, projectName)
       ),
       params = list(CBM_core = list(.plot = FALSE)),
 
@@ -93,11 +88,6 @@ test_that("Module: with regeneration delay", {
 
 
   ## Test: regeneration delay set by parameter ----
-
-  # Set project path
-  projectPath <- file.path(spadesTestPaths$temp$projects, "module_regenDelayParam")
-  dir.create(projectPath)
-  withr::local_dir(projectPath)
 
   # Set up project
   simInitInputParam <- simInitInput
