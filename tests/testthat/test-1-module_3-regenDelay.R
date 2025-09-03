@@ -25,11 +25,6 @@ test_that("Module: with regeneration delay", {
       ),
       params = list(CBM_core = list(.plot = FALSE)),
 
-      outputs = as.data.frame(expand.grid(
-        objectName = c("cbmPools", "NPP"),
-        saveTime   = sort(c(times$start, times$start + c(1:(times$end - times$start))))
-      )),
-
       standDT = data.table::data.table(
         pixelIndex      = c(1, 2),
         spatial_unit_id = 28,
