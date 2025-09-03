@@ -23,12 +23,7 @@ test_that("Module: SK-small 1998-2000", {
         cachePath   = spadesTestPaths$cachePath,
         outputPath  = file.path(spadesTestPaths$temp$outputs, projectName)
       ),
-      params = list(CBM_core = list(.plot = FALSE)),
-
-      outputs = as.data.frame(expand.grid(
-        objectName = c("cbmPools", "NPP"),
-        saveTime   = sort(c(times$start, times$start + c(1:(times$end - times$start))))
-      )),
+      params = list(CBM_core = list(.saveSpinup = TRUE, .saveAll = TRUE, .plot = FALSE)),
 
       cohortDT          = data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/input", "cohortDT.csv")),
       standDT           = data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/input", "standDT.csv"))[, area := 900],
@@ -86,45 +81,8 @@ test_that("Module: SK-small 1998-2000", {
   expect_equal(
     data.table::as.data.table(simTest$emissionsProducts),
     data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/valid", "emissionsProducts.csv"))[
-      , .(simYear = year, Products, Emissions, CO2, CH4, CO)],
+      , .SD, .SDcols = colnames(simTest$emissionsProducts)],
     check.attributes = FALSE)
-
-  # # spinupResult ## TEMPORARY: Not currently being saved.
-  # expect_true(!is.null(simTest$spinupResult))
-  # expect_equal(
-  #   data.table::as.data.table(simTest$spinupResult$output$pools),
-  #   data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/valid", "spinupResult.csv")),
-  #   check.attributes = FALSE)
-
-  # cbmPools
-  expect_true(!is.null(simTest$cbmPools))
-  for (year in times$start:times$end){
-    expect_equal(
-      subset(simTest$cbmPools, simYear == year)[, .(row_idx = cohortGroupID, N)][order(row_idx)],
-      qs::qread(file.path(spadesTestPaths$testdata, "SK-small/valid/cbm_vars", paste0(year, "_key.qs")))[, .N, by = row_idx][order(row_idx)],
-      check.attributes = FALSE)
-    expect_equal(
-      subset(simTest$cbmPools, simYear == year)[, -c("simYear", "cohortGroupID", "N", "age")],
-      qs::qread(file.path(spadesTestPaths$testdata, "SK-small/valid/cbm_vars", paste0(year, "_pools.qs")))[, -c("row_idx", "Products")],
-      check.attributes = FALSE)
-  }
-
-  # NPP
-  expect_true(!is.null(simTest$NPP))
-  for (year in times$start:times$end){
-    expect_equal(
-      subset(simTest$NPP, simYear == year)[, .(row_idx = cohortGroupID, N)][order(row_idx)],
-      qs::qread(file.path(spadesTestPaths$testdata, "SK-small/valid/cbm_vars", paste0(year, "_key.qs")))[, .N, by = row_idx][order(row_idx)],
-      check.attributes = FALSE)
-    expect_equal(
-      subset(simTest$NPP, simYear == year)[, .(row_idx = cohortGroupID, NPP)],
-      qs::qread(file.path(spadesTestPaths$testdata, "SK-small/valid/cbm_vars", paste0(year, "_flux.qs")))[, .(
-        NPP = sum(DeltaBiomass_AG, DeltaBiomass_BG,
-                  TurnoverMerchLitterInput, TurnoverFolLitterInput, TurnoverOthLitterInput,
-                  TurnoverCoarseLitterInput, TurnoverFineLitterInput)
-      ), by = row_idx],
-      check.attributes = FALSE)
-  }
 
   # Cohort data
   ## There should always be the same number of total cohort groups.
@@ -138,6 +96,22 @@ test_that("Module: SK-small 1998-2000", {
   expect_equal(nrow(simTest$cbm_vars$flux),                  43)
   expect_equal(nrow(simTest$cbm_vars$pool),                  43)
 
+  # Check saved data
+  outDataDir   <- file.path(simTest$spadesCBMdb, "data")
+  validDataDir <- file.path(spadesTestPaths$testdata, "SK-small/valid/cbm_vars")
+
+  for (year in times$start:times$end){
+    expect_equal(
+      qs::qread(file.path(outDataDir,   paste0(year, "_key.qs")))[, .(cohortID, pixelIndex, row_idx)],
+      qs::qread(file.path(validDataDir, paste0(year, "_key.qs")))[, .(cohortID, pixelIndex, row_idx)]
+    )
+    for (table in c("parameters", "state", "flux", "pools")){
+      expect_equal(
+        qs::qread(file.path(outDataDir,   paste0(year, "_", table, ".qs"))),
+        qs::qread(file.path(validDataDir, paste0(year, "_", table, ".qs")))
+      )
+    }
+  }
 })
 
 

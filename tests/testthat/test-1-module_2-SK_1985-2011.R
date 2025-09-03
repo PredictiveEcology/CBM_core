@@ -25,11 +25,6 @@ test_that("Module: SK 1985-2011", {
       ),
       params = list(CBM_core = list(.plot = FALSE)),
 
-      outputs = as.data.frame(expand.grid(
-        objectName = c("cbmPools", "NPP"),
-        saveTime   = sort(c(times$start, times$start + c(1:(times$end - times$start))))
-      )),
-
       cohortDT          = data.table::fread(file.path(spadesTestPaths$testdata, "SK/input", "cohortDT.csv"))[, ageSpinup := sapply(age, max, 3)],
       standDT           = data.table::fread(file.path(spadesTestPaths$testdata, "SK/input", "standDT.csv"))[, area := 900],
       disturbanceEvents = file.path(spadesTestPaths$testdata, "SK/input", "disturbanceEvents.csv") |> data.table::fread(),
@@ -63,20 +58,7 @@ test_that("Module: SK 1985-2011", {
   expect_equal(
     data.table::as.data.table(simTest$emissionsProducts),
     data.table::fread(file.path(spadesTestPaths$testdata, "SK/valid", "emissionsProducts.csv"))[
-      , .(simYear = year, Products, Emissions, CO2, CH4, CO)],
-    check.attributes = FALSE)
-
-  # # spinupResult ## TEMPORARY: Not currently being saved.
-  # expect_true(!is.null(simTest$spinupResult))
-
-  # cbmPools
-  expect_true(!is.null(simTest$cbmPools))
-
-  # NPP
-  expect_true(!is.null(simTest$NPP))
-  expect_equal(
-    simTest$NPP[, .(NPP = sum(NPP * N)), by = "simYear"][, .(year = simYear, NPP)],
-    data.table::fread(file.path(spadesTestPaths$testdata, "SK/valid", "NPP.csv")),
+      , .SD, .SDcols = colnames(simTest$emissionsProducts)],
     check.attributes = FALSE)
 
   # Cohort data
@@ -105,6 +87,22 @@ test_that("Module: SK 1985-2011", {
       row_idx %in% subset(simTest$cbm_vars$key, pixelIndex %in% pixelSPUs$`28`)$row_idx
     )$mean_annual_temperature,
     simTest$spinupSQL[id == 28,]$mean_annual_temperature)
+
+  # Check saved data
+  testNPP <- data.table::rbindlist(lapply(times$start:times$end, function(year){
+    merge(
+      qs::qread(file.path(simTest$spadesCBMdb, "data", paste0(year, "_key.qs"))),
+      qs::qread(file.path(simTest$spadesCBMdb, "data", paste0(year, "_flux.qs"))),
+      by = "row_idx")[, .(
+        year = year,
+        NPP = sum(DeltaBiomass_AG, DeltaBiomass_BG,
+                  TurnoverMerchLitterInput, TurnoverFolLitterInput, TurnoverOthLitterInput,
+                  TurnoverCoarseLitterInput, TurnoverFineLitterInput)
+      )]
+  }))
+  expect_equal(
+    testNPP,
+    data.table::fread(file.path(spadesTestPaths$testdata, "SK/valid", "NPP.csv")))
 })
 
 

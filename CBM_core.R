@@ -14,8 +14,8 @@ defineModule(sim, list(
   citation = list("citation.bib"),
   documentation = list("README.txt", "CBM_core.Rmd"),
   reqdPkgs = list(
-    "data.table", "reticulate",
-    "PredictiveEcology/CBMutils@development (>=2.0.3.0013)",
+    "data.table", "reticulate", "qs",
+    "PredictiveEcology/CBMutils@development (>=2.1)",
     "PredictiveEcology/libcbmr"
   ),
   parameters = rbind(
@@ -48,10 +48,12 @@ defineModule(sim, list(
     defineParameter(
       "skipPrepareCBMvars", "logical", default = FALSE, NA, NA,
       desc = "Whether the inputs for the cbm annual events are prepared by another module.E.g., LandRCBM_split3pools."),
-    defineParameter(".plot", "logical", TRUE, NA, NA, "Plot simulation results"),
-    defineParameter(".saveInitialTime", "numeric", NA,         NA, NA, "Simulation time when the first save event should occur"),
-    defineParameter(".saveInterval",    "numeric", NA,         NA, NA, "Time interval between save events"),
-    defineParameter(".useCache", "logical", FALSE, NA, NA, "Use module caching")
+    defineParameter(".saveInitial",  "numeric", start(sim),  NA, NA, "Simulation year when the first save event should occur"),
+    defineParameter(".saveInterval", "numeric", 1,           NA, NA, "Time interval between save events"),
+    defineParameter(".saveSpinup",   "logical", FALSE,       NA, NA, "Save spinup results"),
+    defineParameter(".saveAll",      "logical", FALSE,       NA, NA, "Save all available data"),
+    defineParameter(".plot",         "logical", TRUE,        NA, NA, "Plot simulation results"),
+    defineParameter(".useCache",     "logical", FALSE,       NA, NA, "Cache module events")
   ),
   inputObjects = bindrows(
     expectsInput(
@@ -138,11 +140,8 @@ defineModule(sim, list(
         "Emissions and product totals for each simulation year.",
         "Choose which columns to return with the 'emissionsProductsCols' parameter.")),
     createsOutput(
-      objectName = "cbmPools", objectClass = "data.frame",
-      desc = "Cohort group ages and pools"),
-    createsOutput(
-      objectName = "NPP", objectClass = "data.table",
-      desc = "Cohort group NPP"),
+      objectName = "spadesCBMdb", objectClass = "character",
+      desc = "Path to SpaDES CBM database directory containing simulation data"),
     createsOutput(
       objectName = "cbm_vars", objectClass = "list",
       desc = paste(
@@ -167,8 +166,10 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
       sim <- scheduleEvent(sim, start(sim), "CBM_core", "annual_preprocessing", eventPriority = 8)
       sim <- scheduleEvent(sim, start(sim), "CBM_core", "annual_carbonDynamics", eventPriority = 8.5)
 
-      # Accumulate results
-      sim <- scheduleEvent(sim, end(sim), "CBM_core", "accumulateResults", eventPriority = 11)
+      # Schedule saving
+      if (!is.null(P(sim)$.saveInitial)){
+        sim <- scheduleEvent(sim, P(sim)$.saveInitial, "CBM_core", "save", eventPriority = 8.5)
+      }
 
       # Schedule plotting
       if (P(sim)$.plot) sim <- scheduleEvent(sim, end(sim), "CBM_core", "plot", eventPriority = 12)
@@ -177,6 +178,13 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
     spinup = {
 
       sim <- spinup(sim)
+
+      if (P(sim)$.saveSpinup){
+        message("Saving spinup results to SpaDES CBM database")
+        CBMutils::simCBMdbWrite(
+          sim, year = 0,
+          parameters = P(sim)$.saveAll, state = P(sim)$.saveAll, flux = FALSE)
+      }
     },
 
     annual_preprocessing = {
@@ -190,95 +198,76 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
     annual_carbonDynamics = {
 
       sim <- annual_carbonDynamics(sim)
+
       sim <- scheduleEvent(sim, time(sim) + 1, "CBM_core", "annual_carbonDynamics", eventPriority = 8.5)
     },
 
-    accumulateResults = {
-      outputDetails <- as.data.table(outputs(sim))
-      objsToLoad <- c("cbmPools", "NPP")
-      for (objToLoad in objsToLoad) {
-        if (any(outputDetails$objectName == objToLoad)) {
-          out <- lapply(outputDetails[objectName == objToLoad & saved == TRUE]$file, function(f) {
-            readRDS(f)
-          })
-          sim[[objToLoad]] <- rbindlist(out)
-        }
-      }
+    save = {
+
+      message("Saving annual results to SpaDES CBM database")
+      CBMutils::simCBMdbWrite(sim, parameters = P(sim)$.saveAll, state = P(sim)$.saveAll)
+
+      sim <- scheduleEvent(sim, time(sim) + P(sim)$.saveInterval, "CBM_core", "save", eventPriority = 8.5)
     },
 
     plot = {
-      figPath <- file.path(outputPath(sim), "CBM_core_figures")
-      if (time(sim) != start(sim)) {
-        cPlot <- carbonOutPlot(
-          emissionsProducts = sim$emissionsProducts)
-        SpaDES.core::Plots(cPlot,
-                           filename = "carbonOutPlot",
-                           path = figPath,
-                           ggsaveArgs = list(width = 14, height = 5, units = "in", dpi = 300),
-                           types = "png")
 
-        bPlot <- barPlot(
-          cbmPools = sim$cbmPools)
+      figPath <- file.path(outputPath(sim), "CBM_core_figures")
+
+      cPlot <- CBMutils::simPlotEmissionsProducts(sim)
+      SpaDES.core::Plots(cPlot,
+                         filename = "emissionsProducts",
+                         path = figPath,
+                         ggsaveArgs = list(width = 14, height = 5, units = "in", dpi = 300),
+                         types = "png")
+
+      if (!is.null(P(sim)$.saveInitial)){
+
+        saveYears <- seq(from = as.numeric(P(sim)$.saveInitial),
+                         to   = as.numeric(time(sim)),
+                         by   = as.numeric(P(sim)$.saveInterval))
+
+        bPlot <- CBMutils::simPlotPoolProportions(sim, years = saveYears)
         SpaDES.core::Plots(bPlot,
-                           filename = "barPlot",
+                           filename = "poolProportions",
                            path = figPath,
                            ggsaveArgs = list(width = 7, height = 5, units = "in", dpi = 300),
                            types = "png")
 
         if (!is.null(sim$masterRaster)){
-          nPlotStart <- NPPplot(
-            NPP = sim$NPP,
-            year = start(sim),
-            masterRaster = sim$masterRaster,
-            cohortGroupKeep = sim$cbm_vars$key)
+
+          nPlotStart <- CBMutils::simMapNPP(sim, year = saveYears[[1]])
           SpaDES.core::Plots(nPlotStart,
-                             filename = "NPPStart",
+                             filename = paste0("NPP-", saveYears[[1]]),
                              path = figPath,
                              ggsaveArgs = list(width = 7, height = 5, units = "in", dpi = 300),
                              types = "png")
-          nPlotEnd <- NPPplot(
-            NPP = sim$NPP,
-            year = end(sim),
-            masterRaster = sim$masterRaster,
-            cohortGroupKeep = sim$cbm_vars$key)
+
+          nPlotEnd <- CBMutils::simMapNPP(sim, year = saveYears[[length(saveYears)]])
           SpaDES.core::Plots(nPlotEnd,
-                             filename = "NPPEnd",
+                             filename = paste0("NPP-", saveYears[[length(saveYears)]]),
+                             path = figPath,
+                             ggsaveArgs = list(width = 7, height = 5, units = "in", dpi = 300),
+                             types = "png")
+        }
+
+        if (!is.null(sim$masterRaster)){
+
+          sPlotStart <- CBMutils::simMapTotalCarbon(sim, year = saveYears[[1]])
+          SpaDES.core::Plots(sPlotStart,
+                             filename = paste0("totalCarbon-", saveYears[[1]]),
+                             path = figPath,
+                             ggsaveArgs = list(width = 7, height = 5, units = "in", dpi = 300),
+                             types = "png")
+
+          sPlotEnd <- CBMutils::simMapTotalCarbon(sim, year = saveYears[[length(saveYears)]])
+          SpaDES.core::Plots(sPlotEnd,
+                             filename = paste0("totalCarbon-", saveYears[[length(saveYears)]]),
                              path = figPath,
                              ggsaveArgs = list(width = 7, height = 5, units = "in", dpi = 300),
                              types = "png")
         }
       }
-      if (!is.null(sim$masterRaster)){
-        sPlotStart <- spatialPlot(
-          cbmPools = sim$cbmPools,
-          year = start(sim),
-          masterRaster = sim$masterRaster,
-          cohortGroupKeep = sim$cbm_vars$key
-        )
-        SpaDES.core::Plots(sPlotStart,
-                           filename = "TotalCarbonStart",
-                           path = figPath,
-                           ggsaveArgs = list(width = 7, height = 5, units = "in", dpi = 300),
-                           types = "png")
-        sPlotEnd <- spatialPlot(
-          cbmPools = sim$cbmPools,
-          year = end(sim),
-          masterRaster = sim$masterRaster,
-          cohortGroupKeep = sim$cbm_vars$key
-        )
-        SpaDES.core::Plots(sPlotEnd,
-                           filename = "TotalCarbonEnd",
-                           path = figPath,
-                           ggsaveArgs = list(width = 7, height = 5, units = "in", dpi = 300),
-                           types = "png")
-      }
-    },
-
-    savePools = {
-
-      data.table::fwrite(
-        sim$cbmPools[, .SD, .SDcols = c("simYear", "cohortGroupID", "N", "age", sim$pooldef)],
-        file.path(outputPath(sim), "cPoolsPixelYear.csv"))
     },
 
     warning(noEventWarning(sim))
@@ -287,6 +276,14 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
 }
 
 Init <- function(sim){
+
+  # Set SpaDES CBM outputs database path
+  sim$spadesCBMdb <- file.path(outputPath(sim), "spadesCBMdb")
+  if (time(sim) == start(sim)){
+    unlink(sim$spadesCBMdb, recursive = TRUE)
+    if (file.exists(sim$spadesCBMdb)) stop(
+      "Failed to remove existing SpaDES CBM database: ", sim$spadesCBMdb)
+  }
 
   # Set up Python virtual environment
   reticulate::virtualenv_create(
@@ -348,10 +345,6 @@ spinup <- function(sim) {
     default_historical_disturbance_type = P(sim)$default_historical_disturbance_type,
     default_last_pass_disturbance_type  = P(sim)$default_last_pass_disturbance_type
   ) |> Cache()
-
-  # Save cohort group key history
-  sim$cbm_vars$key[, row_idx_prev   := NA_integer_]
-  sim$cbm_vars$key[, row_idx_spinup := row_idx]
 
   # Add regeneration delay to cbm_vars$state table
   data.table::setnames(sim$cbm_vars$state, "delayRegen", "delay", skip_absent = TRUE)
@@ -529,9 +522,6 @@ annual_prepCohortGroups <- function(sim) {
   sim$cbm_vars$parameters[, foliage_inc := annualIncr$foliage_inc]
   sim$cbm_vars$parameters[, other_inc   := annualIncr$other_inc]
 
-  # Set cohort group IDs for current year
-  sim$cbm_vars$key[[as.character(time(sim))]] <- sim$cbm_vars$key$row_idx
-
   # Return simList
   return(invisible(sim))
 }
@@ -587,40 +577,6 @@ annual_carbonDynamics <- function(sim) {
 
   ## ASSEMBLE OUTPUTS -----
 
-  # Set cohort count
-  cohortCount <- sim$cbm_vars$key[, .N, by = row_idx]
-  data.table::setkey(cohortCount, row_idx)
-
-  # Update the final simulation horizon table with all the pools/year/row_idx
-  sim$cbmPools <- cbind(
-    simYear = as.integer(time(sim)),
-    merge(
-      cohortCount,
-      cbind(sim$cbm_vars$state, sim$cbm_vars$pools[,-1]),
-      by = "row_idx")[, .SD, .SDcols = c(names(cohortCount), "age", sim$pooldef)]
-  )
-  data.table::setnames(sim$cbmPools, "row_idx", "cohortGroupID")
-
-  # NPP
-  ## NPP used in building sim$NPP and for plotting
-  NPP <- (
-    sim$cbm_vars$flux$DeltaBiomass_AG
-    + sim$cbm_vars$flux$DeltaBiomass_BG
-    + sim$cbm_vars$flux$TurnoverMerchLitterInput
-    + sim$cbm_vars$flux$TurnoverFolLitterInput
-    + sim$cbm_vars$flux$TurnoverOthLitterInput
-    + sim$cbm_vars$flux$TurnoverCoarseLitterInput
-    + sim$cbm_vars$flux$TurnoverFineLitterInput
-  )
-  sim$NPP <- cbind(
-    simYear = as.integer(time(sim)),
-    merge(
-      cohortCount,
-      data.table::data.table(row_idx = sim$cbm_vars$flux$row_idx, NPP = NPP),
-      by = "row_idx")
-  )
-  data.table::setnames(sim$NPP, "row_idx", "cohortGroupID")
-
   # Summarize yearly emissions and products
   #Note: details of which source and sink pools goes into each of the columns in
   #cbm_vars$flux can be found here:
@@ -630,9 +586,8 @@ annual_carbonDynamics <- function(sim) {
   ##TODO need to track emissions and products. First check that cbm_vars$fluxes
   ##are yearly (question for Scott or we found out by mapping the Python
   ##functions ourselves)
-
-  # Summarize total emissions
   #TODO: combined emissions column might not be needed.
+
   emissions <- (sim$cbm_vars$flux * sim$cbm_vars$state$area)[, lapply(.SD, sum), .SDcols = !"row_idx"]
   emissions[, CO2 := sum(DisturbanceBioCO2Emission, DecayDOMCO2Emission, DisturbanceDOMCO2Emission)]
   emissions[, CH4 := sum(DisturbanceBioCH4Emission, DisturbanceDOMCH4Emission)]
@@ -648,7 +603,7 @@ annual_carbonDynamics <- function(sim) {
   # Add to results
   sim$emissionsProducts <- rbind(
     sim$emissionsProducts,
-    cbind(simYear = time(sim), emissions[, .SD, .SDcols = unique(
+    cbind(year = time(sim), emissions[, .SD, .SDcols = unique(
       c("Products", "Emissions", "CO2", "CH4", "CO", P(sim)$emissionsProductsCols))]))
 
 

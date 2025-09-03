@@ -30,7 +30,7 @@ test_that("Multi module: SK-small 1998-2000", {
         cachePath   = spadesTestPaths$cachePath,
         outputPath  = file.path(spadesTestPaths$temp$outputs, projectName)
       ),
-      params = list(CBM_core = list(.plot = FALSE)),
+      params = list(CBM_core = list(.plot = TRUE)),
 
       require = "terra",
 
@@ -39,12 +39,7 @@ test_that("Multi module: SK-small 1998-2000", {
         res  = 30,
         vals = 0L,
         crs  = "EPSG:3979"
-      ),
-
-      outputs = as.data.frame(expand.grid(
-        objectName = c("cbmPools", "NPP"),
-        saveTime   = sort(c(times$start, times$start + c(1:(times$end - times$start))))
-      ))
+      )
     )
   )
 
@@ -66,13 +61,6 @@ test_that("Multi module: SK-small 1998-2000", {
   ## Check outputs ----
 
   expect_true(!is.null(simTest$emissionsProducts))
-
-  # # spinupResult ## TEMPORARY: Not currently being saved.
-  # expect_true(!is.null(simTest$spinupResult))
-
-  expect_true(!is.null(simTest$cbmPools))
-
-  expect_true(!is.null(simTest$NPP))
 
 })
 

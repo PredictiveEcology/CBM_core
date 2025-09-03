@@ -58,12 +58,6 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
         sppEquiv <- sppEquiv[KNN != "" & LANDIS_traits != ""]
       },
 
-
-      outputs = as.data.frame(expand.grid(
-        objectName = c("cbmPools", "NPP"),
-        saveTime   = sort(c(times$start, times$start + c(1:(times$end - times$start))))
-      )),
-
       # Parameters
       params = list(
         .globals = list(
@@ -110,8 +104,7 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
         setNames(
           rep(times$start:times$end, each = 2),
           rep(c("annual_preprocessing", "annual_carbonDynamics"), length(times$start:times$end))
-        ),
-        "accumulateResults" = times$end
+        )
       )),
     expect_equal(
       completed(simTest)[moduleName == moduleTest, .(eventTime, eventType)],
