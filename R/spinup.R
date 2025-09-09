@@ -50,7 +50,7 @@ cbmExnSpinup <- function(cohortDT, spuMeta, growthMeta, growthIncr,
   cohortGroups[, area := 1L] # 1ha
 
   # Prepare sw_hw column for Python
-  if (is.character(cohortGroups$sw_hw)) cohortGroups[, sw_hw := as.integer(sw_hw == "sw")]
+  if (is.character(cohortGroups$sw_hw)) cohortGroups[, sw_hw := data.table::fifelse(sw_hw == "sw", 0L, 1L)]
 
   # Set column names for Python
   if (colname_species != "species"){

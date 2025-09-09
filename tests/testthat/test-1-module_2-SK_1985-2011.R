@@ -102,7 +102,8 @@ test_that("Module: SK 1985-2011", {
   }))
   expect_equal(
     testNPP,
-    data.table::fread(file.path(spadesTestPaths$testdata, "SK/valid", "NPP.csv")))
+    data.table::fread(file.path(spadesTestPaths$testdata, "SK/valid", "NPP.csv"))
+  )
 })
 
 
