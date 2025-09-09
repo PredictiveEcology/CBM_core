@@ -102,8 +102,8 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
         "init"              = times$start,
         "spinup"            = times$start,
         setNames(
-          rep(times$start:times$end, each = 2),
-          rep(c("annual_preprocessing", "annual_carbonDynamics"), length(times$start:times$end))
+          rep(times$start:times$end, each = 3),
+          rep(c("annual_preprocessing", "annual_carbonDynamics", "save"), length(times$start:times$end))
         )
       )),
     expect_equal(
