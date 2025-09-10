@@ -96,6 +96,13 @@ test_that("Module: SK-small 1998-2000", {
   expect_equal(nrow(simTest$cbm_vars$flux),                  43)
   expect_equal(nrow(simTest$cbm_vars$pool),                  43)
 
+  # Check sw_hw flag
+  cohortSW <- merge(simTest$cohortDT, simTest$gcMeta, by = "gcids") |>
+    merge(simTest$cbm_vars$key[, .(cohortID, row_idx)], by = "cohortID") |>
+    merge(simTest$cbm_vars$state[, .(row_idx, sw_hw)], by = "row_idx")
+  expect_equal(unique(subset(cohortSW, sw_hw.x == "sw")$sw_hw.y), 0)
+  expect_equal(unique(subset(cohortSW, sw_hw.x == "hw")$sw_hw.y), 1)
+
   # Check saved data
   outDataDir   <- file.path(simTest$spadesCBMdb, "data")
   validDataDir <- file.path(spadesTestPaths$testdata, "SK-small/valid/cbm_vars")
