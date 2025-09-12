@@ -48,12 +48,12 @@ defineModule(sim, list(
     defineParameter(
       "skipPrepareCBMvars", "logical", default = FALSE, NA, NA,
       desc = "Whether the inputs for the cbm annual events are prepared by another module.E.g., LandRCBM_split3pools."),
-    defineParameter(".saveInitial",  "numeric", start(sim),  NA, NA, "Simulation year when the first save event should occur"),
-    defineParameter(".saveInterval", "numeric", 1,           NA, NA, "Time interval between save events"),
-    defineParameter(".saveSpinup",   "logical", FALSE,       NA, NA, "Save spinup results"),
-    defineParameter(".saveAll",      "logical", FALSE,       NA, NA, "Save all available data"),
-    defineParameter(".plot",         "logical", TRUE,        NA, NA, "Plot simulation results"),
-    defineParameter(".useCache",     "logical", FALSE,       NA, NA, "Cache module events")
+    defineParameter(".saveInitial",  "numeric", start(sim), NA, NA, "Simulation year when the first save event should occur"),
+    defineParameter(".saveInterval", "numeric", 1,          NA, NA, "Time interval between save events"),
+    defineParameter(".saveSpinup",   "logical", FALSE,      NA, NA, "Save spinup results"),
+    defineParameter(".saveAll",      "logical", FALSE,      NA, NA, "Save all available data"),
+    defineParameter(".plot",         "logical", TRUE,       NA, NA, "Plot simulation results"),
+    defineParameter(".useCache",     "logical", FALSE,      NA, NA, "Cache module events")
   ),
   inputObjects = bindrows(
     expectsInput(
