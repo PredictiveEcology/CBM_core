@@ -44,7 +44,7 @@ cbmExnSpinup <- function(cohortDT, spuMeta, growthMeta, growthIncr,
     data.table::merge.data.table(growthMeta, by = colname_gc,
                                  suffixes = c("", ".y"), all.x = TRUE)
   cohortGroups[, which(grepl("\\.y$", names(cohortGroups))) := NULL]
-  setkey(cohortGroups, row_idx)
+  data.table::setkey(cohortGroups, row_idx)
 
   # Set area to 1ha
   cohortGroups[, area := 1L] # 1ha
