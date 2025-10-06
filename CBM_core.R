@@ -597,12 +597,9 @@ annual_carbonDynamics <- function(sim) {
   #Note: details of which source and sink pools goes into each of the columns in
   #cbm_vars$flux can be found here:
   #https://cat-cfs.github.io/libcbm_py/cbm_exn_custom_ops.html
-  ##TODO double-check with Scott Morken that the cbm_vars$flux are in metric
-  ##tonnes of carbon per ha like the rest of the values produced.
-  ##TODO need to track emissions and products. First check that cbm_vars$fluxes
-  ##are yearly (question for Scott or we found out by mapping the Python
-  ##functions ourselves)
-  #TODO: combined emissions column might not be needed.
+  #cbm_vars$flux are in metric tonnes of carbon per ha like the rest of the
+  #values produced.
+
 
   emissions <- (sim$cbm_vars$flux * sim$cbm_vars$state$area)[, lapply(.SD, sum), .SDcols = !"row_idx"]
   emissions[, CO2 := sum(DisturbanceBioCO2Emission, DecayDOMCO2Emission, DisturbanceDOMCO2Emission)]
