@@ -42,7 +42,7 @@ In [CBM_core](https://github.com/PredictiveEcology/CBM_core.git), the approach d
 ## Module functioning
 
 ### Events
-There are 6 events in CBM_core. Each are run once, except for the `annual` event, which is repeated for each simulation year. 
+There are 6 main events in CBM_core. Each are run once, except for the `annual_X` events, which are repeated for each simulation year. 
 
 #### `Init`
 In this short event, the Python virtual environment is set up. If a suitable version of python is not available, it will be installed using the `reticulate` package. 
@@ -55,7 +55,7 @@ Cohort and stand data is prepared and passed to the [`cbmExnSpinup`](https://git
 The spinup output data and cohort groups are then prepared for use in the `annual` event. 
 
 #### `annual_preprocessing`
-
+This event serves to run 2 smaller events: `annual_prepDisturbances` and `annualprepCohortGroups`. The first reads in and saves the disturbances for the current simulation year for processing in the `annual_carbonDynamics` event. The latter prepares cohort data for the upcoming carbon dynamics processing. It saves old and sets new group IDs for disturbed pixels, clears information about previous disturbances, prepares data for new cohort groups, removes inactive groups, and sets the appropriate growth increments for the current simulation year. 
 
 #### `annual_carbonDynamics`
 This event is where all the carbon transfers are applied for each simulation year. Disturbances are matched to the correct records, and the transfers listed [here](https://predictiveecology.github.io/spadesCBM/index.html#order-of-operations) are applied. Details on transfer rates are found in the [following section, below](https://predictiveecology.github.io/spadesCBM/cbm_core.html#carbon-transfers). While undisturbed cohorts will continue to grow by one time step according to their associated growth curve, disturbed cohorts will only begin growing again after a delay period. This delay is dictated by the `default_delay_regen` parameter of the [CBM_core](https://github.com/PredictiveEcology/CBM_core.git) module, and can be changed by the user. Only growth-related carbon transfers are affected by this delay. By default it is set to 0 years. 
