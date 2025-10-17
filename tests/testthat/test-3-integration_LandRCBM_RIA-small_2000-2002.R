@@ -4,36 +4,29 @@ if (!testthat::is_testing()) source(testthat::test_path("setup.R"))
 test_that("Multi module: RIA-small with LandR 2000-2002", {
 
   ## Run simInit and spades ----
-  # Set times
-  times <- list(start = 2000, end = 2021)
-
-  # Set project path
-  projectPath <- file.path(spadesTestPaths$temp$projects, "integration_LandRCBM_RIA-small_2000-2002")
-  dir.create(projectPath)
-  withr::local_dir(projectPath)
-
-  # Set Github repo branch
-  if (!nzchar(Sys.getenv("BRANCH_NAME"))) withr::local_envvar(BRANCH_NAME = "development")
 
   # Set up project
+  projectName <- "integration_LandRCBM_RIA-small_2000-2002"
+  times       <- list(start = 2000, end = 2021)
+
   simInitInput <- SpaDEStestMuffleOutput(
 
     SpaDES.project::setupProject(
 
       modules = c(
-        paste0("PredictiveEcology/Biomass_core@",    Sys.getenv("BRANCH_NAME")),
-        paste0("DominiqueCaron/LandRCBM_split3pools@run-with-CBM"),
+        paste0("PredictiveEcology/Biomass_core@", Sys.getenv("BRANCH_NAME", "development")),
+        "PredictiveEcology/LandRCBM_split3pools@main",
         "CBM_core"
       ),
 
       times   = times,
       paths   = list(
-        projectPath = projectPath,
+        projectPath = spadesTestPaths$projectPath,
         modulePath  = spadesTestPaths$temp$modules,
         packagePath = spadesTestPaths$packagePath,
         inputPath   = spadesTestPaths$inputPath,
         cachePath   = spadesTestPaths$cachePath,
-        outputPath  = file.path(projectPath, "outputs")
+        outputPath  = file.path(spadesTestPaths$temp$outputs, projectName)
       ),
 
       require = c("terra", "reproducible"),
@@ -65,12 +58,6 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
         sppEquiv <- sppEquiv[KNN != "" & LANDIS_traits != ""]
       },
 
-
-      outputs = as.data.frame(expand.grid(
-        objectName = c("cbmPools", "NPP"),
-        saveTime   = sort(c(times$start, times$start + c(1:(times$end - times$start))))
-      )),
-
       # Parameters
       params = list(
         .globals = list(
@@ -78,6 +65,7 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
           sppEquivCol = 'LandR'
         ),
         CBM_core = list(
+          .plot = FALSE,
           skipCohortGroupHandling = TRUE,
           skipPrepareCBMvars = TRUE
         ))
@@ -114,11 +102,9 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
         "init"              = times$start,
         "spinup"            = times$start,
         setNames(
-          rep(times$start:times$end, each = 2),
-          rep(c("annual_preprocessing", "annual_carbonDynamics"), length(times$star:times$end))
-        ),
-        "accumulateResults" = times$end,
-        "plot"              = times$end
+          rep(times$start:times$end, each = 3),
+          rep(c("annual_preprocessing", "annual_carbonDynamics", "save"), length(times$start:times$end))
+        )
       )),
     expect_equal(
       completed(simTest)[moduleName == moduleTest, .(eventTime, eventType)],
@@ -137,8 +123,7 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
         "annualIncrements",
         "annual_preprocessing",
         "prepareCBMvars",
-        "annual_carbonDynamics",
-        "postAnnualChecks")
+        "annual_carbonDynamics")
     ),
     expect_equal(
       completed(simTest)[eventTime == times$start & eventType %in% expectedEventOrder, eventType],
@@ -151,12 +136,11 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
   expect_equal(head(simTest$cbm_vars$state$species, 5), c(31, 16, 31, 16, 31))
   # spatial unit id is correct
   expect_true(all(simTest$cbm_vars$state$spatial_unit_id == 42))
-  # area is correct
-  expect_true(all(simTest$cbm_vars$state$area == 1L))
+
   # checks for "active" cohorts
   with(
     list(
-      ActiveCohortGroups  = simTest$cohortGroups[gcids != 0, cohortGroupID]
+      ActiveCohortGroups  = simTest$cbm_vars$state[gcids != 0, row_idx]
     ), {
       # "Active" cohorts should match the above ground biomass equal to LandR
       expect_equal(
@@ -172,7 +156,7 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
   # checks for DOM cohorts
   with(
     list(
-      DOMCohortGroups  = simTest$cohortGroups[gcids == 0, cohortGroupID]
+      DOMCohortGroups  = simTest$cbm_vars$state[gcids == 0, row_idx]
     ), {
       # DOM cohort groups have 0 above ground biomass
       expect_true(
@@ -181,7 +165,7 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
       # There can't be more than 1 DOM cohort groups per pixel
       expect_equal(
         length(DOMCohortGroups),
-        nrow(simTest$cohortGroupKeep[cohortGroupID %in% DOMCohortGroups])
+        nrow(simTest$cbm_vars$key[row_idx %in% DOMCohortGroups])
       )
     }
   )

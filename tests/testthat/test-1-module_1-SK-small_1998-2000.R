@@ -5,15 +5,10 @@ test_that("Module: SK-small 1998-2000", {
 
   ## Run simInit and spades ----
 
-  # Set times
-  times <- list(start = 1998, end = 2000)
-
-  # Set project path
-  projectPath <- file.path(spadesTestPaths$temp$projects, "module_SK-small_1998-2000")
-  dir.create(projectPath)
-  withr::local_dir(projectPath)
-
   # Set up project
+  projectName <- "module_SK-small_1998-2000"
+  times       <- list(start = 1998, end = 2000)
+
   simInitInput <- SpaDEStestMuffleOutput(
 
     SpaDES.project::setupProject(
@@ -21,21 +16,17 @@ test_that("Module: SK-small 1998-2000", {
       modules = "CBM_core",
       times   = times,
       paths   = list(
-        projectPath = projectPath,
+        projectPath = spadesTestPaths$projectPath,
         modulePath  = spadesTestPaths$modulePath,
         packagePath = spadesTestPaths$packagePath,
         inputPath   = spadesTestPaths$inputPath,
         cachePath   = spadesTestPaths$cachePath,
-        outputPath  = file.path(projectPath, "outputs")
+        outputPath  = file.path(spadesTestPaths$temp$outputs, projectName)
       ),
+      params = list(CBM_core = list(.saveSpinup = TRUE, .saveAll = TRUE, .plot = FALSE)),
 
-      outputs = as.data.frame(expand.grid(
-        objectName = c("cbmPools", "NPP"),
-        saveTime   = sort(c(times$start, times$start + c(1:(times$end - times$start))))
-      )),
-
-      standDT           = data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/input", "standDT.csv"))[, area := 900],
       cohortDT          = data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/input", "cohortDT.csv")),
+      standDT           = data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/input", "standDT.csv"))[, area := 900],
       disturbanceEvents = file.path(spadesTestPaths$testdata, "SK-small/input", "disturbanceEvents.csv") |> data.table::fread(),
       disturbanceMeta   = file.path(spadesTestPaths$testdata, "SK/input", "disturbanceMeta.csv")   |> data.table::fread(),
       gcMeta            = file.path(spadesTestPaths$testdata, "SK/input", "gcMeta.csv")            |> data.table::fread(),
@@ -60,31 +51,30 @@ test_that("Module: SK-small 1998-2000", {
   expect_s4_class(simTest, "simList")
 
 
+  ## Check inputs ----
+
+  ## Check that input tables are not altered by module.
+  expect_mapequal(
+    simTest$cohortDT,
+    data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/input", "cohortDT.csv")))
+  expect_mapequal(
+    simTest$standDT,
+    data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/input", "standDT.csv"))[, area := 900])
+  expect_mapequal(
+    simTest$disturbanceEvents,
+    data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/input", "disturbanceEvents.csv")))
+  expect_mapequal(
+    simTest$disturbanceMeta,
+    data.table::fread(file.path(spadesTestPaths$testdata, "SK/input", "disturbanceMeta.csv")))
+  expect_mapequal(
+    simTest$gcMeta,
+    data.table::fread(file.path(spadesTestPaths$testdata, "SK/input", "gcMeta.csv")))
+  expect_mapequal(
+    simTest$growth_increments,
+    data.table::fread(file.path(spadesTestPaths$testdata, "SK/input", "growth_increments.csv")))
+
+
   ## Check outputs ----
-
-  # spinupResult
-  ## There should always be the same number of spinup cohort groups.
-  expect_true(!is.null(simTest$spinupResult))
-  expect_equal(
-    data.table::as.data.table(simTest$spinupResult$output$pools),
-    data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/valid", "spinupResult.csv")),
-    check.attributes = FALSE)
-
-  # cbmPools
-  expect_true(!is.null(simTest$cbmPools))
-  expect_equal(
-    simTest$cbmPools,
-    data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/valid", "cbmPools.csv"))[
-      , .SD, .SDcols = names(simTest$cbmPools)],
-    check.attributes = FALSE)
-
-  # NPP
-  expect_true(!is.null(simTest$NPP))
-  expect_equal(
-    simTest$NPP,
-    data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/valid", "NPP.csv"))[
-      , .SD, .SDcols = names(simTest$NPP)],
-    check.attributes = FALSE)
 
   # emissionsProducts
   expect_true(!is.null(simTest$emissionsProducts))
@@ -94,18 +84,41 @@ test_that("Module: SK-small 1998-2000", {
       , .SD, .SDcols = colnames(simTest$emissionsProducts)],
     check.attributes = FALSE)
 
-  # cohortGroups
+  # Cohort data
   ## There should always be the same number of total cohort groups.
-  expect_true(!is.null(simTest$cohortGroups))
-  expect_equal(nrow(simTest$cohortGroups), 43)
+  expect_true(!is.null(simTest$cbm_vars$key))
+  expect_identical(simTest$cbm_vars$key$cohortID,   simTest$cohortDT$cohortID)
+  expect_identical(simTest$cbm_vars$key$pixelIndex, simTest$cohortDT$pixelIndex)
+  expect_equal(max(simTest$cbm_vars$key$row_idx),            43)
+  expect_equal(length(unique(simTest$cbm_vars$key$row_idx)), 43)
+  expect_equal(nrow(simTest$cbm_vars$parameters),            43)
+  expect_equal(nrow(simTest$cbm_vars$state),                 43)
+  expect_equal(nrow(simTest$cbm_vars$flux),                  43)
+  expect_equal(nrow(simTest$cbm_vars$pool),                  43)
 
-  # cohortGroupKeep
-  expect_true(!is.null(simTest$cohortGroupKeep))
-  expect_identical(simTest$cohortGroupKeep$cohortID,   simTest$cohortDT$cohortID)
-  expect_identical(simTest$cohortGroupKeep$pixelIndex, simTest$cohortDT$pixelIndex)
-  expect_true(all(simTest$cohortGroupKeep$cohortGroupID %in% simTest$cohortGroups$cohortGroupID))
-  expect_true(all(as.character(start(simTest):end(simTest)) %in% names(simTest$cohortGroupKeep)))
+  # Check sw_hw flag
+  cohortSW <- merge(simTest$cohortDT, simTest$gcMeta, by = "gcids") |>
+    merge(simTest$cbm_vars$key[, .(cohortID, row_idx)], by = "cohortID") |>
+    merge(simTest$cbm_vars$state[, .(row_idx, sw_hw)], by = "row_idx")
+  expect_equal(unique(subset(cohortSW, sw_hw.x == "sw")$sw_hw.y), 0)
+  expect_equal(unique(subset(cohortSW, sw_hw.x == "hw")$sw_hw.y), 1)
 
+  # Check saved data
+  outDataDir   <- file.path(simTest$spadesCBMdb, "data")
+  validDataDir <- file.path(spadesTestPaths$testdata, "SK-small/valid/cbm_vars")
+
+  for (year in times$start:times$end){
+    expect_equal(
+      qs::qread(file.path(outDataDir,   paste0(year, "_key.qs")))[, .(cohortID, pixelIndex, row_idx)],
+      qs::qread(file.path(validDataDir, paste0(year, "_key.qs")))[, .(cohortID, pixelIndex, row_idx)]
+    )
+    for (table in c("parameters", "state", "flux", "pools")){
+      expect_equal(
+        qs::qread(file.path(outDataDir,   paste0(year, "_", table, ".qs"))),
+        qs::qread(file.path(validDataDir, paste0(year, "_", table, ".qs")))
+      )
+    }
+  }
 })
 
 

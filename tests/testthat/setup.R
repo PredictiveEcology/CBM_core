@@ -4,10 +4,6 @@ if (!testthat::is_testing()){
   testthat::source_test_helpers(env = globalenv())
 }
 
-# 2025-05: Install latest quickPlot from Github required by LandR
-## Otherwise SpaDES.core will install and load an older version from CRAN first
-Require::Install("PredictiveEcology/quickPlot@development (>= 1.0.2.9001)")
-
 # Source work in progress SpaDES module testing functions
 suppressPackageStartupMessages(library(SpaDES.core))
 tempScript <- tempfile(fileext = ".R")
@@ -23,7 +19,7 @@ spadesTestPaths <- SpaDEStestSetUpDirectories()
 # Install required packages
 withr::with_options(c(timeout = 600), Require::Install(
   c(SpaDES.core::packages(modules = basename(getwd()), paths = "..")[[1]],
-    "SpaDES.project", "googledrive"),
+    "SpaDES.project", "googledrive", "qs"),
   repos = unique(c("predictiveecology.r-universe.dev", getOption("repos")))
 ))
 
