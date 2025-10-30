@@ -160,7 +160,7 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
       sim <- Init(sim)
 
       # Schedule spinup
-      sim <- scheduleEvent(sim, start(sim), "CBM_core", "spinup")
+      sim <- scheduleEvent(sim, start(sim), "CBM_core", "spinup", eventPriority = 5)
 
       # Schedule annual event
       sim <- scheduleEvent(sim, start(sim), "CBM_core", "annual_preprocessing", eventPriority = 8)
