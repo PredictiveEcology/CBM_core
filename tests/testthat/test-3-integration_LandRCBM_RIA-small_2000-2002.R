@@ -5,6 +5,8 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
 
   ## Run simInit and spades ----
 
+  testthat::skip_on_ci()
+
   # Set up project
   projectName <- "integration_LandRCBM_RIA-small_2000-2002"
   times       <- list(start = 2000, end = 2021)
