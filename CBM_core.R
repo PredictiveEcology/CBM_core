@@ -304,9 +304,10 @@ Init <- function(sim){
   # Set up Python virtual environment
   reticulate::virtualenv_create(
     "r-spadesCBM",
-    python = if (!reticulate::virtualenv_exists("r-spadesCBM")){
-      CBMutils::ReticulateFindPython(version = ">=3.9,<=3.12.7", versionInstall = "3.10:latest")
-    },
+    python = CBMutils::ReticulateFindPython(
+      version        = ">=3.9,<=3.12.7",
+      versionInstall = "3.10:latest",
+      pyenvOnly      = TRUE),
     packages = c(
       "numpy<2",
       "pandas>=1.1.5",
