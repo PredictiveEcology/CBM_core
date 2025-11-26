@@ -1,7 +1,5 @@
 
-#' Spinup
-#'
-#' Spinup cohort data with libcbmr.
+#' CBM EXN spinup
 cbmExnSpinup <- function(cohortDT, spuMeta, growthMeta, growthIncr,
                          colname_gc      = "gcids",
                          colname_species = "species",
@@ -10,7 +8,7 @@ cbmExnSpinup <- function(cohortDT, spuMeta, growthMeta, growthIncr,
                          default_delay   = 0L,
                          default_historical_disturbance_type = 1L,
                          default_last_pass_disturbance_type  = 1L,
-                         ...){
+                         parallel.cores = NULL, parallel.chunkSize = 100L, ...){
 
   ## Prepare input for spinup ----
 
@@ -84,51 +82,79 @@ cbmExnSpinup <- function(cohortDT, spuMeta, growthMeta, growthIncr,
     cohortGroups[, last_pass_disturbance_type := default_last_pass_disturbance_type]
   }
 
-  # Join growth increments with cohort group IDs
-  ## Drop growth increments age <= 0
-  growthIncrGroups <- data.table::merge.data.table(
-    cohortGroups[, .SD, .SDcols = c("row_idx", colname_gc)],
-    subset(growthIncr, age > 0),
-    by = colname_gc, allow.cartesian = TRUE)[, gcids := NULL]
-  data.table::setkey(growthIncrGroups, row_idx, age)
-
 
   ## Spinup ----
-
-  spinup_input <- list(
-    parameters = cohortGroups,
-    increments = growthIncrGroups
-  )
 
   mod$libcbm_default_model_config <- libcbmr::cbm_exn_get_default_parameters()
   spinup_op_seq <- libcbmr::cbm_exn_get_spinup_op_sequence()
 
-  spinup_ops <- libcbmr::cbm_exn_spinup_ops(
-    spinup_input, mod$libcbm_default_model_config
-  )
-
-  cbm_vars <- libcbmr::cbm_exn_spinup(
-    spinup_input,
-    spinup_ops,
-    spinup_op_seq,
-    mod$libcbm_default_model_config
-  )
-
-  for (i in 1:length(cbm_vars)){
-    cbm_vars[[i]] <- data.table::data.table(
-      row_idx = 1:nrow(cbm_vars[[i]]),
-      cbm_vars[[i]],
-      key = "row_idx")
+  if (is.null(parallel.cores) || is.na(parallel.cores)){
+    parallel.cores <- 1L
+    cohortGroups <- list(cohortGroups)
+  }else{
+    cohortGroups <- split(cohortGroups, ceiling(1:nrow(cohortGroups) / parallel.chunkSize))
   }
 
-  # Add cohort group attributes to state table
-  cohortGroups <- cohortGroups[, .SD, .SDcols = intersect(
-    names(cohortGroups), c(
-      #"age_in",
-      setdiff(groupCols, names(cbm_vars$state)),
-      "mean_annual_temperature"
-    ))]
-  cbm_vars$state <- cbind(cbm_vars$state, cohortGroups)
+  cbm_vars <- parallel::mclapply(
+    mc.cores = parallel.cores, mc.silent = TRUE, ...,
+    cohortGroups,
+    function(cgChunk){
+
+      # Join growth increments with cohort group IDs
+      ## Drop growth increments age <= 0
+      growthIncrGroups <- data.table::merge.data.table(
+        cgChunk[, .SD, .SDcols = c("row_idx", colname_gc)],
+        subset(growthIncr, age > 0),
+        by = colname_gc, allow.cartesian = TRUE)[, gcids := NULL]
+      data.table::setkey(growthIncrGroups, row_idx, age)
+
+      spinup_input <- list(
+        parameters = cgChunk,
+        increments = growthIncrGroups
+      )
+
+      spinup_ops <- libcbmr::cbm_exn_spinup_ops(
+        spinup_input, mod$libcbm_default_model_config
+      )
+
+      cbm_vars <- libcbmr::cbm_exn_spinup(
+        spinup_input,
+        spinup_ops,
+        spinup_op_seq,
+        mod$libcbm_default_model_config
+      )
+
+      for (i in 1:length(cbm_vars)){
+        cbm_vars[[i]] <- data.table::data.table(
+          row_idx = cgChunk$row_idx,
+          cbm_vars[[i]],
+          key = "row_idx")
+      }
+
+      # Add cohort group attributes to state table
+      cgChunk <- cgChunk[, .SD, .SDcols = intersect(
+        names(cgChunk), c(
+          #"age_in",
+          setdiff(groupCols, names(cbm_vars$state)),
+          "mean_annual_temperature"
+        ))]
+      cbm_vars$state <- cbind(cbm_vars$state, cgChunk)
+
+      cbm_vars
+    })
+
+  if (length(cbm_vars) == 1){
+    cbm_vars <- cbm_vars[[1]]
+
+  }else{
+    tblNames <- names(cbm_vars[[1]])
+    cbm_vars <- lapply(tblNames, function(tblName){
+      tbl <- data.table::rbindlist(lapply(cbm_vars, `[[`, tblName))
+      data.table::setkey(tbl, row_idx)
+      tbl
+    })
+    names(cbm_vars) <- tblNames
+  }
 
   # Return results
   cohortKey <- cohortDT[, .SD, .SDcols = intersect(

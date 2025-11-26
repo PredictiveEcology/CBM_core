@@ -48,6 +48,8 @@ defineModule(sim, list(
     defineParameter(
       "skipPrepareCBMvars", "logical", default = FALSE, NA, NA,
       desc = "Whether the inputs for the cbm annual events are prepared by another module.E.g., LandRCBM_split3pools."),
+    defineParameter("parallel.cores",     "integer", NA_integer_, NA, NA, "Number of cores to use in parallel processing"),
+    defineParameter("parallel.chunkSize", "integer", 1000L,       NA, NA, "Chunk size to use in parallel processing"),
     defineParameter(".saveInitial",  "numeric", start(sim), NA, NA, "Simulation year when the first save event should occur"),
     defineParameter(".saveInterval", "numeric", 1,          NA, NA, "Time interval between save events"),
     defineParameter(".saveSpinup",   "logical", FALSE,      NA, NA, "Save spinup results"),
@@ -360,7 +362,9 @@ spinup <- function(sim) {
     colname_delay   = ifelse("delaySpinup" %in% names(sim$cohortDT), "delaySpinup", "delay"),
     default_delay   = P(sim)$default_delay_spinup,
     default_historical_disturbance_type = P(sim)$default_historical_disturbance_type,
-    default_last_pass_disturbance_type  = P(sim)$default_last_pass_disturbance_type
+    default_last_pass_disturbance_type  = P(sim)$default_last_pass_disturbance_type,
+    parallel.cores     = P(sim)$parallel.cores,
+    parallel.chunkSize = P(sim)$parallel.chunkSize
   ) |> Cache()
 
   # Add regeneration delay to cbm_vars$state table
@@ -545,38 +549,8 @@ annual_prepCohortGroups <- function(sim) {
 
 annual_carbonDynamics <- function(sim) {
 
-  ## RUN PYTHON -----
-
-  # Temporarily remove row_idx column
-  row_idx <- sim$cbm_vars$parameters$row_idx
-  for (i in 2:length(sim$cbm_vars)) sim$cbm_vars[[i]][, row_idx := NULL]
-
-  # Call Python
-  mod$libcbm_default_model_config <- libcbmr::cbm_exn_get_default_parameters()
-  step_ops <- libcbmr::cbm_exn_step_ops(sim$cbm_vars, mod$libcbm_default_model_config)
-
-  sim$cbm_vars[-1] <- libcbmr::cbm_exn_step(
-    sim$cbm_vars[-1],
-    step_ops,
-    libcbmr::cbm_exn_get_step_disturbance_ops_sequence(),
-    libcbmr::cbm_exn_get_step_ops_sequence(),
-    mod$libcbm_default_model_config
-  )
-
-  # Implement delay
-  delayRows <- with(sim$cbm_vars$state, is.na(time_since_last_disturbance) | time_since_last_disturbance <= delay)
-  if (any(delayRows)) {
-    sim$cbm_vars$state$age[delayRows] <- 0
-    delayGrowth <- c("age", "merch_inc", "foliage_inc", "other_inc")
-    sim$cbm_vars$parameters[delayRows, delayGrowth] <- 0
-  }
-  rm(delayRows)
-
-  # Prepare output data for next annual event
-  for (i in 2:length(sim$cbm_vars)){
-    sim$cbm_vars[[i]] <- data.table::data.table(row_idx = row_idx, sim$cbm_vars[[i]], key = "row_idx")
-  }
-  rm(row_idx)
+  # Run Python
+  sim$cbm_vars <- cbmExnStep(sim$cbm_vars)
 
   # Set total cohort group area in cbm_vars$state table
   if ("area" %in% names(sim$standDT)){
@@ -591,16 +565,12 @@ annual_carbonDynamics <- function(sim) {
     "standDT does not have an \"area\" column; ",
     "area assumed to be 1 ha when calculating emissions and product totals.")
 
-
-  ## ASSEMBLE OUTPUTS -----
-
   # Summarize yearly emissions and products
   #Note: details of which source and sink pools goes into each of the columns in
   #cbm_vars$flux can be found here:
   #https://cat-cfs.github.io/libcbm_py/cbm_exn_custom_ops.html
   #cbm_vars$flux are in metric tonnes of carbon per ha like the rest of the
   #values produced.
-
 
   emissions <- (sim$cbm_vars$flux * sim$cbm_vars$state$area)[, lapply(.SD, sum), .SDcols = !"row_idx"]
   emissions[, CO2 := sum(DisturbanceBioCO2Emission, DecayDOMCO2Emission, DisturbanceDOMCO2Emission)]
@@ -620,11 +590,8 @@ annual_carbonDynamics <- function(sim) {
     cbind(year = time(sim), emissions[, .SD, .SDcols = unique(
       c("Products", "Emissions", "CO2", "CH4", "CO", P(sim)$emissionsProductsCols))]))
 
-
-  ## RETURN SIMLIST -----
-
+  # Return simList
   return(invisible(sim))
-
 }
 
 .inputObjects <- function(sim){
