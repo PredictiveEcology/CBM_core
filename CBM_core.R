@@ -48,6 +48,8 @@ defineModule(sim, list(
     defineParameter(
       "skipPrepareCBMvars", "logical", default = FALSE, NA, NA,
       desc = "Whether the inputs for the cbm annual events are prepared by another module.E.g., LandRCBM_split3pools."),
+    defineParameter("parallel.cores",     "integer", NA_integer_, NA, NA, "Number of cores to use in parallel processing"),
+    defineParameter("parallel.chunkSize", "integer", 1000L,       NA, NA, "Chunk size to use in parallel processing"),
     defineParameter(".saveInitial",  "numeric", start(sim), NA, NA, "Simulation year when the first save event should occur"),
     defineParameter(".saveInterval", "numeric", 1,          NA, NA, "Time interval between save events"),
     defineParameter(".saveSpinup",   "logical", FALSE,      NA, NA, "Save spinup results"),
@@ -360,7 +362,9 @@ spinup <- function(sim) {
     colname_delay   = ifelse("delaySpinup" %in% names(sim$cohortDT), "delaySpinup", "delay"),
     default_delay   = P(sim)$default_delay_spinup,
     default_historical_disturbance_type = P(sim)$default_historical_disturbance_type,
-    default_last_pass_disturbance_type  = P(sim)$default_last_pass_disturbance_type
+    default_last_pass_disturbance_type  = P(sim)$default_last_pass_disturbance_type,
+    parallel.cores     = P(sim)$parallel.cores,
+    parallel.chunkSize = P(sim)$parallel.chunkSize
   ) |> Cache()
 
   # Add regeneration delay to cbm_vars$state table
