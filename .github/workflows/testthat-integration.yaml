@@ -10,7 +10,6 @@ name: testthat-integration
 
 jobs:
   testthat-module:
-    if: "github.ref == 'refs/heads/main' || !contains(github.event.commits[0].message, '[skip-ci]')"
     runs-on: ${{ matrix.config.os }}
 
     name: ${{ matrix.config.os }} (${{ matrix.config.r }})
