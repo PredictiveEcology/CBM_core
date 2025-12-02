@@ -124,6 +124,7 @@ cbmExnSpinup <- function(cohortDT, spuMeta, growthMeta, growthIncr,
         mod$libcbm_default_model_config
       )
 
+      # Convert to data.table with row_idx
       for (i in 1:length(cbm_vars)){
         cbm_vars[[i]] <- data.table::data.table(
           row_idx = cgChunk$row_idx,

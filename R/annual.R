@@ -29,8 +29,13 @@ cbmExnStep <- function(cbm_vars,
         libcbmr::cbm_exn_get_step_ops_sequence(),
         mod$libcbm_default_model_config
       )
+
+      # Convert to data.table with row_idx
       for (i in 1:length(cbm_vars_chunk)){
-        cbm_vars_chunk[[i]] <- data.table::data.table(row_idx = row_idx_chunk, cbm_vars_chunk[[i]], key = "row_idx")
+        cbm_vars_chunk[[i]] <- data.table::data.table(
+          row_idx = row_idx_chunk,
+          cbm_vars_chunk[[i]],
+          key = "row_idx")
       }
 
       # Return
