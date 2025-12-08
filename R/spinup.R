@@ -90,15 +90,21 @@ cbmExnSpinup <- function(cohortDT, spuMeta, growthMeta, growthIncr,
 
   if (is.null(parallel.cores) || is.na(parallel.cores)){
     parallel.cores <- 1L
-    cohortGroups <- list(cohortGroups)
+    rowGroups <- list(NA)
   }else{
-    cohortGroups <- split(cohortGroups, ceiling(1:nrow(cohortGroups) / parallel.chunkSize))
+    rowGroups <- split(cohortGroups$row_idx, ceiling(1:nrow(cohortGroups) / parallel.chunkSize))
   }
 
   cbm_vars <- parallel::mclapply(
     mc.cores = parallel.cores, mc.silent = TRUE, ...,
-    cohortGroups,
-    function(cgChunk){
+    rowGroups,
+    function(row_idx_chunk){
+
+      if (length(row_idx_chunk) == 1 && is.na(row_idx_chunk)){
+        cgChunk <- cohortGroups
+      }else{
+        cgChunk <- cohortGroups[row_idx %in% row_idx_chunk,]
+      }
 
       # Join growth increments with cohort group IDs
       ## Drop growth increments age <= 0
@@ -108,6 +114,7 @@ cbmExnSpinup <- function(cohortDT, spuMeta, growthMeta, growthIncr,
         by = colname_gc, allow.cartesian = TRUE)[, gcids := NULL]
       data.table::setkey(growthIncrGroups, row_idx, age)
 
+      # Call Python
       spinup_input <- list(
         parameters = cgChunk,
         increments = growthIncrGroups
@@ -117,45 +124,33 @@ cbmExnSpinup <- function(cohortDT, spuMeta, growthMeta, growthIncr,
         spinup_input, mod$libcbm_default_model_config
       )
 
-      cbm_vars <- libcbmr::cbm_exn_spinup(
+      libcbmr::cbm_exn_spinup(
         spinup_input,
         spinup_ops,
         spinup_op_seq,
         mod$libcbm_default_model_config
       )
-
-      # Convert to data.table with row_idx
-      for (i in 1:length(cbm_vars)){
-        cbm_vars[[i]] <- data.table::data.table(
-          row_idx = cgChunk$row_idx,
-          cbm_vars[[i]],
-          key = "row_idx")
-      }
-
-      # Add cohort group attributes to state table
-      cgChunk <- cgChunk[, .SD, .SDcols = intersect(
-        names(cgChunk), c(
-          #"age_in",
-          setdiff(groupCols, names(cbm_vars$state)),
-          "mean_annual_temperature"
-        ))]
-      cbm_vars$state <- cbind(cbm_vars$state, cgChunk)
-
-      cbm_vars
     })
 
-  if (length(cbm_vars) == 1){
-    cbm_vars <- cbm_vars[[1]]
+  # Convert to list of data.table with row_idx
+  tblNames <- names(cbm_vars[[1]])
+  cbm_vars <- lapply(tblNames, function(tblName){
+    tbl <- data.table::rbindlist(lapply(cbm_vars, `[[`, tblName))
+    tbl[, row_idx := cohortGroups$row_idx]
+    data.table::setkey(tbl, row_idx)
+    data.table::setcolorder(tbl)
+    tbl
+  })
+  names(cbm_vars) <- tblNames
 
-  }else{
-    tblNames <- names(cbm_vars[[1]])
-    cbm_vars <- lapply(tblNames, function(tblName){
-      tbl <- data.table::rbindlist(lapply(cbm_vars, `[[`, tblName))
-      data.table::setkey(tbl, row_idx)
-      tbl
-    })
-    names(cbm_vars) <- tblNames
-  }
+  # Add cohort group attributes to state table
+  cohortGroups <- cohortGroups[, .SD, .SDcols = intersect(
+    names(cohortGroups), c(
+      #"age_in",
+      setdiff(groupCols, names(cbm_vars$state)),
+      "mean_annual_temperature"
+    ))]
+  cbm_vars$state <- cbind(cbm_vars$state, cohortGroups)
 
   # Return results
   cohortKey <- cohortDT[, .SD, .SDcols = intersect(
