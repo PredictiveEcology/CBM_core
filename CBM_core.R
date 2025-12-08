@@ -350,6 +350,21 @@ spinup <- function(sim) {
     sim$cohortDT, sim$standDT, by = "pixelIndex", sort = FALSE, all.x = TRUE)
   data.table::setkey(sim$cohortDT, cohortID)
 
+  rprofOut <- file.path(outputPath(sim), paste(c(
+    paste0("cores-", P(sim)$parallel.cores),
+    paste0("chunk-", P(sim)$parallel.chunkSize),
+    sim$._simRndString
+  ), collapse = "_"), paste0(time(sim), "_spinup.out"))
+  dir.create(dirname(rprofOut), recursive = TRUE, showWarnings = FALSE)
+
+  Rprof(
+    filename         = rprofOut,
+    memory.profiling = TRUE,
+    gc.profiling     = TRUE,
+    line.profiling   = FALSE,
+    event            = "elapsed"
+  )
+
   # Spinup
   sim$cbm_vars <- cbmExnSpinup(
     cohortDT        = sim$cohortDT,
@@ -365,7 +380,9 @@ spinup <- function(sim) {
     default_last_pass_disturbance_type  = P(sim)$default_last_pass_disturbance_type,
     parallel.cores     = P(sim)$parallel.cores,
     parallel.chunkSize = P(sim)$parallel.chunkSize
-  ) |> Cache()
+  )# |> Cache()
+
+  Rprof(NULL)
 
   # Add regeneration delay to cbm_vars$state table
   data.table::setnames(sim$cbm_vars$state, "delayRegen", "delay", skip_absent = TRUE)
@@ -549,8 +566,25 @@ annual_prepCohortGroups <- function(sim) {
 
 annual_carbonDynamics <- function(sim) {
 
+  rprofOut <- file.path(outputPath(sim), paste(c(
+    paste0("cores-", P(sim)$parallel.cores),
+    paste0("chunk-", P(sim)$parallel.chunkSize),
+    sim$._simRndString
+  ), collapse = "_"), paste0(time(sim), "_step.out"))
+  dir.create(dirname(rprofOut), recursive = TRUE, showWarnings = FALSE)
+
+  Rprof(
+    filename         = rprofOut,
+    memory.profiling = TRUE,
+    gc.profiling     = TRUE,
+    line.profiling   = FALSE,
+    event            = "elapsed"
+  )
+
   # Run Python
   sim$cbm_vars <- cbmExnStep(sim$cbm_vars)
+
+  Rprof(NULL)
 
   # Set total cohort group area in cbm_vars$state table
   if ("area" %in% names(sim$standDT)){
