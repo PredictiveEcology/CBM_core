@@ -347,20 +347,32 @@ spinup <- function(sim) {
     sim$cohortDT, sim$standDT, by = "pixelIndex", sort = FALSE, all.x = TRUE)
   data.table::setkey(sim$cohortDT, cohortID)
 
-  rprofOut <- file.path(outputPath(sim), paste(c(
-    paste0("cores-", P(sim)$parallel.cores),
-    paste0("chunk-", P(sim)$parallel.chunkSize),
-    sim$._simRndString
-  ), collapse = "_"), paste0(time(sim), "_spinup.out"))
-  dir.create(dirname(rprofOut), recursive = TRUE, showWarnings = FALSE)
+  if (isTRUE(getOption("Rprof"))){
 
-  if (!isFALSE(getOption("Rprof"))) Rprof(
-    filename         = rprofOut,
-    memory.profiling = TRUE,
-    gc.profiling     = TRUE,
-    line.profiling   = FALSE,
-    event            = "elapsed"
-  )
+    rprofOut <- file.path(outputPath(sim), paste(c(
+      paste0("cores-", P(sim)$parallel.cores),
+      paste0("chunk-", P(sim)$parallel.chunkSize),
+      sim$._simRndString
+    ), collapse = "_"), paste0(time(sim), "_spinup.out"))
+    dir.create(dirname(rprofOut), recursive = TRUE, showWarnings = FALSE)
+
+    Rprof(
+      filename         = rprofOut,
+      memory.profiling = TRUE,
+      gc.profiling     = TRUE,
+      line.profiling   = FALSE,
+      event            = "elapsed"
+    )
+
+  }else{
+
+    rprofOut <- file.path(outputPath(sim), paste0(paste(c(
+      paste0("cores-", P(sim)$parallel.cores),
+      paste0("chunk-", P(sim)$parallel.chunkSize),
+      sim$._simRndString
+    ), collapse = "_"), ".txt"))
+    writeLines(paste(c(time(sim), "spinup", "start", Sys.time()), collapse = ","), rprofOut)
+  }
 
   # Spinup
   sim$cbm_vars <- cbmExnSpinup(
@@ -379,7 +391,12 @@ spinup <- function(sim) {
     parallel.chunkSize = P(sim)$parallel.chunkSize
   )# |> Cache()
 
-  if (!isFALSE(getOption("Rprof"))) Rprof(NULL)
+  if (isTRUE(getOption("Rprof"))){
+    Rprof(NULL)
+  }else{
+    cat(paste(c(time(sim), "spinup", "end", Sys.time()), collapse = ","), "\n",
+        file = rprofOut, append = TRUE)
+  }
 
   # Add regeneration delay to cbm_vars$state table
   data.table::setnames(sim$cbm_vars$state, "delayRegen", "delay", skip_absent = TRUE)
@@ -563,25 +580,44 @@ annual_prepCohortGroups <- function(sim) {
 
 annual_carbonDynamics <- function(sim) {
 
-  rprofOut <- file.path(outputPath(sim), paste(c(
-    paste0("cores-", P(sim)$parallel.cores),
-    paste0("chunk-", P(sim)$parallel.chunkSize),
-    sim$._simRndString
-  ), collapse = "_"), paste0(time(sim), "_step.out"))
-  dir.create(dirname(rprofOut), recursive = TRUE, showWarnings = FALSE)
+  if (isTRUE(getOption("Rprof"))){
 
-  if (!isFALSE(getOption("Rprof"))) Rprof(
-    filename         = rprofOut,
-    memory.profiling = TRUE,
-    gc.profiling     = TRUE,
-    line.profiling   = FALSE,
-    event            = "elapsed"
-  )
+    rprofOut <- file.path(outputPath(sim), paste(c(
+      paste0("cores-", P(sim)$parallel.cores),
+      paste0("chunk-", P(sim)$parallel.chunkSize),
+      sim$._simRndString
+    ), collapse = "_"), paste0(time(sim), "_step.out"))
+    dir.create(dirname(rprofOut), recursive = TRUE, showWarnings = FALSE)
+
+    Rprof(
+      filename         = rprofOut,
+      memory.profiling = TRUE,
+      gc.profiling     = TRUE,
+      line.profiling   = FALSE,
+      event            = "elapsed"
+    )
+
+  }else{
+
+    rprofOut <- file.path(outputPath(sim), paste0(paste(c(
+      paste0("cores-", P(sim)$parallel.cores),
+      paste0("chunk-", P(sim)$parallel.chunkSize),
+      sim$._simRndString
+    ), collapse = "_"), ".txt"))
+    cat(paste(c(time(sim), "step", "start", Sys.time()), collapse = ","), "\n",
+        file = rprofOut, append = TRUE)
+
+  }
 
   # Run Python
   sim$cbm_vars <- cbmExnStep(sim$cbm_vars)
 
-  if (!isFALSE(getOption("Rprof"))) Rprof(NULL)
+  if (isTRUE(getOption("Rprof"))){
+    Rprof(NULL)
+  }else{
+    cat(paste(c(time(sim), "step", "end", Sys.time()), collapse = ","), "\n",
+        file = rprofOut, append = TRUE)
+  }
 
   # Set total cohort group area in cbm_vars$state table
   if ("area" %in% names(sim$standDT)){
