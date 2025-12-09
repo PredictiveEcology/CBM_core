@@ -3,9 +3,6 @@
 cbmExnStep <- function(cbm_vars,
                        parallel.cores = NULL, parallel.chunkSize = 100L, ...){
 
-  mod$libcbm_default_model_config <- libcbmr::cbm_exn_get_default_parameters()
-  step_ops <- libcbmr::cbm_exn_step_ops(cbm_vars, mod$libcbm_default_model_config)
-
   # Temporarily remove key
   cohortKey <- cbm_vars$key
   cbm_vars$key <- NULL
@@ -34,6 +31,11 @@ cbmExnStep <- function(cbm_vars,
       }
 
       # Call Python
+      reticulate::use_virtualenv("r-spadesCBM")
+
+      mod$libcbm_default_model_config <- libcbmr::cbm_exn_get_default_parameters()
+      step_ops <- libcbmr::cbm_exn_step_ops(cbm_vars, mod$libcbm_default_model_config)
+
       libcbmr::cbm_exn_step(
         cbm_vars_chunk,
         step_ops,

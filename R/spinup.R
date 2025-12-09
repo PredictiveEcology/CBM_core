@@ -85,9 +85,6 @@ cbmExnSpinup <- function(cohortDT, spuMeta, growthMeta, growthIncr,
 
   ## Spinup ----
 
-  mod$libcbm_default_model_config <- libcbmr::cbm_exn_get_default_parameters()
-  spinup_op_seq <- libcbmr::cbm_exn_get_spinup_op_sequence()
-
   if (is.null(parallel.cores) || is.na(parallel.cores)){
     parallel.cores <- 1L
     rowGroups <- list(NA)
@@ -115,6 +112,11 @@ cbmExnSpinup <- function(cohortDT, spuMeta, growthMeta, growthIncr,
       data.table::setkey(growthIncrGroups, row_idx, age)
 
       # Call Python
+      reticulate::use_virtualenv("r-spadesCBM")
+
+      mod$libcbm_default_model_config <- libcbmr::cbm_exn_get_default_parameters()
+      spinup_op_seq <- libcbmr::cbm_exn_get_spinup_op_sequence()
+
       spinup_input <- list(
         parameters = cgChunk,
         increments = growthIncrGroups

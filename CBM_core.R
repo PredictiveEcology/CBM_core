@@ -322,9 +322,6 @@ Init <- function(sim){
       "libcbm"
     ))
 
-  # Use Python virtual environment
-  reticulate::use_virtualenv("r-spadesCBM")
-
   # Return simList
   return(invisible(sim))
 
