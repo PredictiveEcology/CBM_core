@@ -354,7 +354,7 @@ spinup <- function(sim) {
   ), collapse = "_"), paste0(time(sim), "_spinup.out"))
   dir.create(dirname(rprofOut), recursive = TRUE, showWarnings = FALSE)
 
-  Rprof(
+  if (!isFALSE(getOption("Rprof"))) Rprof(
     filename         = rprofOut,
     memory.profiling = TRUE,
     gc.profiling     = TRUE,
@@ -379,7 +379,7 @@ spinup <- function(sim) {
     parallel.chunkSize = P(sim)$parallel.chunkSize
   )# |> Cache()
 
-  Rprof(NULL)
+  if (!isFALSE(getOption("Rprof"))) Rprof(NULL)
 
   # Add regeneration delay to cbm_vars$state table
   data.table::setnames(sim$cbm_vars$state, "delayRegen", "delay", skip_absent = TRUE)
@@ -570,7 +570,7 @@ annual_carbonDynamics <- function(sim) {
   ), collapse = "_"), paste0(time(sim), "_step.out"))
   dir.create(dirname(rprofOut), recursive = TRUE, showWarnings = FALSE)
 
-  Rprof(
+  if (!isFALSE(getOption("Rprof"))) Rprof(
     filename         = rprofOut,
     memory.profiling = TRUE,
     gc.profiling     = TRUE,
@@ -581,7 +581,7 @@ annual_carbonDynamics <- function(sim) {
   # Run Python
   sim$cbm_vars <- cbmExnStep(sim$cbm_vars)
 
-  Rprof(NULL)
+  if (!isFALSE(getOption("Rprof"))) Rprof(NULL)
 
   # Set total cohort group area in cbm_vars$state table
   if ("area" %in% names(sim$standDT)){
