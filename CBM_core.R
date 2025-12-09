@@ -230,7 +230,7 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
                        by   = as.numeric(P(sim)$.saveInterval))
 
       bPlot <- CBMutils::simPlotPoolProportions(
-        sim, years = saveYears, useCache = FALSE)
+        sim, years = c(0[P(sim)$.saveSpinup], saveYears), useCache = FALSE)
       SpaDES.core::Plots(bPlot,
                          filename = "poolProportions",
                          path = figPath,
