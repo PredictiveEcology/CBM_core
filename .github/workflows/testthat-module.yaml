@@ -3,10 +3,12 @@ on:
     branches:
       - main
       - development
+      - suz-GHA-test
   pull_request:
     branches:
       - main
       - development
+      - suz-GHA-test
 
 name: testthat-module
 
@@ -22,10 +24,8 @@ jobs:
       matrix:
         config:
           - {os: windows-latest, r: 'release'}
-          - {os: windows-latest, r: 'devel'}
           - {os: ubuntu-latest,  r: 'release'}
-          - {os: ubuntu-latest,  r: 'devel'}
-          #- {os: macOS-latest,   r: 'release'}
+          - {os: macOS-latest,   r: 'release'}
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
