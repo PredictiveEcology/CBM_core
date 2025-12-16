@@ -91,8 +91,8 @@ test_that("Module: SK 1985-2011", {
   # Check saved data
   testNPP <- data.table::rbindlist(lapply(times$start:times$end, function(year){
     merge(
-      qs::qread(file.path(simTest$spadesCBMdb, "data", paste0(year, "_key.qs"))),
-      qs::qread(file.path(simTest$spadesCBMdb, "data", paste0(year, "_flux.qs"))),
+      qs2::qd_read(file.path(simTest$spadesCBMdb, "data", paste0(year, "_key.qs2"))),
+      qs2::qd_read(file.path(simTest$spadesCBMdb, "data", paste0(year, "_flux.qs2"))),
       by = "row_idx")[, .(
         year = year,
         NPP = sum(DeltaBiomass_AG, DeltaBiomass_BG,

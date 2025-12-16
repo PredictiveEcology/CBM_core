@@ -109,13 +109,13 @@ test_that("Module: SK-small 1998-2000", {
 
   for (year in times$start:times$end){
     expect_equal(
-      qs::qread(file.path(outDataDir,   paste0(year, "_key.qs")))[, .(cohortID, pixelIndex, row_idx)],
-      qs::qread(file.path(validDataDir, paste0(year, "_key.qs")))[, .(cohortID, pixelIndex, row_idx)]
+      qs2::qd_read(file.path(outDataDir,   paste0(year, "_key.qs2")))[, .(cohortID, pixelIndex, row_idx)],
+      qs2::qd_read(file.path(validDataDir, paste0(year, "_key.qs2")))[, .(cohortID, pixelIndex, row_idx)]
     )
     for (table in c("parameters", "state", "flux", "pools")){
       expect_equal(
-        qs::qread(file.path(outDataDir,   paste0(year, "_", table, ".qs"))),
-        qs::qread(file.path(validDataDir, paste0(year, "_", table, ".qs")))
+        qs2::qd_read(file.path(outDataDir,   paste0(year, "_", table, ".qs2"))),
+        qs2::qd_read(file.path(validDataDir, paste0(year, "_", table, ".qs2")))
       )
     }
   }
