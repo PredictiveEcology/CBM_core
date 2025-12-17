@@ -369,7 +369,7 @@ spinup <- function(sim) {
     default_last_pass_disturbance_type  = P(sim)$default_last_pass_disturbance_type,
     parallel.cores     = P(sim)$parallel.cores,
     parallel.chunkSize = P(sim)$parallel.chunkSize
-  ) |> Cache(omitArgs = c("parallel.cores", "parallel.chunkSize"))
+  )# |> Cache(omitArgs = c("parallel.cores", "parallel.chunkSize"))
 
   cat(paste(c(time(sim), "spinup", "end", Sys.time()), collapse = ","), "\n",
       file = rprofOut, append = TRUE)
@@ -569,7 +569,7 @@ annual_carbonDynamics <- function(sim) {
     sim$cbm_vars,
     parallel.cores     = P(sim)$parallel.cores,
     parallel.chunkSize = P(sim)$parallel.chunkSize
-  ) |> Cache(omitArgs = c("parallel.cores", "parallel.chunkSize"))
+  )# |> Cache(omitArgs = c("parallel.cores", "parallel.chunkSize"))
 
   cat(paste(c(time(sim), "step", "end", Sys.time()), collapse = ","), "\n",
       file = rprofOut, append = TRUE)
