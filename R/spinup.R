@@ -1,7 +1,5 @@
 
-#' Spinup
-#'
-#' Spinup cohort data with libcbmr.
+#' CBM EXN spinup
 cbmExnSpinup <- function(cohortDT, spuMeta, growthMeta, growthIncr,
                          colname_gc      = "gcids",
                          colname_species = "species",
@@ -10,7 +8,7 @@ cbmExnSpinup <- function(cohortDT, spuMeta, growthMeta, growthIncr,
                          default_delay   = 0L,
                          default_historical_disturbance_type = 1L,
                          default_last_pass_disturbance_type  = 1L,
-                         ...){
+                         parallel.cores = NULL, parallel.chunkSize = 500L, ...){
 
   ## Prepare input for spinup ----
 
@@ -84,41 +82,73 @@ cbmExnSpinup <- function(cohortDT, spuMeta, growthMeta, growthIncr,
     cohortGroups[, last_pass_disturbance_type := default_last_pass_disturbance_type]
   }
 
-  # Join growth increments with cohort group IDs
-  ## Drop growth increments age <= 0
-  growthIncrGroups <- data.table::merge.data.table(
-    cohortGroups[, .SD, .SDcols = c("row_idx", colname_gc)],
-    subset(growthIncr, age > 0),
-    by = colname_gc, allow.cartesian = TRUE)[, gcids := NULL]
-  data.table::setkey(growthIncrGroups, row_idx, age)
-
 
   ## Spinup ----
 
-  spinup_input <- list(
-    parameters = cohortGroups,
-    increments = growthIncrGroups
-  )
+  row_idx <- cohortGroups$row_idx
+  if (is.null(parallel.cores) || is.na(parallel.cores)){
+    parallel.cores <- 1L
+    rowGroups <- list(row_idx)
+  }else{
+    rowGroups <- split(row_idx, ceiling(1:length(row_idx) / parallel.chunkSize))
+  }
 
-  mod$libcbm_default_model_config <- libcbmr::cbm_exn_get_default_parameters()
-  spinup_op_seq <- libcbmr::cbm_exn_get_spinup_op_sequence()
+  cbm_vars <- parallel::mclapply(
+    mc.cores = parallel.cores, mc.silent = TRUE, ...,
+    rowGroups,
+    function(row_idx_chunk){
 
-  spinup_ops <- libcbmr::cbm_exn_spinup_ops(
-    spinup_input, mod$libcbm_default_model_config
-  )
+      cgChunk <- cohortGroups
+      if (length(row_idx_chunk) != length(row_idx)){
+        cgChunk <- cgChunk[row_idx %in% row_idx_chunk,]
+      }
 
-  cbm_vars <- libcbmr::cbm_exn_spinup(
-    spinup_input,
-    spinup_ops,
-    spinup_op_seq,
-    mod$libcbm_default_model_config
-  )
+      # Join growth increments with cohort group IDs
+      ## Drop growth increments age <= 0
+      growthIncrGroups <- data.table::merge.data.table(
+        cgChunk[, .SD, .SDcols = c("row_idx", colname_gc)],
+        subset(growthIncr, age > 0),
+        by = colname_gc, allow.cartesian = TRUE)[, gcids := NULL]
+      data.table::setkey(growthIncrGroups, row_idx, age)
+
+      # Call Python
+      reticulate::use_virtualenv("r-spadesCBM")
+
+      mod$libcbm_default_model_config <- libcbmr::cbm_exn_get_default_parameters()
+      spinup_op_seq <- libcbmr::cbm_exn_get_spinup_op_sequence()
+
+      spinup_input <- list(
+        parameters = cgChunk,
+        increments = growthIncrGroups
+      )
+
+      spinup_ops <- libcbmr::cbm_exn_spinup_ops(
+        spinup_input, mod$libcbm_default_model_config
+      )
+
+      libcbmr::cbm_exn_spinup(
+        spinup_input,
+        spinup_ops,
+        spinup_op_seq,
+        mod$libcbm_default_model_config
+      )
+    })
+
+  # Convert to list of data.table with row_idx
+  if (length(cbm_vars) == 1){
+    cbm_vars <- cbm_vars[[1]]
+  }else{
+    tblNames <- names(cbm_vars[[1]])
+    cbm_vars <- lapply(tblNames, function(tblName) data.table::rbindlist(lapply(cbm_vars, `[[`, tblName)))
+    names(cbm_vars) <- tblNames
+  }
 
   for (i in 1:length(cbm_vars)){
-    cbm_vars[[i]] <- data.table::data.table(
-      row_idx = 1:nrow(cbm_vars[[i]]),
-      cbm_vars[[i]],
-      key = "row_idx")
+    if (!data.table::is.data.table(cbm_vars[[i]])) cbm_vars[[i]] <- data.table::as.data.table(cbm_vars[[i]])
+    cbm_vars[[i]][, row_idx := row_idx]
+    data.table::setkey(cbm_vars[[i]], row_idx)
+    data.table::setcolorder(cbm_vars[[i]])
+    cbm_vars[[i]]
   }
 
   # Add cohort group attributes to state table
