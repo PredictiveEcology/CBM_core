@@ -14,8 +14,10 @@ defineModule(sim, list(
   citation = list("citation.bib"),
   documentation = list("README.txt", "CBM_core.Rmd"),
   reqdPkgs = list(
+
     "data.table", "reticulate", "qs2",
     "PredictiveEcology/CBMutils@development (>=2.5)",
+
     "PredictiveEcology/libcbmr"
   ),
   parameters = rbind(
@@ -231,6 +233,7 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
 
       bPlot <- CBMutils::simPlotPoolProportions(
         sim, years = c(0[P(sim)$.saveSpinup], saveYears), useCache = FALSE)
+
       SpaDES.core::Plots(bPlot,
                          filename = "poolProportions",
                          path = figPath,
