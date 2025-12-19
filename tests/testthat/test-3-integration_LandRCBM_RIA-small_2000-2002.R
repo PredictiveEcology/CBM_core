@@ -53,8 +53,7 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
       pooldef               = file.path(spadesTestPaths$testdata, "SK/input", "pooldef.txt") |> readLines(),
       spinupSQL             = file.path(spadesTestPaths$testdata, "SK/input", "spinupSQL.csv") |> data.table::fread(),
       sppEquiv = {
-        speciesInStudy <- LandR::speciesInStudyArea(studyArea,
-                                                    dPath = "inputs")
+        speciesInStudy <- LandR::speciesInStudyArea(studyArea, dPath = spadesTestPaths$inputPath)
         species <- LandR::equivalentName(speciesInStudy$speciesList, df = LandR::sppEquivalencies_CA, "LandR")
         sppEquiv <- LandR::sppEquivalencies_CA[LandR %in% species]
         sppEquiv <- sppEquiv[KNN != "" & LANDIS_traits != ""]

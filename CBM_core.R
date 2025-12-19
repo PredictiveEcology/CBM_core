@@ -14,8 +14,10 @@ defineModule(sim, list(
   citation = list("citation.bib"),
   documentation = list("README.txt", "CBM_core.Rmd"),
   reqdPkgs = list(
-    "data.table", "reticulate", "qs",
-    "PredictiveEcology/CBMutils@development (>=2.1.1)",
+
+    "data.table", "reticulate", "qs2",
+    "PredictiveEcology/CBMutils@development (>=2.5)",
+
     "PredictiveEcology/libcbmr"
   ),
   parameters = rbind(
@@ -50,7 +52,7 @@ defineModule(sim, list(
       desc = "Whether the inputs for the cbm annual events are prepared by another module.E.g., LandRCBM_split3pools."),
     defineParameter(".saveInitial",  "numeric", start(sim), NA, NA, "Simulation year when the first save event should occur"),
     defineParameter(".saveInterval", "numeric", 1,          NA, NA, "Time interval between save events"),
-    defineParameter(".saveSpinup",   "logical", FALSE,      NA, NA, "Save spinup results"),
+    defineParameter(".saveSpinup",   "logical", TRUE,       NA, NA, "Save spinup results"),
     defineParameter(".saveAll",      "logical", FALSE,      NA, NA, "Save all available data"),
     defineParameter(".plot",         "logical", TRUE,       NA, NA, "Plot simulation results"),
     defineParameter(".useCache",     "logical", FALSE,      NA, NA, "Cache module events")
@@ -160,7 +162,7 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
       sim <- Init(sim)
 
       # Schedule spinup
-      sim <- scheduleEvent(sim, start(sim), "CBM_core", "spinup")
+      sim <- scheduleEvent(sim, start(sim), "CBM_core", "spinup", eventPriority = 5)
 
       # Schedule annual event
       sim <- scheduleEvent(sim, start(sim), "CBM_core", "annual_preprocessing", eventPriority = 8)
@@ -230,7 +232,8 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
                        by   = as.numeric(P(sim)$.saveInterval))
 
       bPlot <- CBMutils::simPlotPoolProportions(
-        sim, years = saveYears, useCache = FALSE)
+        sim, years = c(0[P(sim)$.saveSpinup], saveYears), useCache = FALSE)
+
       SpaDES.core::Plots(bPlot,
                          filename = "poolProportions",
                          path = figPath,
