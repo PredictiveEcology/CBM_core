@@ -307,7 +307,11 @@ Init <- function(sim){
     python = CBMutils::ReticulateFindPython(
       version        = ">=3.9,<=3.12.7",
       versionInstall = "3.11:latest",
-      pyenvOnly      = TRUE),
+      pyenvOnly      = TRUE))
+
+  reticulate::virtualenv_install(
+    "r-spadesCBM",
+    pip_options = "--upgrade",
     packages = c(
       "numpy<2",
       "pandas>=1.1.5",
