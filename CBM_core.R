@@ -306,7 +306,7 @@ Init <- function(sim){
     "r-spadesCBM",
     python = CBMutils::ReticulateFindPython(
       version        = ">=3.9,<=3.12.7",
-      versionInstall = "3.10:latest",
+      versionInstall = "3.11:latest",
       pyenvOnly      = TRUE),
     packages = c(
       "numpy<2",
