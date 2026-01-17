@@ -543,6 +543,19 @@ annual_carbonDynamics <- function(sim) {
 
   ## RUN PYTHON -----
 
+  # Set mean_annual_temperature
+  if (!"mean_annual_temperature" %in% names(sim$cbm_vars$parameters)){
+
+    cbm_defaults_path <- libcbmr::libcbm_libcbm_resources()$get_cbm_defaults_path()
+    cbmDBcon <- RSQLite::dbConnect(RSQLite::dbDriver("SQLite"), cbm_defaults_path)
+    meanTemp <- RSQLite::dbReadTable(cbmDBcon, "spatial_unit")[, c("id", "mean_annual_temperature")]
+    RSQLite::dbDisconnect(cbmDBcon)
+
+    sim$cbm_vars$parameters[, mean_annual_temperature := meanTemp$mean_annual_temperature[match(
+      sim$cbm_vars$state$spatial_unit_id, meanTemp$id
+    )]]
+  }
+
   # Temporarily remove row_idx column
   row_idx <- sim$cbm_vars$parameters$row_idx
   for (i in 2:length(sim$cbm_vars)) sim$cbm_vars[[i]][, row_idx := NULL]
