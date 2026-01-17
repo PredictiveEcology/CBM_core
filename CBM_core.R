@@ -14,7 +14,7 @@ defineModule(sim, list(
   citation = list("citation.bib"),
   documentation = list("README.txt", "CBM_core.Rmd"),
   reqdPkgs = list(
-    "data.table", "reticulate", "qs2",
+    "data.table", "RSQLite", "reticulate", "qs2",
     "PredictiveEcology/CBMutils@development (>=2.5)",
     "PredictiveEcology/libcbmr"
   ),
@@ -99,10 +99,6 @@ defineModule(sim, list(
     expectsInput(
       objectName = "pooldef", objectClass = "character",
       desc = "Vector of names (characters) for each of the carbon pools, with `Input` being the first one",
-      sourceURL = NA),
-    expectsInput(
-      objectName = "spinupSQL", objectClass = "dataset",
-      desc = "Table containing many necesary spinup parameters used in CBM_core",
       sourceURL = NA),
     expectsInput(
       objectName = "disturbanceEvents", objectClass = "data.table",
@@ -356,7 +352,6 @@ spinup <- function(sim) {
   # Spinup
   sim$cbm_vars <- cbmExnSpinup(
     cohortDT        = sim$cohortDT,
-    spuMeta         = sim$spinupSQL,
     growthMeta      = sim$gcMeta,
     growthIncr      = sim$growth_increments,
     colname_gc      = "gcids",

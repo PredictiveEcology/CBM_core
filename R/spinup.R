@@ -2,7 +2,7 @@
 #' Spinup
 #'
 #' Spinup cohort data with libcbmr.
-cbmExnSpinup <- function(cohortDT, spuMeta, growthMeta, growthIncr,
+cbmExnSpinup <- function(cohortDT, growthMeta, growthIncr,
                          colname_gc      = "gcids",
                          colname_species = "species",
                          colname_age     = "age",
@@ -17,12 +17,10 @@ cbmExnSpinup <- function(cohortDT, spuMeta, growthMeta, growthIncr,
   # Read input tables
   reqCols <- list(
     cohortDT   = c("cohortID", "spatial_unit_id", colname_gc, colname_age),
-    spuMeta    = c("id", "return_interval", "min_rotations", "max_rotations", "mean_annual_temperature"),
     growthMeta = c(colname_gc, colname_species, "sw_hw"),
     growthIncr = c(colname_gc, "age", "merch_inc", "foliage_inc", "other_inc")
   )
   cohortDT   <- readDataTable(cohortDT,   "cohortDT",   colRequired = reqCols$cohortDT)
-  spuMeta    <- readDataTable(spuMeta,    "spuMeta",    colRequired = reqCols$spuMeta)
   growthMeta <- readDataTable(growthMeta, "growthMeta", colRequired = reqCols$growthMeta)
   growthIncr <- readDataTable(growthIncr, "growthIncr", colRequired = reqCols$growthIncr)
 
@@ -36,15 +34,10 @@ cbmExnSpinup <- function(cohortDT, spuMeta, growthMeta, growthIncr,
   cohortDT[, row_idx := .GRP, by = groupCols]
   on.exit(cohortDT[, row_idx := NULL])
 
-  # Isolate unique groups and join with parameters
+  # Isolate unique groups
   cohortGroups <- unique(cohortDT[, .SD, .SDcols = c("row_idx", groupCols)])
-  cohortGroups <- cohortGroups |>
-    data.table::merge.data.table(spuMeta, by.x = "spatial_unit_id", by.y = "id",
-                                 suffixes = c("", ".y"), all.x = TRUE) |>
-    data.table::merge.data.table(growthMeta, by = colname_gc,
-                                 suffixes = c("", ".y"), all.x = TRUE)
+  cohortGroups <- merge(cohortGroups, growthMeta, by = colname_gc, suffixes = c("", ".y"), all.x = TRUE)
   cohortGroups[, which(grepl("\\.y$", names(cohortGroups))) := NULL]
-  data.table::setkey(cohortGroups, row_idx)
 
   # Set area to 1ha
   cohortGroups[, area := 1L] # 1ha
@@ -84,6 +77,18 @@ cbmExnSpinup <- function(cohortDT, spuMeta, growthMeta, growthIncr,
     cohortGroups[, last_pass_disturbance_type := default_last_pass_disturbance_type]
   }
 
+  # Join with spinup parameters
+  cbm_defaults_path <- libcbmr::libcbm_libcbm_resources()$get_cbm_defaults_path()
+  cbmDBcon <- RSQLite::dbConnect(RSQLite::dbDriver("SQLite"), cbm_defaults_path)
+  spinupParams <- merge(
+    RSQLite::dbReadTable(cbmDBcon, "spatial_unit"),
+    RSQLite::dbReadTable(cbmDBcon, "spinup_parameter"),
+    by.x = "spinup_parameter_id", by.y = "id", all.x = TRUE)
+  RSQLite::dbDisconnect(cbmDBcon)
+
+  cohortGroups <- merge(cohortGroups, spinupParams, by.x = "spatial_unit_id", by.y = "id", all.x = TRUE)
+  data.table::setkey(cohortGroups, row_idx)
+
   # Join growth increments with cohort group IDs
   ## Drop growth increments age <= 0
   growthIncrGroups <- data.table::merge.data.table(
@@ -95,14 +100,13 @@ cbmExnSpinup <- function(cohortDT, spuMeta, growthMeta, growthIncr,
 
   ## Spinup ----
 
+  mod$libcbm_default_model_config <- libcbmr::cbm_exn_get_default_parameters()
+  spinup_op_seq <- libcbmr::cbm_exn_get_spinup_op_sequence()
+
   spinup_input <- list(
     parameters = cohortGroups,
     increments = growthIncrGroups
   )
-
-  mod$libcbm_default_model_config <- libcbmr::cbm_exn_get_default_parameters()
-  spinup_op_seq <- libcbmr::cbm_exn_get_spinup_op_sequence()
-
   spinup_ops <- libcbmr::cbm_exn_spinup_ops(
     spinup_input, mod$libcbm_default_model_config
   )

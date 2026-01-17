@@ -51,7 +51,6 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
       yieldTablesCumulative = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "yieldTablesCumulative.csv") |> data.table::fread(),
       yieldTablesId         = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "yieldTablesId.csv") |> data.table::fread(),
       pooldef               = file.path(spadesTestPaths$testdata, "SK/input", "pooldef.txt") |> readLines(),
-      spinupSQL             = file.path(spadesTestPaths$testdata, "SK/input", "spinupSQL.csv") |> data.table::fread(),
       sppEquiv = {
         speciesInStudy <- LandR::speciesInStudyArea(studyArea, dPath = spadesTestPaths$inputPath)
         species <- LandR::equivalentName(speciesInStudy$speciesList, df = LandR::sppEquivalencies_CA, "LandR")
