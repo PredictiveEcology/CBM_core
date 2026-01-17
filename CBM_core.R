@@ -97,10 +97,6 @@ defineModule(sim, list(
         other_inc   = "other_inc"    #TODO: define
       )),
     expectsInput(
-      objectName = "pooldef", objectClass = "character",
-      desc = "Vector of names (characters) for each of the carbon pools, with `Input` being the first one",
-      sourceURL = NA),
-    expectsInput(
       objectName = "disturbanceEvents", objectClass = "data.table",
       desc = paste(
         "Table with disturbance events for each simulation year.",
@@ -445,7 +441,7 @@ annual_prepCohortGroups <- function(sim) {
 
     groupCols <- intersect(c(
       "disturbance_type_id", "spatial_unit_id", "gcids", "age", "delay",
-      sim$pooldef, "Products"
+      setdiff(names(sim$cbm_vars$pools), "row_idx")
     ), names(distCohorts))
     distCohorts[, row_idx := .GRP + max(sim$cbm_vars$state$row_idx), by = groupCols]
 
