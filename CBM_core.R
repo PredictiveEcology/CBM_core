@@ -312,7 +312,7 @@ Init <- function(sim){
 
   reticulate::virtualenv_install(
     "r-spadesCBM",
-    pip_options = "--upgrade",
+    pip_options = c("--upgrade", "-q"[identical(Sys.getenv("TESTTHAT"), "true")]),
     packages = c(
       "numpy<2",
       "pandas>=1.1.5",
