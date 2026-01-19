@@ -548,6 +548,14 @@ annual_carbonDynamics <- function(sim) {
 
   ## RUN PYTHON -----
 
+  # Set mean_annual_temperature
+  if (!"mean_annual_temperature" %in% names(sim$cbm_vars$parameters)){
+
+    sim$cbm_vars$parameters[, mean_annual_temperature := sim$spinupSQL$mean_annual_temperature[match(
+      sim$cbm_vars$state$spatial_unit_id, sim$spinupSQL$id
+    )]]
+  }
+
   # Temporarily remove row_idx column
   row_idx <- sim$cbm_vars$parameters$row_idx
   for (i in 2:length(sim$cbm_vars)) sim$cbm_vars[[i]][, row_idx := NULL]
