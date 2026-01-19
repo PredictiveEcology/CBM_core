@@ -58,7 +58,6 @@ test_that("Module: with regeneration delay", {
         foliage_inc = c(0, seq(0.01, 1, length.out = 100)),
         other_inc   = c(0, seq(0.01, 1, length.out = 100))
       ),
-      pooldef   = file.path(spadesTestPaths$testdata, "SK/input", "pooldef.txt")   |> readLines(),
       spinupSQL = file.path(spadesTestPaths$testdata, "SK/input", "spinupSQL.csv") |> data.table::fread()
     )
   )
