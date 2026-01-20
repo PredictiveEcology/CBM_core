@@ -74,18 +74,13 @@ test_that("Module: SK 1985-2011", {
 
   # Check mean_annual_temperature is correct for each spatial unit
   pixelSPUs <- split(simTest$standDT$pixelIndex, simTest$standDT$spatial_unit_id)
-  expect_in(
-    subset(
-      simTest$cbm_vars$parameters,
-      row_idx %in% subset(simTest$cbm_vars$key, pixelIndex %in% pixelSPUs$`27`)$row_idx
-    )$mean_annual_temperature,
-    simTest$spinupSQL[id == 27,]$mean_annual_temperature)
-  expect_in(
-    subset(
-      simTest$cbm_vars$parameters,
-      row_idx %in% subset(simTest$cbm_vars$key, pixelIndex %in% pixelSPUs$`28`)$row_idx
-    )$mean_annual_temperature,
-    simTest$spinupSQL[id == 28,]$mean_annual_temperature)
+  meanTemps <- merge(
+    merge(simTest$cbm_vars$key, simTest$standDT, by = "pixelIndex"),
+    simTest$cbm_vars$parameters,
+    by = "row_idx")[, .(spatial_unit_id, mean_annual_temperature)] |> unique()
+  expect_setequal(meanTemps$spatial_unit_id, c(27, 28))
+  expect_true(meanTemps[spatial_unit_id == 27, "mean_annual_temperature"] !=
+                meanTemps[spatial_unit_id == 28, "mean_annual_temperature"])
 
   # Check saved data
   testNPP <- data.table::rbindlist(lapply(times$start:times$end, function(year){
