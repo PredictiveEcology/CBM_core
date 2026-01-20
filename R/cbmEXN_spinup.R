@@ -1,16 +1,14 @@
 
-#' Spinup
-#'
-#' Spinup cohort data with libcbmr.
-cbmExnSpinup <- function(cohortDT, spuMeta, growthMeta, growthIncr,
-                         colname_gc      = "gcids",
-                         colname_species = "species",
-                         colname_age     = "age",
-                         colname_delay   = "delay",
-                         default_delay   = 0L,
-                         default_historical_disturbance_type = 1L,
-                         default_last_pass_disturbance_type  = 1L,
-                         ...){
+#' CBM-EXN Spinup
+cbmEXN_spinup <- function(cohortDT, spuMeta, growthMeta, growthIncr,
+                          colname_gc      = "gcids",
+                          colname_species = "species",
+                          colname_age     = "age",
+                          colname_delay   = "delay",
+                          default_delay   = 0L,
+                          default_historical_disturbance_type = 1L,
+                          default_last_pass_disturbance_type  = 1L,
+                          ...){
 
   ## Prepare input for spinup ----
 

@@ -349,8 +349,8 @@ spinup <- function(sim) {
     sim$cohortDT, sim$standDT, by = "pixelIndex", sort = FALSE, all.x = TRUE)
   data.table::setkey(sim$cohortDT, cohortID)
 
-  # Spinup
-  sim$cbm_vars <- cbmExnSpinup(
+  # CBM-EXN spinup
+  sim$cbm_vars <- cbmEXN_spinup(
     cohortDT        = sim$cohortDT,
     spuMeta         = sim$spinupSQL,
     growthMeta      = sim$gcMeta,
