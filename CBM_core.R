@@ -313,7 +313,7 @@ Init <- function(sim){
       pyenvOnly      = TRUE),
     packages = c(
       "numpy<2",
-      "pandas>=1.1.5",
+      "pandas>=1.1.5,<=2.3.3",
       "scipy",
       "numexpr>=2.8.7",
       "numba",
