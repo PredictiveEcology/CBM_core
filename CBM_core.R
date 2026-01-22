@@ -14,9 +14,9 @@ defineModule(sim, list(
   citation = list("citation.bib"),
   documentation = list("README.txt", "CBM_core.Rmd"),
   reqdPkgs = list(
-    "data.table", "reticulate", "qs2",
+    "data.table", "reticulate", "qs2", "RSQLite", "withr",
     "PredictiveEcology/CBMutils@development (>=2.5)",
-    "PredictiveEcology/libcbmr"
+    "PredictiveEcology/libcbmr (>=0.0.1)"
   ),
   parameters = rbind(
     defineParameter(
@@ -97,10 +97,6 @@ defineModule(sim, list(
         other_inc   = "other_inc"    #TODO: define
       )),
     expectsInput(
-      objectName = "spinupSQL", objectClass = "dataset",
-      desc = "Table containing many necesary spinup parameters used in CBM_core",
-      sourceURL = NA),
-    expectsInput(
       objectName = "disturbanceEvents", objectClass = "data.table",
       desc = paste(
         "Table with disturbance events for each simulation year.",
@@ -125,9 +121,12 @@ defineModule(sim, list(
         description         = "Optional. Disturbance description",
         wholeStand          = "Optional. Specifies if the whole stand is disturbed (1 = TRUE; 0 = FALSE)"
       )),
-    expectsInput(
-      objectName = "masterRaster", objectClass = "raster",
-      desc = "Raster template for stand pixels. If provided, it is used to map results")
+    expectsInput(objectName = "masterRaster", objectClass = "raster",
+                 desc = "Optional. Raster template for mapping results"),
+    expectsInput(objectName = "cbm_defaults_db", objectClass = "character",
+                 desc = "Optional. Path to CBM defaults SQLite database"),
+    expectsInput(objectName = "cbm_exn_dir", objectClass = "character",
+                 desc = "Optional. Path to CBM-EXN parameters directory")
   ),
   outputObjects = bindrows(
     createsOutput(
@@ -352,7 +351,6 @@ spinup <- function(sim) {
   # CBM-EXN spinup
   sim$cbm_vars <- cbmEXN_spinup(
     cohortDT        = sim$cohortDT,
-    spuMeta         = sim$spinupSQL,
     growthMeta      = sim$gcMeta,
     growthIncr      = sim$growth_increments,
     colname_gc      = "gcids",
@@ -361,7 +359,9 @@ spinup <- function(sim) {
     colname_delay   = ifelse("delaySpinup" %in% names(sim$cohortDT), "delaySpinup", "delay"),
     default_delay   = P(sim)$default_delay_spinup,
     default_historical_disturbance_type = P(sim)$default_historical_disturbance_type,
-    default_last_pass_disturbance_type  = P(sim)$default_last_pass_disturbance_type
+    default_last_pass_disturbance_type  = P(sim)$default_last_pass_disturbance_type,
+    cbm_defaults_db = sim$cbm_defaults_db,
+    cbm_exn_dir     = sim$cbm_exn_dir
   ) |> Cache()
 
   # Add regeneration delay to cbm_vars$state table
@@ -549,7 +549,8 @@ annual_carbonDynamics <- function(sim) {
   # CBM-EXN step
   sim$cbm_vars <- cbmEXN_step(
     sim$cbm_vars,
-    spuMeta = sim$spinupSQL
+    cbm_defaults_db = sim$cbm_defaults_db,
+    cbm_exn_dir     = sim$cbm_exn_dir
   )
 
   # Set total cohort group area in cbm_vars$state table

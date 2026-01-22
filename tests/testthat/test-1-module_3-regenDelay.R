@@ -57,8 +57,7 @@ test_that("Module: with regeneration delay", {
         merch_inc   = c(0, seq(0.01, 1, length.out = 100)),
         foliage_inc = c(0, seq(0.01, 1, length.out = 100)),
         other_inc   = c(0, seq(0.01, 1, length.out = 100))
-      ),
-      spinupSQL = file.path(spadesTestPaths$testdata, "SK/input", "spinupSQL.csv") |> data.table::fread()
+      )
     )
   )
 
