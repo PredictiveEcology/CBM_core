@@ -50,7 +50,6 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
       speciesEcoregion      = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "speciesEcoregion.csv") |> data.table::fread(stringsAsFactors = TRUE),
       yieldTablesCumulative = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "yieldTablesCumulative.csv") |> data.table::fread(),
       yieldTablesId         = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "yieldTablesId.csv") |> data.table::fread(),
-      spinupSQL             = file.path(spadesTestPaths$testdata, "SK/input", "spinupSQL.csv") |> data.table::fread(),
       sppEquiv = {
         speciesInStudy <- LandR::speciesInStudyArea(studyArea, dPath = spadesTestPaths$inputPath)
         species <- LandR::equivalentName(speciesInStudy$speciesList, df = LandR::sppEquivalencies_CA, "LandR")

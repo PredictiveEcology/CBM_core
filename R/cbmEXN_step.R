@@ -1,12 +1,22 @@
 
 #' CBM-EXN Step
-cbmEXN_step <- function(cbm_vars, spuMeta){
+cbmEXN_step <- function(cbm_vars, cbm_defaults_db = NULL, cbm_exn_dir = NULL){
+
+  # Set resource paths
+  withr::local_options(list(
+    libcbmr.cbm_defaults_path      = cbm_defaults_db,
+    libcbmr.cbm_exn_parameters_dir = cbm_exn_dir
+  ))
 
   # Set mean_annual_temperature
   if (!"mean_annual_temperature" %in% names(cbm_vars$parameters)){
 
-    cbm_vars$parameters[, mean_annual_temperature := spuMeta$mean_annual_temperature[match(
-      cbm_vars$state$spatial_unit_id, spuMeta$id
+    cbmDBcon <- RSQLite::dbConnect(RSQLite::dbDriver("SQLite"), libcbmr::get_cbm_defaults_path())
+    meanTemp <- RSQLite::dbReadTable(cbmDBcon, "spatial_unit")[, c("id", "mean_annual_temperature")]
+    RSQLite::dbDisconnect(cbmDBcon)
+
+    cbm_vars$parameters[, mean_annual_temperature := meanTemp$mean_annual_temperature[match(
+      cbm_vars$state$spatial_unit_id, meanTemp$id
     )]]
   }
 

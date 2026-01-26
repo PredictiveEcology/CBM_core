@@ -1,6 +1,6 @@
 
 #' CBM-EXN Spinup
-cbmEXN_spinup <- function(cohortDT, spuMeta, growthMeta, growthIncr,
+cbmEXN_spinup <- function(cohortDT, growthMeta, growthIncr,
                           colname_gc      = "gcids",
                           colname_species = "species",
                           colname_age     = "age",
@@ -8,9 +8,23 @@ cbmEXN_spinup <- function(cohortDT, spuMeta, growthMeta, growthIncr,
                           default_delay   = 0L,
                           default_historical_disturbance_type = 1L,
                           default_last_pass_disturbance_type  = 1L,
-                          ...){
+                          cbm_defaults_db = NULL, cbm_exn_dir = NULL){
 
   ## Prepare input for spinup ----
+
+  # Set resource paths
+  withr::local_options(list(
+    libcbmr.cbm_defaults_path      = cbm_defaults_db,
+    libcbmr.cbm_exn_parameters_dir = cbm_exn_dir
+  ))
+
+  # Read spatial unit parameters
+  cbmDBcon <- RSQLite::dbConnect(RSQLite::dbDriver("SQLite"), libcbmr::get_cbm_defaults_path())
+  spuMeta <- merge(
+    RSQLite::dbReadTable(cbmDBcon, "spatial_unit"),
+    RSQLite::dbReadTable(cbmDBcon, "spinup_parameter"),
+    by.x = "spinup_parameter_id", by.y = "id", all.x = TRUE)
+  RSQLite::dbDisconnect(cbmDBcon)
 
   # Read input tables
   reqCols <- list(
