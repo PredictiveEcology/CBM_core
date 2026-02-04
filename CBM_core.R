@@ -43,9 +43,6 @@ defineModule(sim, list(
       "emissionsProductsCols", "character", c("CO2", "CH4", "CO", "Emissions"), NA_character_, NA_character_,
       desc = "A vector of columns to return for emissions and products"),
     defineParameter(
-      "poolsToPlot", "character", default = "totalCarbon", NA, NA,
-      desc = "which carbon pools to plot, if any. Defaults to total carbon"),
-    defineParameter(
       "skipPrepareCBMvars", "logical", default = FALSE, NA, NA,
       desc = "Whether the inputs for the cbm annual events are prepared by another module.E.g., LandRCBM_split3pools."),
     defineParameter(".saveInitial",  "numeric", start(sim), NA, NA, "Simulation year when the first save event should occur"),
