@@ -27,6 +27,9 @@
 
 ## RUN TEST SUBSETS ----
 
+  # Run function tests
+  testthat::test_dir("tests/testthat", filter = "function")
+
   # Run module tests
   testthat::test_dir("tests/testthat", filter = "module")
 
