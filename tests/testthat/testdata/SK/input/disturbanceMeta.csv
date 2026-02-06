@@ -1,6 +1,6 @@
-eventID,disturbance_type_id
-1,1
-2,204
-4,7
-3,168
-5,168
+eventID,disturbance_type,disturbance_type_id,priority
+1,Wildfire,1,1
+2,Clearcut harvesting without salvage,204,
+3,Generic 20% mortality,168,3
+4,Deforestation,7,
+5,Generic 20% mortality,168,
