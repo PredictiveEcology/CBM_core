@@ -84,7 +84,7 @@ defineModule(sim, list(
         sw_hw      = "'sw' or 'hw'"
       )),
     expectsInput(
-      objectName = "growth_increments", objectClass = "data.table", sourceURL = NA,
+      objectName = "gcIncrements", objectClass = "data.table", sourceURL = NA,
       desc = "Growth curve increments",
       columns = c(
         gcids       = "Growth curve ID",
@@ -276,7 +276,7 @@ spinup <- function(sim) {
   sim$cbm_vars <- cbmEXN_spinup(
     cohortDT        = sim$cohortDT,
     growthMeta      = sim$gcMeta,
-    growthIncr      = sim$growth_increments,
+    growthIncr      = sim$gcIncrements,
     colname_gc      = "gcids",
     colname_species = "species_id",
     colname_age     = ifelse("ageSpinup"   %in% names(sim$cohortDT), "ageSpinup",   "age"),
@@ -432,7 +432,7 @@ annual_prepCohortGroups <- function(sim) {
   }
 
   # Set growth increments: join via spinup cohort group IDs and age
-  growthIncr <- sim$growth_increments
+  growthIncr <- sim$gcIncrements
   data.table::setkeyv(growthIncr, c("gcids", "age"))
 
   ## Extend increments to maximum age found in parameters
@@ -452,7 +452,7 @@ annual_prepCohortGroups <- function(sim) {
         }), use.names = TRUE))
     data.table::setkeyv(growthIncr, c("gcids", "age"))
 
-    sim$growth_increments <- growthIncr
+    sim$gcIncrements <- growthIncr
   }
 
   annualIncr <- merge(
