@@ -51,7 +51,7 @@ test_that("Module: with regeneration delay", {
         species_id = 1,
         sw_hw      = "sw"
       ),
-      growth_increments = data.table::data.table(
+      gcIncrements = data.table::data.table(
         gcids       = 1,
         age         = 0:100,
         merch_inc   = c(0, seq(0.01, 1, length.out = 100)),
