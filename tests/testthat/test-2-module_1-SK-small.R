@@ -25,12 +25,12 @@ test_that("Module: SK-small 1998-2000", {
       ),
       params = list(CBM_core = list(.saveSpinup = TRUE, .saveAll = TRUE, .plot = FALSE)),
 
-      cohortDT          = data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/input", "cohortDT.csv")),
-      standDT           = data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/input", "standDT.csv"))[, area := 900],
-      disturbanceEvents = file.path(spadesTestPaths$testdata, "SK-small/input", "disturbanceEvents.csv") |> data.table::fread(),
-      disturbanceMeta   = file.path(spadesTestPaths$testdata, "SK/input", "disturbanceMeta.csv")   |> data.table::fread(),
-      gcMeta            = file.path(spadesTestPaths$testdata, "SK/input", "gcMeta.csv")            |> data.table::fread(),
-      gcIncrements      = file.path(spadesTestPaths$testdata, "SK/input", "gcIncrements.csv")      |> data.table::fread()
+      standDT           = file.path(spadesTestPaths$testdata, "SK-small/input", "standDT.qs2")  |> qs2::qs_read(),
+      cohortDT          = file.path(spadesTestPaths$testdata, "SK-small/input", "cohortDT.qs2") |> qs2::qs_read(),
+      disturbanceMeta   = file.path(spadesTestPaths$testdata, "SK-small/input", "disturbanceMeta.qs2")   |> qs2::qs_read(),
+      disturbanceEvents = file.path(spadesTestPaths$testdata, "SK-small/input", "disturbanceEvents.qs2") |> qs2::qs_read(),
+      gcMeta            = file.path(spadesTestPaths$testdata, "SK/input", "gcMeta.qs2")       |> qs2::qs_read(),
+      gcIncrements      = file.path(spadesTestPaths$testdata, "SK/input", "gcIncrements.qs2") |> qs2::qs_read()
     )
   )
 
@@ -54,22 +54,22 @@ test_that("Module: SK-small 1998-2000", {
   ## Check that input tables are not altered by module.
   expect_mapequal(
     simTest$cohortDT,
-    data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/input", "cohortDT.csv")))
+    qs2::qs_read(file.path(spadesTestPaths$testdata, "SK-small/input", "cohortDT.qs2")))
   expect_mapequal(
     simTest$standDT,
-    data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/input", "standDT.csv"))[, area := 900])
+    qs2::qs_read(file.path(spadesTestPaths$testdata, "SK-small/input", "standDT.qs2"))[, area := 900])
   expect_mapequal(
     simTest$disturbanceEvents,
-    data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/input", "disturbanceEvents.csv")))
+    qs2::qs_read(file.path(spadesTestPaths$testdata, "SK-small/input", "disturbanceEvents.qs2")))
   expect_mapequal(
     simTest$disturbanceMeta,
-    data.table::fread(file.path(spadesTestPaths$testdata, "SK/input", "disturbanceMeta.csv")))
+    qs2::qs_read(file.path(spadesTestPaths$testdata, "SK/input", "disturbanceMeta.qs2")))
   expect_mapequal(
     simTest$gcMeta,
-    data.table::fread(file.path(spadesTestPaths$testdata, "SK/input", "gcMeta.csv")))
+    qs2::qs_read(file.path(spadesTestPaths$testdata, "SK/input", "gcMeta.qs2")))
   expect_mapequal(
     simTest$gcIncrements,
-    data.table::fread(file.path(spadesTestPaths$testdata, "SK/input", "gcIncrements.csv")))
+    qs2::qs_read(file.path(spadesTestPaths$testdata, "SK/input", "gcIncrements.qs2")))
 
 
   ## Check outputs ----
@@ -78,7 +78,7 @@ test_that("Module: SK-small 1998-2000", {
   expect_true(!is.null(simTest$emissionsProducts))
   expect_equal(
     data.table::as.data.table(simTest$emissionsProducts),
-    data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/valid", "emissionsProducts.csv"))[
+    qs2::qs_read(file.path(spadesTestPaths$testdata, "SK-small/valid", "emissionsProducts.qs2"))[
       , .SD, .SDcols = colnames(simTest$emissionsProducts)],
     check.attributes = FALSE)
 

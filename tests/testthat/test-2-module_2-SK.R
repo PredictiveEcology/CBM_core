@@ -25,12 +25,12 @@ test_that("Module: SK 1985-2011", {
       ),
       params = list(CBM_core = list(.plot = FALSE)),
 
-      cohortDT          = data.table::fread(file.path(spadesTestPaths$testdata, "SK/input", "cohortDT.csv"))[, ageSpinup := sapply(age, max, 3)],
-      standDT           = data.table::fread(file.path(spadesTestPaths$testdata, "SK/input", "standDT.csv"))[, area := 900],
-      disturbanceEvents = file.path(spadesTestPaths$testdata, "SK/input", "disturbanceEvents.csv") |> data.table::fread(),
-      disturbanceMeta   = file.path(spadesTestPaths$testdata, "SK/input", "disturbanceMeta.csv")   |> data.table::fread(),
-      gcMeta            = file.path(spadesTestPaths$testdata, "SK/input", "gcMeta.csv")            |> data.table::fread(),
-      gcIncrements      = file.path(spadesTestPaths$testdata, "SK/input", "gcIncrements.csv")      |> data.table::fread()
+      standDT           = file.path(spadesTestPaths$testdata, "SK/input", "standDT.qs2")  |> qs2::qs_read(),
+      cohortDT          = file.path(spadesTestPaths$testdata, "SK/input", "cohortDT.qs2") |> qs2::qs_read(),
+      disturbanceMeta   = file.path(spadesTestPaths$testdata, "SK/input", "disturbanceMeta.qs2")   |> qs2::qs_read(),
+      disturbanceEvents = file.path(spadesTestPaths$testdata, "SK/input", "disturbanceEvents.qs2") |> qs2::qs_read(),
+      gcMeta            = file.path(spadesTestPaths$testdata, "SK/input", "gcMeta.qs2")       |> qs2::qs_read(),
+      gcIncrements      = file.path(spadesTestPaths$testdata, "SK/input", "gcIncrements.qs2") |> qs2::qs_read()
     )
   )
 
@@ -55,7 +55,7 @@ test_that("Module: SK 1985-2011", {
   expect_true(!is.null(simTest$emissionsProducts))
   expect_equal(
     data.table::as.data.table(simTest$emissionsProducts),
-    data.table::fread(file.path(spadesTestPaths$testdata, "SK/valid", "emissionsProducts.csv"))[
+    qs2::qs_read(file.path(spadesTestPaths$testdata, "SK/valid", "emissionsProducts.qs2"))[
       , .SD, .SDcols = colnames(simTest$emissionsProducts)],
     check.attributes = FALSE)
 
@@ -85,7 +85,7 @@ test_that("Module: SK 1985-2011", {
   }))
   expect_equal(
     testNPP,
-    data.table::fread(file.path(spadesTestPaths$testdata, "SK/valid", "NPP.csv"))
+    qs2::qs_read(file.path(spadesTestPaths$testdata, "SK/valid", "NPP.qs2"))
   )
 })
 

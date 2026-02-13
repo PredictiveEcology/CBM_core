@@ -37,14 +37,14 @@ test_that("Module: with regeneration delay", {
         age        = 10,
         delayRegen = c(0, 2)
       ),
+      disturbanceMeta = data.table::data.table(
+        eventID = 1,
+        disturbance_type_id = 1
+      ),
       disturbanceEvents = data.table::data.table(
         pixelIndex = c(1, 2),
         year       = 2000,
         eventID    = 1
-      ),
-      disturbanceMeta = data.table::data.table(
-        eventID = 1,
-        disturbance_type_id = 1
       ),
       gcMeta = data.table::data.table(
         gcids      = 1,
