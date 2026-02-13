@@ -261,20 +261,9 @@ spinup <- function(sim) {
   if (!"last_pass_disturbance_type"  %in% names(sim$standDT)) message(
     "Spinup using the default last pass disturbance type ID: ", P(sim)$default_last_pass_disturbance_type)
 
-  # Join cohort data with stand data
-  ## On exit: restore cohortDT table
-  cohortInput <- list(key = data.table::key(sim$cohortDT), cols = names(sim$cohortDT))
-  on.exit({
-    sim$cohortDT[, c(setdiff(names(sim$cohortDT), cohortInput$cols)) := NULL]
-    data.table::setkeyv(sim$cohortDT, cohortInput$key)
-  })
-  sim$cohortDT <- data.table::merge.data.table(
-    sim$cohortDT, sim$standDT, by = "pixelIndex", sort = FALSE, all.x = TRUE)
-  data.table::setkey(sim$cohortDT, cohortID)
-
   # CBM-EXN spinup
   sim$cbm_vars <- cbmEXN_spinup(
-    cohortDT        = sim$cohortDT,
+    cohortDT        = merge(sim$cohortDT, sim$standDT, by = "pixelIndex", sort = FALSE, all.x = TRUE),
     growthMeta      = sim$gcMeta,
     growthIncr      = sim$gcIncrements,
     colname_gc      = "gcids",
