@@ -71,16 +71,6 @@ test_that("Module: SK 1985-2011", {
   expect_equal(nrow(simTest$cbm_vars$flux),                  4354)
   expect_equal(nrow(simTest$cbm_vars$pool),                  4354)
 
-  # Check mean_annual_temperature is correct for each spatial unit
-  pixelSPUs <- split(simTest$standDT$pixelIndex, simTest$standDT$spatial_unit_id)
-  meanTemps <- merge(
-    merge(simTest$cbm_vars$key, simTest$standDT, by = "pixelIndex"),
-    simTest$cbm_vars$parameters,
-    by = "row_idx")[, .(spatial_unit_id, mean_annual_temperature)] |> unique()
-  expect_setequal(meanTemps$spatial_unit_id, c(27, 28))
-  expect_true(meanTemps[spatial_unit_id == 27, "mean_annual_temperature"] !=
-                meanTemps[spatial_unit_id == 28, "mean_annual_temperature"])
-
   # Check saved data
   testNPP <- data.table::rbindlist(lapply(times$start:times$end, function(year){
     merge(

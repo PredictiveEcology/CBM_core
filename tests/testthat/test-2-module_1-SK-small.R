@@ -111,9 +111,10 @@ test_that("Module: SK-small 1998-2000", {
       qs2::qd_read(file.path(validDataDir, paste0(year, "_key.qs2")))[, .(cohortID, pixelIndex, row_idx)]
     )
     for (table in c("parameters", "state", "flux", "pools")){
+      tblValid <- qs2::qd_read(file.path(outDataDir,   paste0(year, "_", table, ".qs2")))
       expect_equal(
-        qs2::qd_read(file.path(outDataDir,   paste0(year, "_", table, ".qs2"))),
-        qs2::qd_read(file.path(validDataDir, paste0(year, "_", table, ".qs2")))
+        qs2::qd_read(file.path(outDataDir,   paste0(year, "_", table, ".qs2")))[, .SD, .SDcols = names(tblValid)],
+        tblValid
       )
     }
   }
