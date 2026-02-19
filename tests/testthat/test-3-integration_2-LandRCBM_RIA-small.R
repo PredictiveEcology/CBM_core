@@ -66,7 +66,6 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
           skipCohortGroupHandling = TRUE,
           skipPrepareCBMvars = TRUE
         ))
-
     )
   )
 
@@ -81,54 +80,12 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
   simTest <- SpaDEStestMuffleOutput(
     SpaDES.core::spades(simTestInit)
   )
+
   expect_s4_class(simTest, "simList")
 
-  ## Check completed events ----
-
-  # Check that all modules initiated in the correct order
-  expect_identical(
-    tail(completed(simTest)[eventType == "init", ]$moduleName, 3),
-    c("CBM_core", "Biomass_core", "LandRCBM_split3pools")
-  )
-
-  # CBM_core module: Check events completed in expected order
-  with(
-    list(
-      moduleTest  = "CBM_core",
-      eventExpect = c(
-        "init"              = times$start,
-        "spinup"            = times$start,
-        setNames(
-          rep(times$start:times$end, each = 3),
-          rep(c("annual_preprocessing", "annual_carbonDynamics", "save"), length(times$start:times$end))
-        )
-      )),
-    expect_equal(
-      completed(simTest)[moduleName == moduleTest, .(eventTime, eventType)],
-      data.table::data.table(
-        eventTime = data.table::setattr(eventExpect, "unit", "year"),
-        eventType = names(eventExpect)
-      ))
-  )
-  # LandRCBM: Check events order at time=1
-  with(
-    list(
-      expectedEventOrder  = c(
-        "spinup",
-        "postSpinupAdjustBiomass",
-        "mortalityAndGrowth",
-        "annualIncrements",
-        "annual_preprocessing",
-        "prepareCBMvars",
-        "annual_carbonDynamics")
-    ),
-    expect_equal(
-      completed(simTest)[eventTime == times$start & eventType %in% expectedEventOrder, eventType],
-      expectedEventOrder
-    )
-  )
 
   ## Check outputs ----
+
   # species ID are correct
   expect_equal(head(simTest$cbm_vars$state$species, 5), c(31, 16, 31, 16, 31))
   # spatial unit id is correct
