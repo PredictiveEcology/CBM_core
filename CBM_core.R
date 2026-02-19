@@ -54,12 +54,13 @@ defineModule(sim, list(
   ),
   inputObjects = bindrows(
     expectsInput(
-      objectName = "standDT", objectClass = "data.table", sourceURL = NA,
+      objectName = "standDT", objectClass = "data.table",
       desc = "Table of stand attributes. Stands can have 1 or more cohorts.",
       columns = c(
-        pixelIndex      = "Stand ID",
-        area            = "Stand area in meters",
-        spatial_unit_id = "CBM-CFS3 spatial unit ID",
+        pixelIndex = "Stand ID",
+        area       = "Stand area in meters",
+        admin_name = "Canada province or territory name",
+        eco_id     = "Canada ecozone ID",
         historical_disturbance_type = "Historic CBM-CFS3 disturbance type ID. Defaults to the 'historical_disturbance_type' parameter",
         last_pass_disturbance_type  = "Last pass CBM-CFS3 disturbance type ID. Defaults to the 'last_pass_disturbance_type' parameter"
       )),

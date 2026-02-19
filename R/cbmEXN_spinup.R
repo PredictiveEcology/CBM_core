@@ -20,23 +20,28 @@ cbmEXN_spinup <- function(cohortDT, growthMeta, growthIncr,
 
   # Read spatial unit parameters
   cbmDBcon <- RSQLite::dbConnect(RSQLite::dbDriver("SQLite"), libcbmr::get_cbm_defaults_path())
-  spuMeta <- merge(
-    RSQLite::dbReadTable(cbmDBcon, "spatial_unit"),
-    RSQLite::dbReadTable(cbmDBcon, "spinup_parameter"),
-    by.x = "spinup_parameter_id", by.y = "id", all.x = TRUE)
+  spuMeta <- data.table::as.data.table(RSQLite::dbReadTable(cbmDBcon, "spatial_unit")) |>
+    merge(data.table::as.data.table(RSQLite::dbReadTable(cbmDBcon, "spinup_parameter")),
+          by.x = "spinup_parameter_id", by.y = "id") |>
+    merge(data.table::as.data.table(RSQLite::dbReadTable(cbmDBcon, "admin_boundary_tr"))[
+      locale_id == 1, .(admin_boundary_id, admin_name = name)],
+      by = "admin_boundary_id")
+  data.table::setnames(spuMeta, "id", "spatial_unit_id")
   RSQLite::dbDisconnect(cbmDBcon)
 
   # Read input tables
   reqCols <- list(
-    cohortDT   = c("cohortID", "spatial_unit_id", colname_gc, colname_age),
-    spuMeta    = c("id", "return_interval", "min_rotations", "max_rotations", "mean_annual_temperature"),
+    cohortDT   = c("cohortID", colname_gc, colname_age),
     growthMeta = c(colname_gc, colname_species, "sw_hw"),
     growthIncr = c(colname_gc, "age", "merch_inc", "foliage_inc", "other_inc")
   )
   cohortDT   <- readDataTable(cohortDT,   "cohortDT",   colRequired = reqCols$cohortDT)
-  spuMeta    <- readDataTable(spuMeta,    "spuMeta",    colRequired = reqCols$spuMeta)
   growthMeta <- readDataTable(growthMeta, "growthMeta", colRequired = reqCols$growthMeta)
   growthIncr <- readDataTable(growthIncr, "growthIncr", colRequired = reqCols$growthIncr)
+
+  if (!"spatial_unit_id" %in% names(cohortDT) &
+      !all(c("admin_name", "eco_id") %in% names(cohortDT))) stop(
+        "cohortDT must have either 'spatial_unit_id' or 'admin_name' and 'eco_id' columns")
 
   # Create cohort groups: groups of cohorts with the same attributes
   ## Allow all cohortDT attributes to be considered in unique groupings
@@ -50,11 +55,17 @@ cbmEXN_spinup <- function(cohortDT, growthMeta, growthIncr,
 
   # Isolate unique groups and join with parameters
   cohortGroups <- unique(cohortDT[, .SD, .SDcols = c("row_idx", groupCols)])
+
+  if ("spatial_unit_id" %in% names(cohortGroups)){
+    spuMetaJoin <- "spatial_unit_id"
+  }else{
+    data.table::setnames(cohortGroups, "eco_id", "eco_boundary_id")
+    spuMetaJoin <- c("admin_name", "eco_boundary_id")
+  }
+
   cohortGroups <- cohortGroups |>
-    data.table::merge.data.table(spuMeta, by.x = "spatial_unit_id", by.y = "id",
-                                 suffixes = c("", ".y"), all.x = TRUE) |>
-    data.table::merge.data.table(growthMeta, by = colname_gc,
-                                 suffixes = c("", ".y"), all.x = TRUE)
+    merge(spuMeta,    by = spuMetaJoin, suffixes = c("", ".y"), all.x = TRUE) |>
+    merge(growthMeta, by = colname_gc,  suffixes = c("", ".y"), all.x = TRUE)
   cohortGroups[, which(grepl("\\.y$", names(cohortGroups))) := NULL]
   data.table::setkey(cohortGroups, row_idx)
 
