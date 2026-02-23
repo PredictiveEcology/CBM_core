@@ -1,13 +1,13 @@
 
 if (!testthat::is_testing()) source(testthat::test_path("setup.R"))
 
-test_that("Multi module: SK-small 1998-2000", {
+test_that("Multi module: SK-small 1985-1986", {
 
   ## Run simInit and spades ----
 
   # Set up project
-  projectName <- "integration_SK-small_1998-2000"
-  times       <- list(start = 1998, end = 2000)
+  projectName <- "integration_SK-small_1985-1986"
+  times       <- list(start = 1985, end = 1986)
 
   simInitInput <- SpaDEStestMuffleOutput(
 
@@ -57,9 +57,7 @@ test_that("Multi module: SK-small 1998-2000", {
 
   expect_s4_class(simTest, "simList")
 
-
-  ## Check outputs ----
-
+  # Check outputs
   expect_true(!is.null(simTest$emissionsProducts))
 
 })
