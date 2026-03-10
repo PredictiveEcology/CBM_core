@@ -507,7 +507,7 @@ annual_carbonDynamics <- function(sim) {
   # Add to results
   sim$emissionsProducts <- rbind(
     sim$emissionsProducts,
-    cbind(year = time(sim), emissions[, .SD, .SDcols = unique(
+    cbind(year = as.integer(time(sim)), emissions[, .SD, .SDcols = unique(
       c("Products", "Emissions", "CO2", "CH4", "CO", P(sim)$emissionsProductsCols))]))
 
   # Return simList
