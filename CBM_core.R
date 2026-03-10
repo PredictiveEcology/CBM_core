@@ -65,34 +65,33 @@ defineModule(sim, list(
         last_pass_disturbance_type  = "Last pass CBM-CFS3 disturbance type ID. Defaults to the 'last_pass_disturbance_type' parameter"
       )),
     expectsInput(
-      objectName = "cohortDT", objectClass = "data.table", sourceURL = NA,
-      desc = "Table of cohort attributes",
+      objectName = "cohortDT", objectClass = "data.table",
+      desc = "Table of cohort attributes. Must contain one or more additional classifier columns.",
       columns = c(
         cohortID    = "Cohort ID",
         pixelIndex  = "Stand ID",
-        gcids       = "Growth curve ID",
         age         = "Cohort age at simulation start",
         ageSpinup   = "Optional. Alternative cohort age at the simulation start year to use in the spinup",
         delaySpinup = "Optional. Spinup delay. Defaults to the 'default_delay_spinup' parameter",
         delayRegen  = "Optional. Regeneration delay post disturbance in years. Defaults to the 'default_delay_regen' parameter"
       )),
     expectsInput(
-      objectName = "gcMeta", objectClass = "data.table", sourceURL = NA,
+      objectName = "gcMeta", objectClass = "data.table",
       desc = "Growth curve metadata",
       columns = c(
-        gcids      = "Growth curve ID",
+        gcID       = "Growth curve ID",
         species_id = "CBM-CFS3 species ID",
         sw_hw      = "'sw' or 'hw'"
       )),
     expectsInput(
-      objectName = "gcIncrements", objectClass = "data.table", sourceURL = NA,
+      objectName = "gcIncrements", objectClass = "data.table",
       desc = "Growth curve increments",
       columns = c(
-        gcids       = "Growth curve ID",
+        gcID        = "Growth curve ID",
         age         = "Cohort age",
-        merch_inc   = "merch_inc",   #TODO: define
-        foliage_inc = "foliage_inc", #TODO: define
-        other_inc   = "other_inc"    #TODO: define
+        merch_inc   = "Change in carbon (MgC/ha/year) in merchantable pools",
+        foliage_inc = "Change in carbon (MgC/ha/year) in foliage pools",
+        other_inc   = "Change in carbon (MgC/ha/year) in other pools"
       )),
     expectsInput(
       objectName = "disturbanceEvents", objectClass = "data.table",
@@ -267,7 +266,6 @@ spinup <- function(sim) {
     cohortDT        = merge(sim$cohortDT, sim$standDT, by = "pixelIndex", sort = FALSE, all.x = TRUE),
     growthMeta      = sim$gcMeta,
     growthIncr      = sim$gcIncrements,
-    colname_gc      = "gcids",
     colname_species = "species_id",
     colname_age     = ifelse("ageSpinup"   %in% names(sim$cohortDT), "ageSpinup",   "age"),
     colname_delay   = ifelse("delaySpinup" %in% names(sim$cohortDT), "delaySpinup", "delay"),
@@ -364,7 +362,9 @@ annual_prepCohortGroups <- function(sim) {
     data.table::setkey(distCohorts, cohortID)
 
     groupCols <- intersect(c(
-      "disturbance_type_id", "spatial_unit_id", "gcids", "age", "delay",
+      "disturbance_type_id", "spatial_unit_id",
+      intersect(names(sim$cohortDT), names(sim$gcMeta)),
+      "age", "delay",
       setdiff(names(sim$cbm_vars$pools), "row_idx")
     ), names(distCohorts))
     distCohorts[, row_idx := .GRP + max(sim$cbm_vars$state$row_idx), by = groupCols]
@@ -428,12 +428,11 @@ annual_prepCohortGroups <- function(sim) {
 
   # Set growth increments: join via spinup cohort group IDs and age
   growthIncr <- sim$gcIncrements
-  data.table::setkeyv(growthIncr, c("gcids", "age"))
+  data.table::setkey(growthIncr, gcID, age)
 
   ## Extend increments to maximum age found in parameters
   ## This handles cases where the cohort ages exceed what is available in the increments
-  maxIncr <- subset(growthIncr[growthIncr[, .I[which.max(age)], by = "gcids"]$V1,],
-                    gcids %in% sim$cbm_vars$state$gcids)
+  maxIncr <- growthIncr[growthIncr[, .I[which.max(age)], by = "gcID"]$V1,]
   if (any(maxIncr$age < max(sim$cbm_vars$parameters$age))){
 
     warning("Cohort ages exceed growth increment ages. ",
@@ -445,14 +444,14 @@ annual_prepCohortGroups <- function(sim) {
           cbind(age = (maxIncr[i,]$age + 1):(max(sim$cbm_vars$parameters$age) + 250),
                 maxIncr[i,][, -("age")])
         }), use.names = TRUE))
-    data.table::setkeyv(growthIncr, c("gcids", "age"))
+    data.table::setkey(growthIncr, gcID, age)
 
     sim$gcIncrements <- growthIncr
   }
 
-  annualIncr <- merge(
-    sim$cbm_vars$state[, .(row_idx, gcids, age)],
-    growthIncr, by = c("gcids", "age"), all.x = TRUE)
+  annualIncr <- sim$cbm_vars$state |>
+    merge(sim$gcMeta, by = c("admin_name", "eco_id", intersect(names(sim$cohortDT), names(sim$gcMeta)))) |>
+    merge(growthIncr, by = c("gcID", "age"), all.x = TRUE)
   data.table::setkey(annualIncr, row_idx)
 
   sim$cbm_vars$parameters[, merch_inc   := annualIncr$merch_inc]
