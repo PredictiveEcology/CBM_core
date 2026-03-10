@@ -54,22 +54,28 @@ test_that("Module: SK-small 1998-2000", {
   ## Check that input tables are not altered by module.
   expect_equal(
     simTest$cohortDT,
-    qs2::qs_read(file.path(spadesTestPaths$testdata, "SK-small/input", "cohortDT.qs2")))
+    qs2::qs_read(file.path(spadesTestPaths$testdata, "SK-small/input", "cohortDT.qs2")),
+    check.attributes = FALSE)
   expect_equal(
     simTest$standDT,
-    qs2::qs_read(file.path(spadesTestPaths$testdata, "SK-small/input", "standDT.qs2")))
+    qs2::qs_read(file.path(spadesTestPaths$testdata, "SK-small/input", "standDT.qs2")),
+    check.attributes = FALSE)
   expect_equal(
     simTest$disturbanceEvents,
-    qs2::qs_read(file.path(spadesTestPaths$testdata, "SK-small/input", "disturbanceEvents.qs2")))
+    qs2::qs_read(file.path(spadesTestPaths$testdata, "SK-small/input", "disturbanceEvents.qs2")),
+    check.attributes = FALSE)
   expect_equal(
     simTest$disturbanceMeta,
-    qs2::qs_read(file.path(spadesTestPaths$testdata, "SK/input", "disturbanceMeta.qs2")))
+    qs2::qs_read(file.path(spadesTestPaths$testdata, "SK/input", "disturbanceMeta.qs2")),
+    check.attributes = FALSE)
   expect_equal(
     simTest$gcMeta,
-    qs2::qs_read(file.path(spadesTestPaths$testdata, "SK/input", "gcMeta.qs2")))
+    qs2::qs_read(file.path(spadesTestPaths$testdata, "SK/input", "gcMeta.qs2")),
+    check.attributes = FALSE)
   expect_equal(
     simTest$gcIncrements,
-    qs2::qs_read(file.path(spadesTestPaths$testdata, "SK/input", "gcIncrements.qs2")))
+    qs2::qs_read(file.path(spadesTestPaths$testdata, "SK/input", "gcIncrements.qs2")),
+    check.attributes = FALSE)
 
 
   ## Check outputs ----
