@@ -30,13 +30,13 @@ In [CBM_core](https://github.com/PredictiveEcology/CBM_core.git), the approach d
 | Name              | Class      | Description                                                  | Source          |
 |-----------------|-----------------|-----------------------|-----------------|
 | growth_increments | Data table | growth increment matrix | CBM_vol2biomass |
-| standDT | Data table | Table of stand attributes. Stands can have 1 or more cohorts | CBM_dataPrep_SK |
-| cohortDT | Data table | Table of cohort attributes | CBM_dataPrep_SK |
+| standDT | Data table | Table of stand attributes. Stands can have 1 or more cohorts | CBM_dataPrep |
+| cohortDT | Data table | Table of cohort attributes | CBM_dataPrep |
 | masterRaster      | SpatRaster | Raster of study area | User provided, for SK: [Google Drive](https://drive.google.com/file/d/1zUyFH8k6Ef4c_GiWMInKbwAl6m6gvLJW)                                                             |
-| gcMeta | Data table | Growth curve metadata | CBM_dataPrep_SK |
+| gcMeta | Data table | Growth curve metadata | CBM_dataPrep |
 | pooldef           | Character  | Vector of pools                                              | CBM_defaults    |
 | spinupSQL         | Data table | Parameters for CBM_core spinup event                         | CBM_defaults    |
-| disturbanceEvents | Data table | Table with disturbance events for each simulation year | CBM_dataPrep_SK |
+| disturbanceEvents | Data table | Table with disturbance events for each simulation year | CBM_dataPrep |
 | disturbanceMeta | Data table | Table defining disturbance event types | CBM_dataPrep_SK |
 
 ## Module functioning
