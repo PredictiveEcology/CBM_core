@@ -278,6 +278,11 @@ spinup <- function(sim) {
     cbm_exn_dir     = sim$cbm_exn_dir
   ) |> Cache()
 
+  # 2026-03-10: Cache issue:
+  ## Altering a data.table in the sim$cbm_vars list alters the cached table.
+  ## Copy the tables as a temporary fix
+  for (i in 1:length(sim$cbm_vars)) sim$cbm_vars[[i]] <- data.table::copy(sim$cbm_vars[[i]])
+
   # Add regeneration delay to cbm_vars$state table
   data.table::setnames(sim$cbm_vars$state, "delayRegen", "delay", skip_absent = TRUE)
   if ("delay" %in% names(sim$cbm_vars$state)){
