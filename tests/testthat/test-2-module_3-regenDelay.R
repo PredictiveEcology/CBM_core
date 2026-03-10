@@ -26,14 +26,15 @@ test_that("Module: with regeneration delay", {
       params = list(CBM_core = list(.plot = FALSE)),
 
       standDT = data.table::data.table(
-        pixelIndex      = c(1, 2),
-        spatial_unit_id = 28,
-        area            = 900
+        pixelIndex = c(1, 2),
+        admin_name = "Saskatchewan",
+        eco_id     = 9,
+        area       = 900
       ),
       cohortDT = data.table::data.table(
         cohortID   = c(1, 2),
         pixelIndex = c(1, 2),
-        gcids      = 1,
+        gcID       = 1,
         age        = 10,
         delayRegen = c(0, 2)
       ),
@@ -47,12 +48,14 @@ test_that("Module: with regeneration delay", {
         eventID    = 1
       ),
       gcMeta = data.table::data.table(
-        gcids      = 1,
+        gcID       = 1,
+        admin_name = "Saskatchewan",
+        eco_id     = 9,
         species_id = 1,
         sw_hw      = "sw"
       ),
       gcIncrements = data.table::data.table(
-        gcids       = 1,
+        gcID        = 1,
         age         = 0:100,
         merch_inc   = c(0, seq(0.01, 1, length.out = 100)),
         foliage_inc = c(0, seq(0.01, 1, length.out = 100)),

@@ -101,11 +101,10 @@ test_that("Module: SK-small 1998-2000", {
   expect_equal(nrow(simTest$cbm_vars$pool),                  43)
 
   # Check sw_hw flag
-  cohortSW <- merge(simTest$cohortDT, simTest$gcMeta, by = "gcids") |>
-    merge(simTest$cbm_vars$key[, .(cohortID, row_idx)], by = "cohortID") |>
-    merge(simTest$cbm_vars$state[, .(row_idx, sw_hw)], by = "row_idx")
-  expect_equal(unique(subset(cohortSW, sw_hw.x == "sw")$sw_hw.y), 0)
-  expect_equal(unique(subset(cohortSW, sw_hw.x == "hw")$sw_hw.y), 1)
+  expect_equal(unique(simTest$cbm_vars$state[species_name == "Black spruce", sw_hw]), 0)
+  expect_equal(unique(simTest$cbm_vars$state[species_name == "Jack pine",    sw_hw]), 0)
+  expect_equal(unique(simTest$cbm_vars$state[species_name == "White birch",  sw_hw]), 1)
+  expect_equal(unique(simTest$cbm_vars$state[species_name == "White spruce", sw_hw]), 0)
 
   # Check saved data
   outDataDir   <- file.path(simTest$spadesCBMdb, "data")

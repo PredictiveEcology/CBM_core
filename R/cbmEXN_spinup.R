@@ -1,7 +1,7 @@
 
 #' CBM-EXN Spinup
 cbmEXN_spinup <- function(cohortDT, growthMeta, growthIncr,
-                          colname_gc      = "gcids",
+                          colname_gc      = intersect(names(cohortDT), names(growthMeta)),
                           colname_species = "species",
                           colname_age     = "age",
                           colname_delay   = "delay",
@@ -30,10 +30,13 @@ cbmEXN_spinup <- function(cohortDT, growthMeta, growthIncr,
   RSQLite::dbDisconnect(cbmDBcon)
 
   # Read input tables
+  if ("species" %in% colname_gc) stop(
+    "Cohort classifiers cannot contain the column 'species' as this is reserved for the CBM species_id")
+
   reqCols <- list(
     cohortDT   = c("cohortID", colname_gc, colname_age),
-    growthMeta = c(colname_gc, colname_species, "sw_hw"),
-    growthIncr = c(colname_gc, "age", "merch_inc", "foliage_inc", "other_inc")
+    growthMeta = c("gcID", colname_gc, colname_species, "sw_hw"),
+    growthIncr = c("gcID", "age", "merch_inc", "foliage_inc", "other_inc")
   )
   cohortDT   <- readDataTable(cohortDT,   "cohortDT",   colRequired = reqCols$cohortDT)
   growthMeta <- readDataTable(growthMeta, "growthMeta", colRequired = reqCols$growthMeta)
@@ -45,11 +48,7 @@ cbmEXN_spinup <- function(cohortDT, growthMeta, growthIncr,
 
   # Create cohort groups: groups of cohorts with the same attributes
   ## Allow all cohortDT attributes to be considered in unique groupings
-  groupCols <- setdiff(names(cohortDT), c(
-    "cohortID", "pixelIndex", "area",
-    if (colname_species != "species" && "species" %in% names(cohortDT)) "species",
-    if (colname_delay   != "delay"   && "delay"   %in% names(cohortDT)) "delay"
-  ))
+  groupCols <- setdiff(names(cohortDT), c("cohortID", "pixelIndex", "area"))
   cohortDT[, row_idx := .GRP, by = groupCols]
   on.exit(cohortDT[, row_idx := NULL])
 
@@ -59,13 +58,13 @@ cbmEXN_spinup <- function(cohortDT, growthMeta, growthIncr,
   if ("spatial_unit_id" %in% names(cohortGroups)){
     spuMetaJoin <- "spatial_unit_id"
   }else{
-    data.table::setnames(cohortGroups, "eco_id", "eco_boundary_id")
-    spuMetaJoin <- c("admin_name", "eco_boundary_id")
+    data.table::setnames(spuMeta, "eco_boundary_id", "eco_id")
+    spuMetaJoin <- c("admin_name", "eco_id")
   }
 
   cohortGroups <- cohortGroups |>
-    merge(spuMeta,    by = spuMetaJoin, suffixes = c("", ".y"), all.x = TRUE) |>
-    merge(growthMeta, by = colname_gc,  suffixes = c("", ".y"), all.x = TRUE)
+    merge(growthMeta, by = colname_gc,  suffixes = c("", ".y"), all.x = TRUE) |>
+    merge(spuMeta,    by = spuMetaJoin, suffixes = c("", ".y"), all.x = TRUE)
   cohortGroups[, which(grepl("\\.y$", names(cohortGroups))) := NULL]
   data.table::setkey(cohortGroups, row_idx)
 
@@ -110,9 +109,9 @@ cbmEXN_spinup <- function(cohortDT, growthMeta, growthIncr,
   # Join growth increments with cohort group IDs
   ## Drop growth increments age <= 0
   growthIncrGroups <- data.table::merge.data.table(
-    cohortGroups[, .SD, .SDcols = c("row_idx", colname_gc)],
+    cohortGroups[, .SD, .SDcols = c("row_idx", "gcID")],
     subset(growthIncr, age > 0),
-    by = colname_gc, allow.cartesian = TRUE)[, gcids := NULL]
+    by = "gcID", allow.cartesian = TRUE)[, gcID := NULL]
   data.table::setkey(growthIncrGroups, row_idx, age)
 
 
