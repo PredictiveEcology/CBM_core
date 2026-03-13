@@ -8,7 +8,7 @@ defineModule(sim, list(
     person("Susan",   "Murray",    email = "murray.e.susan@gmail.com",           role = c("ctb"))
   ),
   childModules = character(0),
-  version = list(CBM_core = "1.0.0"),
+  version = list(CBM_core = "1.0.0.9000"),
   timeframe = as.POSIXlt(c(NA, NA)),
   timeunit = "year",
   citation = list("citation.bib"),
