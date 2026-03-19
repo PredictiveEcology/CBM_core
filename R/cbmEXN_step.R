@@ -12,7 +12,7 @@ cbmEXN_step <- function(cbm_vars, cbm_defaults_db = NULL, cbm_exn_dir = NULL){
   if (!all(c("spatial_unit_id", "mean_annual_temperature") %in% names(cbm_vars$state)) |
       !"mean_annual_temperature" %in% names(cbm_vars$parameters)){
 
-    if (!all(c("admin_name", "eco_id") %in% names(cohortDT))) stop(
+    if (!all(c("admin_name", "eco_id") %in% names(cbm_vars$state))) stop(
       "cbm_vars$state must have either 'spatial_unit_id' or 'admin_name' and 'eco_id' columns")
 
     # Read spatial unit parameters
