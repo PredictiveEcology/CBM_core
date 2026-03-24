@@ -240,6 +240,10 @@ write_geo <- function(sim){
 
 spinup <- function(sim) {
 
+  if (is.null(sim$cohortClassifiers)){
+    sim$cohortClassifiers <- setdiff(names(sim$cohortDT), c("cohortID", "pixelIndex", "age", "ageSpinup", "delay_spinup", "delay_regen"))
+  }
+
   message("Writing CBM4 dataset: spinup_parameters")
 
   CBM4r::cbm4_write_spinup_parameters(
@@ -610,10 +614,6 @@ plot <- function(sim){
 }
 
 .inputObjects <- function(sim){
-
-  if (!suppliedElsewhere("cohortClassifiers", sim)){
-    sim$cohortClassifiers <- setdiff(names(sim$cohortDT), c("cohortID", "pixelIndex", "age", "ageSpinup", "delay_spinup", "delay_regen"))
-  }
 
   # CBM-CFS3 defaults SQLite database
   if (!suppliedElsewhere("cbm_defaults_db", sim)){
