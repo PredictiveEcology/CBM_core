@@ -126,7 +126,7 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
       sim <- Init(sim)
 
       # Initiate CBM4 data directory
-      sim <- scheduleEvent(sim, start(sim), "CBM_core", "initCBM4data", eventPriority = 1)
+      sim <- scheduleEvent(sim, start(sim), "CBM_core", "write_geo", eventPriority = 1)
 
       # Schedule spinup
       sim <- scheduleEvent(sim, start(sim), "CBM_core", "spinup", eventPriority = 5)
@@ -139,9 +139,9 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
       if (P(sim)$.plot) sim <- scheduleEvent(sim, end(sim), "CBM_core", "plot", eventPriority = 10)
     },
 
-    initCBM4data = {
+    write_geo = {
 
-      sim <- initCBM4data(sim)
+      sim <- write_geo(sim)
     },
 
     spinup = {
@@ -196,7 +196,7 @@ Init <- function(sim){
 
 }
 
-initCBM4data <- function(sim){
+write_geo <- function(sim){
 
   # Set CBM4 data directory
   sim$CBM4data <- file.path(outputPath(sim), "CBM4data")
