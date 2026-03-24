@@ -253,10 +253,8 @@ spinup <- function(sim) {
   colRename <- c(
     "pixelIndex" = "pixel_index",
     "delay"      = "delay_spinup",
-    if ("ageSpinup" %in% names(sim$cohortDT)) c(
-      "age"   = "ageSpinup",
-      "ageIn" = "age" # Need to keep true age to prevent over-merging of cohorts
-    )
+    "ageSpinup"  = "age",
+    "age"        = "ageIn"["ageSpinup" %in% names(sim$cohortDT)] # Need to keep true age to prevent over-merging of cohorts
   )
   data.table::setnames(sim$cohortDT, names(colRename), colRename, skip_absent = TRUE)
   on.exit(data.table::setnames(sim$cohortDT, colRename, names(colRename), skip_absent = TRUE))
