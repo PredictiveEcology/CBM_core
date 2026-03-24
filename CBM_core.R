@@ -129,7 +129,7 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
       sim <- Init(sim)
 
       # Write geo metadata
-      sim <- scheduleEvent(sim, start(sim), "CBM_core", "write_geo", eventPriority = 1)
+      sim <- scheduleEvent(sim, start(sim), "CBM_core", "write_geo", eventPriority = 5)
 
       # Schedule spinup
       sim <- scheduleEvent(sim, start(sim), "CBM_core", "spinup", eventPriority = 5)
