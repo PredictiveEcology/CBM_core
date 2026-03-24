@@ -31,7 +31,7 @@ defineModule(sim, list(
     defineParameter(".saveAll",   "logical", FALSE, NA, NA, "Save all available data"),
     defineParameter(".useCache",  "logical", FALSE, NA, NA, "Cache module events"),
     defineParameter(".virtualenv", "character", NA, NA, NA, "Python virtual environment"),
-    defineParameter(".cbm4vers", "character", "2.16.0", NA, NA, "CBM4 version")
+    defineParameter(".cbm4vers", "character", "2.17.9", NA, NA, "CBM4 version")
   ),
   inputObjects = bindrows(
     expectsInput(
