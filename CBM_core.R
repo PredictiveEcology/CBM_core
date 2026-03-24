@@ -209,6 +209,9 @@ write_geo <- function(sim){
 
   message("Initiating CBM4 dataset: simulation")
 
+  standDT <- sim$standDT
+  if (!data.table::is.data.table(standDT)) standDT <- data.table::as.data.table(standDT)
+
   colRename <- c(
     "pixelIndex"      = "pixel_index",
     "admin_id"        = "admin_boundary_id",
@@ -217,8 +220,8 @@ write_geo <- function(sim){
     "eco_name"        = "eco_boundary",
     "spatial_unit_id" = "spatial_unit"
   )
-  data.table::setnames(sim$standDT, names(colRename), colRename, skip_absent = TRUE)
-  on.exit(data.table::setnames(sim$standDT, colRename, names(colRename), skip_absent = TRUE))
+  data.table::setnames(standDT, names(colRename), colRename, skip_absent = TRUE)
+  on.exit(data.table::setnames(standDT, colRename, names(colRename), skip_absent = TRUE))
 
   CBM4r::cbm4_write_geo(
     sim$CBM4data,
@@ -226,7 +229,7 @@ write_geo <- function(sim){
     dataset_name    = "simulation",
     grid_rast       = sim$masterRaster,
     grid_chunks     = P(sim)$chunks,
-    grid_meta       = sim$standDT,
+    grid_meta       = standDT,
     def_historic_disturbance_type  = P(sim)$def_historic_disturbance_type,
     def_last_pass_disturbance_type = P(sim)$def_last_pass_disturbance_type
   )
@@ -250,20 +253,23 @@ spinup <- function(sim) {
 
   message("Writing CBM4 dataset: inventory")
 
+  cohortDT <- sim$cohortDT
+  if (!data.table::is.data.table(cohortDT)) cohortDT <- data.table::as.data.table(cohortDT)
+
   colRename <- c(
     "pixelIndex" = "pixel_index",
     "delay"      = "delay_spinup",
     "ageSpinup"  = "age",
-    "age"        = "ageIn"["ageSpinup" %in% names(sim$cohortDT)] # Need to keep true age to prevent over-merging of cohorts
+    "age"        = "ageIn"["ageSpinup" %in% names(cohortDT)] # Need to keep true age to prevent over-merging of cohorts
   )
-  data.table::setnames(sim$cohortDT, names(colRename), colRename, skip_absent = TRUE)
-  on.exit(data.table::setnames(sim$cohortDT, colRename, names(colRename), skip_absent = TRUE))
+  data.table::setnames(cohortDT, names(colRename), colRename, skip_absent = TRUE)
+  on.exit(data.table::setnames(cohortDT, colRename, names(colRename), skip_absent = TRUE))
 
   CBM4r::cbm4_write_inventory(
     sim$CBM4data,
     template_name   = "simulation",
     cbm_defaults_db = sim$cbm_defaults_db,
-    cohortDT        = sim$cohortDT,
+    cohortDT        = cohortDT,
     classifiers     = sim$cohortClassifiers,
     def_delay       = P(sim)$def_delay_spinup,
     col_ignore      = "cohortID"
