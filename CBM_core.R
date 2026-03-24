@@ -27,11 +27,12 @@ defineModule(sim, list(
     defineParameter("def_delay_regen",  "integer", 0L, 0L, NA, "Default regeneration delay post disturbance"),
     defineParameter("def_historic_disturbance_type",  "character", "Wildfire", NA, NA, "Default historic disturbance type."),
     defineParameter("def_last_pass_disturbance_type", "character", "Wildfire", NA, NA, "Default last pass disturbance type."),
-    defineParameter(".plot",      "logical", TRUE,  NA, NA, "Plot simulation results"),
-    defineParameter(".saveAll",   "logical", FALSE, NA, NA, "Save all available data"),
-    defineParameter(".useCache",  "logical", FALSE, NA, NA, "Cache module events"),
-    defineParameter(".virtualenv", "character", NA, NA, NA, "Python virtual environment"),
-    defineParameter(".cbm4vers", "character", "2.17.9", NA, NA, "CBM4 version")
+    defineParameter(".plot",       "logical",   TRUE,     NA, NA, "Plot simulation results"),
+    defineParameter(".saveAll",    "logical",   FALSE,    NA, NA, "Save all available data"),
+    defineParameter(".emissions",  "character", NA,       NA, NA, "Emissions columns to return"),
+    defineParameter(".useCache",   "logical",   FALSE,    NA, NA, "Cache module events"),
+    defineParameter(".virtualenv", "character", NA,       NA, NA, "Python virtual environment"),
+    defineParameter(".cbm4vers",   "character", "2.17.9", NA, NA, "CBM4 version")
   ),
   inputObjects = bindrows(
     expectsInput(
@@ -113,7 +114,7 @@ defineModule(sim, list(
       objectName = "emissionsProducts", objectClass = "data.table",
       desc = paste(
         "Emissions and product totals for each simulation year.",
-        "Choose which columns to return with the 'emissionsProductsCols' parameter."))
+        "Choose which columns to return with the '.emissions' parameter."))
   )
 ))
 
@@ -465,7 +466,16 @@ annual_step <- function(sim) {
     CBM4r::cbm4_results_emissions_by_timestep(sim$CBM4data, timestep = timestep)[, timestep := NULL]
   )[, year := time(sim)]
 
-  sim$emissionsProducts <- rbind(sim$emissionsProducts, emissionsProducts)
+  epCols <- list(
+    core = c("year", "timestep", "Products", "Emissions", "CO2", "CH4", "CO"),
+    user = na.omit(P(sim)$.emissions)
+  )
+
+  if (!all(epCols$user %in% names(emissionsProducts))) stop(
+      ".emissions column(s) not available: ", shQuote(setdiff(epCols$user, names(emissionsProducts))),
+      ". Choose from: ", paste(shQuote(setdiff(names(emissionsProducts), epCols$core)), collapse = ", "))
+
+  sim$emissionsProducts <- rbind(sim$emissionsProducts, emissionsProducts[, .SD, .SDcols = unique(do.call(c, epCols))])
   data.table::setkey(sim$emissionsProducts, year)
   data.table::setcolorder(sim$emissionsProducts)
 
