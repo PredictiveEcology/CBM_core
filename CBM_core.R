@@ -615,6 +615,8 @@ plot <- function(sim){
 
 .inputObjects <- function(sim){
 
+  if (isTRUE(P(sim)$.useCache)) stop("CBM_core module does not support event caching. Set parameter .useCache = FALSE")
+
   # CBM-CFS3 defaults SQLite database
   if (!suppliedElsewhere("cbm_defaults_db", sim)){
 
