@@ -128,9 +128,6 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
       # Initiate module
       sim <- Init(sim)
 
-      # Write geo metadata
-      sim <- scheduleEvent(sim, start(sim), "CBM_core", "write_geo", eventPriority = 5)
-
       # Schedule spinup
       sim <- scheduleEvent(sim, start(sim), "CBM_core", "spinup", eventPriority = 5)
 
@@ -140,11 +137,6 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
 
       # Schedule plotting
       if (P(sim)$.plot) sim <- scheduleEvent(sim, end(sim), "CBM_core", "plot", eventPriority = 10)
-    },
-
-    write_geo = {
-
-      sim <- write_geo(sim)
     },
 
     spinup = {
@@ -205,82 +197,67 @@ Init <- function(sim){
 
 }
 
-write_geo <- function(sim){
-
-  message("Initiating CBM4 dataset: simulation")
-
-  standDT <- sim$standDT
-  if (!data.table::is.data.table(standDT)) standDT <- data.table::as.data.table(standDT)
-
-  colRename <- c(
-    "pixelIndex"      = "pixel_index",
-    "admin_id"        = "admin_boundary_id",
-    "admin_name"      = "admin_boundary",
-    "eco_id"          = "eco_boundary_id",
-    "eco_name"        = "eco_boundary",
-    "spatial_unit_id" = "spatial_unit"
-  )
-  data.table::setnames(standDT, names(colRename), colRename, skip_absent = TRUE)
-  on.exit(data.table::setnames(standDT, colRename, names(colRename), skip_absent = TRUE))
-
-  CBM4r::cbm4_write_geo(
-    sim$CBM4data,
-    cbm_defaults_db = sim$cbm_defaults_db,
-    dataset_name    = "simulation",
-    grid_rast       = sim$masterRaster,
-    grid_chunks     = P(sim)$chunks,
-    grid_meta       = standDT,
-    def_historic_disturbance_type  = P(sim)$def_historic_disturbance_type,
-    def_last_pass_disturbance_type = P(sim)$def_last_pass_disturbance_type
-  )
-
-  # Return simList
-  return(invisible(sim))
-}
-
 spinup <- function(sim) {
+
+  message("Writing CBM4 dataset: inventory")
 
   if (is.null(sim$cohortClassifiers)){
     sim$cohortClassifiers <- setdiff(names(sim$cohortDT), c("cohortID", "pixelIndex", "age", "ageSpinup", "delay_spinup", "delay_regen"))
   }
 
-  message("Writing CBM4 dataset: spinup_parameters")
+  cohortDT <- sim$cohortDT
+  standDT  <- sim$standDT
+  if (!data.table::is.data.table(cohortDT)) cohortDT <- data.table::as.data.table(cohortDT)
+  if (!data.table::is.data.table(standDT))  standDT  <- data.table::as.data.table(standDT)
 
+  colRename <- list(
+    cohortDT = c(
+      "pixelIndex" = "pixel_index",
+      "delay"      = "delay_spinup",
+      "ageSpinup"  = "age",
+      "age"        = "ageIn"["ageSpinup" %in% names(cohortDT)] # Need to keep true age to prevent over-merging of cohorts
+    ),
+    standDT = c(
+      "pixelIndex"      = "pixel_index",
+      "admin_id"        = "admin_boundary_id",
+      "admin_name"      = "admin_boundary",
+      "eco_id"          = "eco_boundary_id",
+      "eco_name"        = "eco_boundary",
+      "spatial_unit_id" = "spatial_unit"
+    )
+  )
+  data.table::setnames(cohortDT, names(colRename$cohortDT), colRename$cohortDT, skip_absent = TRUE)
+  data.table::setnames(standDT,  names(colRename$standDT),  colRename$standDT,  skip_absent = TRUE)
+  on.exit({
+    data.table::setnames(cohortDT, colRename$cohortDT, names(colRename$cohortDT), skip_absent = TRUE)
+    data.table::setnames(standDT,  colRename$standDT,  names(colRename$standDT),  skip_absent = TRUE)
+  })
+
+  CBM4r::cbm4_write_inventory(
+    sim$CBM4data,
+    cbm_defaults_db = sim$cbm_defaults_db,
+    cohortDT        = cohortDT,
+    classifiers     = sim$cohortClassifiers,
+    col_ignore      = "cohortID",
+    grid_rast       = sim$masterRaster,
+    grid_chunks     = P(sim)$chunks,
+    grid_meta       = standDT,
+    def_delay                      = P(sim)$def_delay_spinup,
+    def_historic_disturbance_type  = P(sim)$def_historic_disturbance_type,
+    def_last_pass_disturbance_type = P(sim)$def_last_pass_disturbance_type
+  )
+
+  message("Writing CBM4 dataset: spinup_parameters")
   CBM4r::cbm4_write_spinup_parameters(
     sim$CBM4data,
-    template_name   = "simulation",
+    template_name   = "inventory",
     cbm_defaults_db = sim$cbm_defaults_db,
     classifiers     = intersect(sim$cohortClassifiers, names(sim$gcMeta)),
     gcMeta          = sim$gcMeta,
     gcIncr          = sim$gcIncrements
   )
 
-  message("Writing CBM4 dataset: inventory")
-
-  cohortDT <- sim$cohortDT
-  if (!data.table::is.data.table(cohortDT)) cohortDT <- data.table::as.data.table(cohortDT)
-
-  colRename <- c(
-    "pixelIndex" = "pixel_index",
-    "delay"      = "delay_spinup",
-    "ageSpinup"  = "age",
-    "age"        = "ageIn"["ageSpinup" %in% names(cohortDT)] # Need to keep true age to prevent over-merging of cohorts
-  )
-  data.table::setnames(cohortDT, names(colRename), colRename, skip_absent = TRUE)
-  on.exit(data.table::setnames(cohortDT, colRename, names(colRename), skip_absent = TRUE))
-
-  CBM4r::cbm4_write_inventory(
-    sim$CBM4data,
-    template_name   = "simulation",
-    cbm_defaults_db = sim$cbm_defaults_db,
-    cohortDT        = cohortDT,
-    classifiers     = sim$cohortClassifiers,
-    def_delay       = P(sim)$def_delay_spinup,
-    col_ignore      = "cohortID"
-  )
-
   message("Running CBM4 spinup")
-
   CBM4r::cbm4_spinup(
     sim$CBM4data,
     cbm_defaults_db = sim$cbm_defaults_db,
@@ -376,7 +353,7 @@ annual_disturbances <- function(sim) {
 
   CBM4r::cbm4_write_disturbance(
     sim$CBM4data,
-    template_name   = "simulation",
+    template_name   = "inventory",
     cbm_defaults_db = sim$cbm_defaults_db,
     classifiers     = intersect(sim$cohortClassifiers, names(sim$disturbanceMeta)),
     distMeta        = distMeta,
@@ -391,28 +368,6 @@ annual_step <- function(sim) {
 
   # Set timestep
   timestep <- time(sim) - start(sim) + 1
-
-  # Write parameters
-  if (P(sim)$fixedGrowth){
-    parameters_dataset <- file.path(sim$CBM4data, "step_parameters")
-  }else{
-    parameters_dataset <- file.path(sim$CBM4data, "step_parameters", paste0("timestep=", timestep))
-  }
-
-  if (!file.exists(parameters_dataset)){
-
-    message("Writing CBM4 dataset: step_parameters")
-
-    CBM4r::cbm4_write_step_parameters(
-      sim$CBM4data,
-      dataset_path    = parameters_dataset,
-      template_name   = "simulation",
-      cbm_defaults_db = sim$cbm_defaults_db,
-      classifiers     = intersect(sim$cohortClassifiers, names(sim$gcMeta)),
-      gcMeta          = sim$gcMeta,
-      gcIncr          = sim$gcIncrements
-    )
-  }
 
   # Write inventory
   if (P(sim)$fixedCohorts){
@@ -445,8 +400,28 @@ annual_step <- function(sim) {
     )
   }
 
-  message("Running CBM4 annual step")
+  # Write parameters
+  if (P(sim)$fixedGrowth){
+    parameters_dataset <- file.path(sim$CBM4data, "step_parameters")
+  }else{
+    parameters_dataset <- file.path(sim$CBM4data, "step_parameters", paste0("timestep=", timestep))
+  }
 
+  if (!file.exists(parameters_dataset)){
+
+    message("Writing CBM4 dataset: step_parameters")
+    CBM4r::cbm4_write_step_parameters(
+      sim$CBM4data,
+      dataset_path    = parameters_dataset,
+      template_name   = "inventory",
+      cbm_defaults_db = sim$cbm_defaults_db,
+      classifiers     = intersect(sim$cohortClassifiers, names(sim$gcMeta)),
+      gcMeta          = sim$gcMeta,
+      gcIncr          = sim$gcIncrements
+    )
+  }
+
+  message("Running CBM4 annual step")
   CBM4r::cbm4_step(
     sim$CBM4data,
     timestep                = timestep,
