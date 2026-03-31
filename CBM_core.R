@@ -513,80 +513,46 @@ annual_step <- function(sim) {
 
 plot <- function(sim){
 
-  stop("CBM4 results cannot yet be plotted")
-
   figPath <- file.path(outputPath(sim), "CBM_core_figures")
 
-  cPlot <- CBMutils::simPlotEmissionsProducts(sim)
-  SpaDES.core::Plots(cPlot,
-                     filename = "emissionsProducts",
-                     path = figPath,
-                     ggsaveArgs = list(width = 14, height = 5, units = "in", dpi = 300),
-                     types = "png")
-  rm(cPlot)
-  gc(full = FALSE, verbose = FALSE)
+  cbm4_results <- CBM4r::cbm4_results_processor(sim$CBM4data)
 
-  if (is.null(P(sim)$.saveInitial)) return(invisible())
+  # Emissions and products
+  SpaDES.core::Plots(
+    CBMutils::simPlotEmissionsProducts(sim, cbm4_results = cbm4_results),
+    filename = "emissionsProducts",
+    path = figPath,
+    ggsaveArgs = list(width = 14, height = 5, units = "in", dpi = 300),
+    types = "png")
 
-  saveYears <- seq(from = as.numeric(P(sim)$.saveInitial),
-                   to   = as.numeric(time(sim)),
-                   by   = as.numeric(P(sim)$.saveInterval))
+  # Pool proportions
+  SpaDES.core::Plots(
+    CBMutils::simPlotPoolProportions(sim, cbm4_results = cbm4_results),
+    filename = "poolProportions",
+    path = figPath,
+    ggsaveArgs = list(width = 7, height = 5, units = "in", dpi = 300),
+    types = "png")
 
-  bPlot <- CBMutils::simPlotPoolProportions(
-    sim, years = c(0[P(sim)$.saveSpinup], saveYears), useCache = FALSE)
+  # NPP
+  for (year in c(start(sim), end(sim))){
 
-  SpaDES.core::Plots(bPlot,
-                     filename = "poolProportions",
-                     path = figPath,
-                     ggsaveArgs = list(width = 7, height = 5, units = "in", dpi = 300),
-                     types = "png")
-  rm(bPlot)
-  gc(full = FALSE, verbose = FALSE)
-
-  if (!is.null(sim$masterRaster)){
-
-    nPlotStart <- CBMutils::simMapNPP(
-      sim, year = saveYears[[1]], useCache = FALSE)
-    SpaDES.core::Plots(nPlotStart,
-                       filename = paste0("NPP-", saveYears[[1]]),
-                       path = figPath,
-                       ggsaveArgs = list(width = 7, height = 5, units = "in", dpi = 300),
-                       types = "png")
-    rm(nPlotStart)
-    gc(full = FALSE, verbose = FALSE)
-
-    nPlotEnd <- CBMutils::simMapNPP(
-      sim, year = saveYears[[length(saveYears)]], useCache = FALSE)
-    SpaDES.core::Plots(nPlotEnd,
-                       filename = paste0("NPP-", saveYears[[length(saveYears)]]),
-                       path = figPath,
-                       ggsaveArgs = list(width = 7, height = 5, units = "in", dpi = 300),
-                       types = "png")
-    rm(nPlotEnd)
-    gc(full = FALSE, verbose = FALSE)
+    SpaDES.core::Plots(
+      CBMutils::simMapNPP(sim, year = year, cbm4_results = cbm4_results),
+      filename = paste0("NPP-", year),
+      path = figPath,
+      ggsaveArgs = list(width = 7, height = 5, units = "in", dpi = 300),
+      types = "png")
   }
 
-  if (!is.null(sim$masterRaster)){
+  # Total carbon
+  for (year in c(start(sim), end(sim))){
 
-    sPlotStart <- CBMutils::simMapTotalCarbon(
-      sim, year = saveYears[[1]], useCache = FALSE)
-    SpaDES.core::Plots(sPlotStart,
-                       filename = paste0("totalCarbon-", saveYears[[1]]),
-                       path = figPath,
-                       ggsaveArgs = list(width = 7, height = 5, units = "in", dpi = 300),
-                       types = "png")
-    rm(sPlotStart)
-    gc(full = FALSE, verbose = FALSE)
-
-    sPlotEnd <- CBMutils::simMapTotalCarbon(
-      sim, year = saveYears[[length(saveYears)]], useCache = FALSE)
-    SpaDES.core::Plots(sPlotEnd,
-                       filename = paste0("totalCarbon-", saveYears[[length(saveYears)]]),
-                       path = figPath,
-                       ggsaveArgs = list(width = 7, height = 5, units = "in", dpi = 300),
-                       types = "png")
-    rm(sPlotEnd)
-    gc(full = FALSE, verbose = FALSE)
+    SpaDES.core::Plots(
+      CBMutils::simMapTotalCarbon(sim, year = year, cbm4_results = cbm4_results),
+      filename = paste0("totalCarbon-", year),
+      path = figPath,
+      ggsaveArgs = list(width = 7, height = 5, units = "in", dpi = 300),
+      types = "png")
   }
 
   # Return simList
