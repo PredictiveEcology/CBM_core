@@ -484,15 +484,20 @@ annual_step <- function(sim) {
   message("Summarizing yearly emissions and products")
 
   emissionsProducts <- cbind(
-    CBM4r::cbm4_results_products_by_timestep(sim$CBM4data, timestep = timestep),
-    CBM4r::cbm4_results_emissions_by_timestep(sim$CBM4data, timestep = timestep)[, timestep := NULL]
+    CBM4r::cbm4_results_emissions_by_timestep(sim$CBM4data, units = "t", timestep = timestep),
+    CBM4r::cbm4_results_pools_by_timestep(sim$CBM4data,     units = "t", timestep = timestep)[, .(Products)]
   )[, year := time(sim)]
+
+  # Summarize emissions
+  emissionsProducts[, Emissions := sum(CO2, CH4, CO)]
+
+  # Summarize yearly (non-cumulative) products
+  emissionsProducts[, Products := Products - sum(sim$emissionsProducts[["Products"]])]
 
   epCols <- list(
     core = c("year", "timestep", "Products", "Emissions", "CO2", "CH4", "CO"),
     user = na.omit(P(sim)$.emissions)
   )
-
   if (!all(epCols$user %in% names(emissionsProducts))) stop(
       ".emissions column(s) not available: ", shQuote(setdiff(epCols$user, names(emissionsProducts))),
       ". Choose from: ", paste(shQuote(setdiff(names(emissionsProducts), epCols$core)), collapse = ", "))
