@@ -199,49 +199,34 @@ Init <- function(sim){
 
 spinup <- function(sim) {
 
-  message("Writing CBM4 dataset: inventory")
-
+  # Get classifiers
   if (is.null(sim$cohortClassifiers)){
-    sim$cohortClassifiers <- setdiff(names(sim$cohortDT), c("cohortID", "pixelIndex", "age", "ageSpinup", "delay_spinup", "delay_regen"))
+    sim$cohortClassifiers <- setdiff(names(sim$cohortDT), c(
+      "cohortID", "pixelIndex", "age", "ageSpinup", "delay_spinup", "delay_regen"))
   }
 
-  cohortDT <- sim$cohortDT
-  standDT  <- sim$standDT
-  if (!data.table::is.data.table(cohortDT)) cohortDT <- data.table::as.data.table(cohortDT)
-  if (!data.table::is.data.table(standDT))  standDT  <- data.table::as.data.table(standDT)
+  # Convert to data.table
+  for (table in c("standDT", "cohortDT", "gcMeta", "gcIncrements")){
+    if (!data.table::is.data.table(sim[[table]])) sim[[table]] <- data.table::as.data.table(sim[[table]])
+  }
 
-  colRename <- list(
-    cohortDT = c(
-      "pixelIndex" = "pixel_index",
-      "delay"      = "delay_spinup",
-      "ageSpinup"  = "age",
-      "age"        = "ageIn"["ageSpinup" %in% names(cohortDT)] # Need to keep true age to prevent over-merging of cohorts
-    ),
-    standDT = c(
-      "pixelIndex"      = "pixel_index",
-      "admin_id"        = "admin_boundary_id",
-      "admin_name"      = "admin_boundary",
-      "eco_id"          = "eco_boundary_id",
-      "eco_name"        = "eco_boundary",
-      "spatial_unit_id" = "spatial_unit"
-    )
-  )
-  data.table::setnames(cohortDT, names(colRename$cohortDT), colRename$cohortDT, skip_absent = TRUE)
-  data.table::setnames(standDT,  names(colRename$standDT),  colRename$standDT,  skip_absent = TRUE)
-  on.exit({
-    data.table::setnames(cohortDT, colRename$cohortDT, names(colRename$cohortDT), skip_absent = TRUE)
-    data.table::setnames(standDT,  colRename$standDT,  names(colRename$standDT),  skip_absent = TRUE)
-  })
+  # Rename table columns for duration of module event
+  cohortRename <- c("delay" = "delay_spinup")
+  if ("ageSpinup" %in% names(sim$cohortDT)){
+    cohortRename <- c(cohortRename, c("ageSpinup" = "age", "age" = "ageIn"))
+  }
+  cbm4_table_setnames(sim, cohortRename)
+  on.exit(cbm4_table_setnames_revert(sim, cohortRename))
 
+  message("Writing CBM4 dataset: inventory")
   CBM4r::cbm4_write_inventory(
     sim$CBM4data,
     cbm_defaults_db = sim$cbm_defaults_db,
-    cohortDT        = cohortDT,
+    cohortDT        = sim$cohortDT,
     classifiers     = sim$cohortClassifiers,
     col_ignore      = "cohortID",
     grid_rast       = sim$masterRaster,
-    grid_chunks     = P(sim)$chunks,
-    grid_meta       = standDT,
+    grid_meta       = sim$standDT,
     def_delay                      = P(sim)$def_delay_spinup,
     def_historic_disturbance_type  = P(sim)$def_historic_disturbance_type,
     def_last_pass_disturbance_type = P(sim)$def_last_pass_disturbance_type
@@ -299,10 +284,8 @@ spinup <- function(sim) {
 
   # Read cohort data
   if (!P(sim)$fixedCohorts){
-
     message("Reading CBM4 dataset: simulation: inventory")
     sim$cohortDT <- CBM4r::cbm4_read_simulation_inventory(sim$CBM4data, timestep = 0)
-    data.table::setnames(sim$cohortDT, "pixel_index", "pixelIndex")
   }
 
   # Return simList
@@ -311,37 +294,40 @@ spinup <- function(sim) {
 
 annual_disturbances <- function(sim) {
 
+  # Convert to data.table
+  for (table in c("disturbanceMeta", "disturbanceEvents")){
+    if (!data.table::is.data.table(sim[[table]])) sim[[table]] <- data.table::as.data.table(sim[[table]])
+  }
+
+  # Rename table columns for duration of module event
+  cbm4_table_setnames(sim)
+  on.exit(cbm4_table_setnames_revert(sim))
+
   message("Writing CBM4 dataset: disturbances")
 
   if (!is.null(sim$disturbanceEvents)){
 
-    distMeta <- data.table::copy(sim$disturbanceMeta)
-    data.table::setnames(distMeta, "eventID", "disturbance_id", skip_absent = TRUE)
-    data.table::setnames(distMeta, "disturbance_type_name", "disturbance_type", skip_absent = TRUE)
-
-    distEvents <- sim$disturbanceEvents[year == time(sim),]
+    distEvents <- sim$disturbanceEvents[year == time(sim)]
     distEvents[, timestep := time(sim) - start(sim) + 1]
     distEvents[, year := NULL]
-    data.table::setnames(distEvents, "eventID", "disturbance_id", skip_absent = TRUE)
-    data.table::setnames(distEvents, "pixelIndex", "pixel_index", skip_absent = TRUE)
 
     # Choose disturbance events by priority
     multiEvents <- distEvents[, .(N = .N, disturbance_id = list(disturbance_id)), by = c("pixel_index", "timestep")][N > 1,]
     if (nrow(multiEvents) > 0){
 
-      if (!"priority" %in% names(distMeta)) stop(
+      if (!"priority" %in% names(sim$disturbanceMeta)) stop(
         "Multiple disturbance events found in one or more pixels. ",
         "Use the disturbanceMeta \"priority\" column to set event precendence.")
 
       multiEvents <- multiEvents[, .(disturbance_id = unlist(disturbance_id)), by = c("pixel_index", "timestep")]
-      multiEvents <- merge(multiEvents, distMeta, by = "disturbance_id", all.x = TRUE)
+      multiEvents <- merge(multiEvents, sim$disturbanceMeta, by = "disturbance_id", all.x = TRUE)
 
       multiEvents[, pri_highest := priority %in% min(priority), by = c("pixel_index", "timestep")]
       multiEvents <- multiEvents[pri_highest == TRUE, .(N = .N, disturbance_id = first(disturbance_id)), by = c("pixel_index", "timestep")]
 
       if (any(multiEvents$N > 1)) stop(
         "Multiple disturbance events found in one or more pixels ",
-        "and distMeta \"priority\" indicates events have the same priority.")
+        "and disturbanceMeta \"priority\" indicates events have the same priority.")
 
       distEvents <- rbind(
         distEvents[!multiEvents, on = c("pixel_index", "timestep")],
@@ -349,15 +335,15 @@ annual_disturbances <- function(sim) {
       )
     }
 
-  }else distEvents <- distMeta <- NULL
+  }else distEvents <- NULL
 
   CBM4r::cbm4_write_disturbance(
     sim$CBM4data,
-    template_name   = "inventory",
     cbm_defaults_db = sim$cbm_defaults_db,
     classifiers     = intersect(sim$cohortClassifiers, names(sim$disturbanceMeta)),
-    distMeta        = distMeta,
-    distEvents      = distEvents
+    distMeta        = sim$disturbanceMeta,
+    distEvents      = distEvents,
+    grid_meta       = sim$standDT
   )
 
   # Return simList
@@ -365,6 +351,10 @@ annual_disturbances <- function(sim) {
 }
 
 annual_step <- function(sim) {
+
+  # Rename table columns for duration of module event
+  cbm4_table_setnames(sim)
+  on.exit(cbm4_table_setnames_revert(sim))
 
   # Set timestep
   timestep <- time(sim) - start(sim) + 1
@@ -388,15 +378,15 @@ annual_step <- function(sim) {
       )
     }
 
-    data.table::setnames(sim$cohortDT, "pixelIndex", "pixel_index")
     CBM4r::cbm4_write_simulation_inventory(
       sim$CBM4data,
-      cohortDT     = sim$cohortDT,
-      classifiers  = sim$cohortClassifiers,
-      timestep     = timestep,
       dataset_name = "simulation",
       dataset_path = simulation_dataset,
-      col_ignore   = "cohortID"
+      timestep     = timestep,
+      cohortDT     = sim$cohortDT,
+      classifiers  = sim$cohortClassifiers,
+      col_ignore   = "cohortID",
+      grid_meta    = sim$standDT
     )
   }
 
@@ -413,7 +403,6 @@ annual_step <- function(sim) {
     CBM4r::cbm4_write_step_parameters(
       sim$CBM4data,
       dataset_path    = parameters_dataset,
-      template_name   = "inventory",
       cbm_defaults_db = sim$cbm_defaults_db,
       classifiers     = intersect(sim$cohortClassifiers, names(sim$gcMeta)),
       gcMeta          = sim$gcMeta,
@@ -428,8 +417,7 @@ annual_step <- function(sim) {
     simulation_dataset      = simulation_dataset,
     step_parameters_dataset = parameters_dataset,
     cbm_defaults_db         = sim$cbm_defaults_db,
-    max_workers             = P(sim)$max_workers,
-    write_parameters        = FALSE
+    max_workers             = P(sim)$max_workers
   )
 
   if (!P(sim)$fixedCohorts){
@@ -454,9 +442,7 @@ annual_step <- function(sim) {
     }
 
     message("Reading CBM4 dataset: simulation: inventory")
-
     sim$cohortDT <- CBM4r::cbm4_read_simulation_inventory(sim$CBM4data, timestep = timestep)
-    data.table::setnames(sim$cohortDT, "pixel_index", "pixelIndex")
   }
 
   # Remove interim datasets
@@ -486,7 +472,7 @@ annual_step <- function(sim) {
   emissionsProducts <- cbind(
     CBM4r::cbm4_results_emissions_by_timestep(sim$CBM4data, units = "t", timestep = timestep),
     CBM4r::cbm4_results_pools_by_timestep(sim$CBM4data,     units = "t", timestep = timestep)[, .(Products)]
-  )[, year := time(sim)]
+  )[, year := as.integer(time(sim))]
 
   # Summarize emissions
   emissionsProducts[, Emissions := sum(CO2, CH4, CO)]
