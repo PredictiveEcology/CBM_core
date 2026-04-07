@@ -62,7 +62,7 @@ test_that("Module: SK-small 1998-2000", {
   outTables <- lapply(setNames(names(refTables), names(refTables)), function(table) simTest[[table]]) |>
     lapply(data.table::copy) |> lapply(data.table::setindex, NULL)
 
-  expect_equal(outTables$standDT,           refTables$standDT)
+  expect_equal(outTables$standDT[, .SD, .SDcols = names(refTables$standDT)], refTables$standDT) # Columns are added
   expect_equal(outTables$cohortDT,          refTables$cohortDT)
   expect_equal(outTables$disturbanceMeta,   refTables$disturbanceMeta)
   expect_equal(outTables$disturbanceEvents, refTables$disturbanceEvents)
@@ -72,9 +72,68 @@ test_that("Module: SK-small 1998-2000", {
 
   ## Check outputs ----
 
-  ## TEMPORARY: just check that the module runs; more assertions will be added later
-  expect_true(!is.null(simTest$emissionsProducts))
+  testResults <- list(
+    emissionsProducts = simTest$emissionsProducts,
+    pools = CBM4r::cbm4_results_pools_by_timestep(simTest$CBM4data, units = "t"),
+    flux  = CBM4r::cbm4_results_flux_by_timestep(simTest$CBM4data,  units = "t")
+  )
+  testValid <- lapply(setNames(names(testResults), names(testResults)), function(table){
+    data.table::fread(file.path(spadesTestPaths$testdata, "SK-small", "valid", paste0(table, ".csv")))
+  })
+  for (table in names(testResults)){
+    expect_equal(names(testResults[[table]]), names(testValid[[table]]))
+    expect_equal(testResults[[table]], testValid[[table]], scale = 1, tolerance = 0.001, check.attributes = FALSE)
+  }
 
+
+  ## Run with fixedCohorts = FALSE; fixedGrowth = FALSE ----
+
+  # Set up project
+  simInitInputUnfixed <- SpaDES.project::setupProject(
+
+    modules = "CBM_core",
+    times   = times,
+    paths   = list(
+      projectPath = spadesTestPaths$projectPath,
+      modulePath  = spadesTestPaths$modulePath,
+      packagePath = spadesTestPaths$packagePath,
+      inputPath   = spadesTestPaths$inputPath,
+      cachePath   = spadesTestPaths$cachePath,
+      outputPath  = file.path(spadesTestPaths$temp$outputs, paste0(projectName, "_unfixed")),
+      testdata    = spadesTestPaths$testdata
+    ),
+
+    params = list(CBM_core = list(.plot = FALSE, fixedCohorts = FALSE, fixedGrowth = FALSE)),
+
+    masterRaster = terra::rast(
+      crs  = "EPSG:3979",
+      ext  = c(xmin = -687696, xmax = -681036, ymin = 711955, ymax = 716183),
+      res  = 30,
+      vals = 1L
+    ),
+    standDT           = file.path(paths$testdata, "SK-small/input", "standDT.qs2")           |> qs2::qs_read() |> data.table::as.data.table(),
+    cohortDT          = file.path(paths$testdata, "SK-small/input", "cohortDT.qs2")          |> qs2::qs_read() |> data.table::as.data.table(),
+    disturbanceMeta   = file.path(paths$testdata, "SK-small/input", "disturbanceMeta.qs2")   |> qs2::qs_read() |> data.table::as.data.table(),
+    disturbanceEvents = file.path(paths$testdata, "SK-small/input", "disturbanceEvents.qs2") |> qs2::qs_read() |> data.table::as.data.table(),
+    gcMeta            = file.path(paths$testdata, "SK/input",       "gcMeta.qs2")            |> qs2::qs_read() |> data.table::as.data.table(),
+    gcIncrements      = file.path(paths$testdata, "SK/input",       "gcIncrements.qs2")      |> qs2::qs_read() |> data.table::as.data.table()
+  )
+
+  # Run simInit
+  simTestInitUnfixed <- SpaDES.core::simInit2(simInitInput)
+  expect_s4_class(simTestInitUnfixed, "simList")
+
+  # Run spades
+  simTestUnfixed <- SpaDES.core::spades(simTestInitUnfixed)
+  expect_s4_class(simTestUnfixed, "simList")
+
+  # Check outputs
+  testResultsUnfixed <- list(
+    emissionsProducts = simTestUnfixed$emissionsProducts,
+    pools = CBM4r::cbm4_results_pools_by_timestep(simTestUnfixed$CBM4data, units = "t"),
+    flux  = CBM4r::cbm4_results_flux_by_timestep(simTestUnfixed$CBM4data,  units = "t")
+  )
+  for (table in names(testResults)) expect_equal(testResults[[table]], testResultsUnfixed[[table]], scale = 1, tolerance = 0.001)
 })
 
 

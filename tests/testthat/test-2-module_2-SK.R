@@ -23,7 +23,7 @@ test_that("Module: SK 1985-2011", {
       testdata    = spadesTestPaths$testdata
     ),
 
-    params = list(CBM_core = list(.plot = FALSE, .saveAll = TRUE)),
+    params = list(CBM_core = list(.plot = FALSE)),
 
     masterRaster = terra::rast(
       crs  = "EPSG:3979",
@@ -48,9 +48,18 @@ test_that("Module: SK 1985-2011", {
   expect_s4_class(simTest, "simList")
 
   # Check outputs
-  ## TEMPORARY: just check that the module runs; more assertions will be added later
-  expect_true(!is.null(simTest$emissionsProducts))
-
+  testResults <- list(
+    emissionsProducts = simTest$emissionsProducts,
+    pools = CBM4r::cbm4_results_pools_by_timestep(simTest$CBM4data, units = "t"),
+    flux  = CBM4r::cbm4_results_flux_by_timestep(simTest$CBM4data,  units = "t")
+  )
+  testValid <- lapply(setNames(names(testResults), names(testResults)), function(table){
+    data.table::fread(file.path(spadesTestPaths$testdata, "SK", "valid", paste0(table, ".csv")))
+  })
+  for (table in names(testResults)){
+    expect_equal(names(testResults[[table]]), names(testValid[[table]]))
+    expect_equal(testResults[[table]], testValid[[table]], scale = 1, tolerance = 0.001, check.attributes = FALSE)
+  }
 })
 
 
