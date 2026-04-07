@@ -210,6 +210,11 @@ spinup <- function(sim) {
     if (!data.table::is.data.table(sim[[table]])) sim[[table]] <- data.table::as.data.table(sim[[table]])
   }
 
+  # Set default delays
+  for (delay in c("spinup", "regen")) if (paste0("delay_", delay) %in% names(sim$cohortDT)){
+    data.table::setnafill(sim$cohortDT, fill = P(sim)[[paste0("def_delay_", delay)]], cols = paste0("delay_", delay))
+  }
+
   # Rename table columns for duration of module event
   cohortRename <- c("delay" = "delay_spinup")
   if ("ageSpinup" %in% names(sim$cohortDT)){
@@ -253,17 +258,14 @@ spinup <- function(sim) {
   simulation_data <- arrow::open_dataset(file.path(sim$CBM4data, "simulation/simulation"))
 
   if ("delay_regen" %in% names(sim$cohortDT)){
-    simulation_data <- simulation_data |>
-      dplyr::mutate(inventory.delay = as.integer(dplyr::if_else(
-        !is.na(inventory.delay_regen), inventory.delay_regen, P(sim)$def_delay_regen)))
+    simulation_data <- dplyr::mutate(simulation_data, inventory.delay = inventory.delay_regen)
   }else{
-    simulation_data <- simulation_data |>
-      dplyr::mutate(inventory.delay = as.integer(P(sim)$def_delay_regen))
+    simulation_data <- dplyr::mutate(simulation_data, inventory.delay = as.integer(P(sim)$def_delay_regen))
   }
+  simulation_data <- dplyr::mutate(simulation_data, state.regeneration_delay = inventory.delay)
 
   if ("ageSpinup" %in% names(sim$cohortDT)){
-    simulation_data <- simulation_data |>
-      dplyr::mutate(inventory.age = as.integer(inventory.ageIn))
+    simulation_data <- dplyr::mutate(simulation_data, inventory.age = as.integer(inventory.ageIn))
   }
 
   simulation_data_pq <- list.files(
