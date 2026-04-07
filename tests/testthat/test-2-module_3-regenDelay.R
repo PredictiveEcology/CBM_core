@@ -9,71 +9,65 @@ test_that("Module: with regeneration delay", {
   projectName <- "module_regenDelayCol"
   times       <- list(start = 2000, end = 2002)
 
-  simInitInput <- SpaDEStestMuffleOutput(
+  simInitInput <- SpaDES.project::setupProject(
 
-    SpaDES.project::setupProject(
+    modules = "CBM_core",
+    times   = times,
+    paths   = list(
+      projectPath = spadesTestPaths$projectPath,
+      modulePath  = spadesTestPaths$modulePath,
+      packagePath = spadesTestPaths$packagePath,
+      inputPath   = spadesTestPaths$inputPath,
+      cachePath   = spadesTestPaths$cachePath,
+      outputPath  = file.path(spadesTestPaths$temp$outputs, projectName)
+    ),
 
-      modules = "CBM_core",
-      times   = times,
-      paths   = list(
-        projectPath = spadesTestPaths$projectPath,
-        modulePath  = spadesTestPaths$modulePath,
-        packagePath = spadesTestPaths$packagePath,
-        inputPath   = spadesTestPaths$inputPath,
-        cachePath   = spadesTestPaths$cachePath,
-        outputPath  = file.path(spadesTestPaths$temp$outputs, projectName)
-      ),
-      params = list(CBM_core = list(.plot = FALSE)),
+    params = list(CBM_core = list(.plot = FALSE)),
 
-      standDT = data.table::data.table(
-        pixelIndex = c(1, 2),
-        admin_name = "Saskatchewan",
-        eco_id     = 9,
-        area       = 900
-      ),
-      cohortDT = data.table::data.table(
-        cohortID   = c(1, 2),
-        pixelIndex = c(1, 2),
-        gcID       = 1,
-        age        = 10,
-        delayRegen = c(0, 2)
-      ),
-      disturbanceMeta = data.table::data.table(
-        eventID = 1,
-        disturbance_type_id = 1
-      ),
-      disturbanceEvents = data.table::data.table(
-        pixelIndex = c(1, 2),
-        year       = 2000,
-        eventID    = 1
-      ),
-      gcMeta = data.table::data.table(
-        gcID       = 1,
-        admin_name = "Saskatchewan",
-        eco_id     = 9,
-        species_id = 1,
-        sw_hw      = "sw"
-      ),
-      gcIncrements = data.table::data.table(
-        gcID        = 1,
-        age         = 0:100,
-        merch_inc   = c(0, seq(0.01, 1, length.out = 100)),
-        foliage_inc = c(0, seq(0.01, 1, length.out = 100)),
-        other_inc   = c(0, seq(0.01, 1, length.out = 100))
-      )
+    standDT = data.table::data.table(
+      pixelIndex = c(1, 2),
+      admin_name = "Saskatchewan",
+      eco_id     = 9,
+      area       = 900
+    ),
+    cohortDT = data.table::data.table(
+      cohortID   = c(1, 2),
+      pixelIndex = c(1, 2),
+      gcID       = 1,
+      age        = 10,
+      delayRegen = c(0, 2)
+    ),
+    disturbanceMeta = data.table::data.table(
+      eventID = 1,
+      disturbance_type_id = 1
+    ),
+    disturbanceEvents = data.table::data.table(
+      pixelIndex = c(1, 2),
+      year       = 2000,
+      eventID    = 1
+    ),
+    gcMeta = data.table::data.table(
+      gcID       = 1,
+      admin_name = "Saskatchewan",
+      eco_id     = 9,
+      species_id = 1,
+      sw_hw      = "sw"
+    ),
+    gcIncrements = data.table::data.table(
+      gcID        = 1,
+      age         = 0:100,
+      merch_inc   = c(0, seq(0.01, 1, length.out = 100)),
+      foliage_inc = c(0, seq(0.01, 1, length.out = 100)),
+      other_inc   = c(0, seq(0.01, 1, length.out = 100))
     )
   )
 
   # Run simInit
-  simTestInit <- SpaDEStestMuffleOutput(
-    SpaDES.core::simInit2(simInitInput)
-  )
+  simTestInit <- SpaDES.core::simInit2(simInitInput)
   expect_s4_class(simTestInit, "simList")
 
   # Run spades
-  simTest <- SpaDEStestMuffleOutput(
-    SpaDES.core::spades(simTestInit)
-  )
+  simTest <- SpaDES.core::spades(simTestInit)
   expect_s4_class(simTest, "simList")
 
   # Check result
@@ -91,15 +85,11 @@ test_that("Module: with regeneration delay", {
   simInitInputParam$cohortDT$delayRegen <- NULL
 
   # Run simInit
-  simTestInitParam <- SpaDEStestMuffleOutput(
-    SpaDES.core::simInit2(simInitInputParam)
-  )
+  simTestInitParam <- SpaDES.core::simInit2(simInitInputParam)
   expect_s4_class(simTestInitParam, "simList")
 
   # Run spades
-  simTestParam <- SpaDEStestMuffleOutput(
-    SpaDES.core::spades(simTestInitParam)
-  )
+  simTestParam <- SpaDES.core::spades(simTestInitParam)
   expect_s4_class(simTestParam, "simList")
 
   # Check result
