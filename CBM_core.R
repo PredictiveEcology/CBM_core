@@ -307,7 +307,7 @@ annual_disturbances <- function(sim) {
 
   message("Writing CBM4 dataset: disturbances")
 
-  if (!is.null(sim$disturbanceEvents)){
+  if (!is.null(sim$disturbanceEvents) && nrow(sim$disturbanceEvents) > 0){
 
     distEvents <- sim$disturbanceEvents[year == time(sim)]
     distEvents[, timestep := time(sim) - start(sim) + 1]

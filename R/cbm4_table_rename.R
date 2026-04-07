@@ -34,7 +34,7 @@ cbm4_table_rename <- function() list(
 cbm4_table_setnames <- function(sim, cohortRename = NULL){
   colRename <- cbm4_table_rename()
   colRename$cohortDT <- c(colRename$cohortDT, cohortRename)
-  for (table in names(colRename)){
+  for (table in intersect(names(colRename), names(sim))){
     data.table::setnames(sim[[table]], names(colRename[[table]]), colRename[[table]], skip_absent = TRUE)
   }
 }
@@ -42,7 +42,7 @@ cbm4_table_setnames <- function(sim, cohortRename = NULL){
 cbm4_table_setnames_revert <- function(sim, cohortRename = NULL){
   colRename <- cbm4_table_rename()
   colRename$cohortDT <- c(colRename$cohortDT, cohortRename)
-  for (table in names(colRename)){
+  for (table in intersect(names(colRename), names(sim))){
     data.table::setnames(sim[[table]], colRename[[table]], names(colRename[[table]]), skip_absent = TRUE)
   }
 }
