@@ -27,12 +27,12 @@ defineModule(sim, list(
     defineParameter("def_delay_regen",  "integer", 0L, 0L, NA, "Default regeneration delay post disturbance"),
     defineParameter("def_historic_disturbance_type",  "character", "Wildfire", NA, NA, "Default historic disturbance type."),
     defineParameter("def_last_pass_disturbance_type", "character", "Wildfire", NA, NA, "Default last pass disturbance type."),
-    defineParameter(".plot",       "logical",   TRUE,     NA, NA, "Plot simulation results"),
-    defineParameter(".saveAll",    "logical",   FALSE,    NA, NA, "Save all available data"),
-    defineParameter(".emissions",  "character", NA,       NA, NA, "Emissions columns to return"),
-    defineParameter(".useCache",   "logical",   FALSE,    NA, NA, "Cache module events"),
-    defineParameter(".virtualenv", "character", NA,       NA, NA, "Python virtual environment"),
-    defineParameter(".cbm4vers",   "character", "2.17.9", NA, NA, "CBM4 version")
+    defineParameter(".plot",       "logical",   TRUE,      NA, NA, "Plot simulation results"),
+    defineParameter(".saveAll",    "logical",   FALSE,     NA, NA, "Save all available data"),
+    defineParameter(".emissions",  "character", NA,        NA, NA, "Emissions columns to return"),
+    defineParameter(".useCache",   "logical",   FALSE,     NA, NA, "Cache module events"),
+    defineParameter(".virtualenv", "character", NA,        NA, NA, "Python virtual environment"),
+    defineParameter(".cbm4vers",   "character", "2.17.10", NA, NA, "CBM4 version")
   ),
   inputObjects = bindrows(
     expectsInput(
@@ -174,20 +174,24 @@ Init <- function(sim){
   if (file.exists(sim$CBM4data))stop(
     "Failed to remove existing CBM4 spatial dataset directory: ", sim$CBM4data)
 
-  # Set up Python virtual environment
-  if (is.na(P(sim)$.virtualenv)) P(sim)$.virtualenv <- paste0("r-CBM4-", P(sim)$.cbm4vers)
+  # Set virtual environment
+  if (Sys.getenv("VIRTUAL_ENV") == ""){
 
-  message("Setting up CBM4 Python virtual environment: ", P(sim)$.virtualenv)
-  CBM4r::cbm4_virtualenv_create(
-    P(sim)$.virtualenv,
-    version = P(sim)$.cbm4vers,
-    python  = CBMutils::ReticulateFindPython(
-      version        = ">=3.12,<3.13",
-      versionInstall = "3.12:latest",
-      pyenvOnly      = TRUE),
-    quiet   = Sys.getenv("TESTTHAT") == "true",
-    upgrade = FALSE
-  )
+    if (is.na(P(sim)$.virtualenv)) P(sim)$.virtualenv <- paste0("r-CBM4-", P(sim)$.cbm4vers)
+
+    message("Setting up CBM4 Python virtual environment: ", P(sim)$.virtualenv)
+
+    CBM4r::cbm4_virtualenv_create(
+      P(sim)$.virtualenv,
+      version = P(sim)$.cbm4vers,
+      python  = CBMutils::ReticulateFindPython(
+        version        = ">=3.12,<3.13",
+        versionInstall = "3.12:latest",
+        pyenvOnly      = TRUE),
+      quiet   = Sys.getenv("TESTTHAT") == "true",
+      upgrade = FALSE
+    )
+  }
 
   # Use Python virtual environment
   reticulate::use_virtualenv(P(sim)$.virtualenv)
