@@ -191,10 +191,10 @@ Init <- function(sim){
       quiet   = Sys.getenv("TESTTHAT") == "true",
       upgrade = FALSE
     )
-  }
 
-  # Use Python virtual environment
-  reticulate::use_virtualenv(P(sim)$.virtualenv)
+    # Use Python virtual environment
+    reticulate::use_virtualenv(P(sim)$.virtualenv)
+  }
 
   # Return simList
   return(invisible(sim))
