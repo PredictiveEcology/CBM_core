@@ -281,6 +281,17 @@ spinup <- function(sim) {
   ## Copy the tables as a temporary fix
   for (i in 1:length(sim$cbm_vars)) sim$cbm_vars[[i]] <- data.table::copy(sim$cbm_vars[[i]])
 
+  # Set total cohort group area in cbm_vars$state table
+  if (!"area" %in% names(sim$standDT)){
+    warning("standDT does not have an \"area\" column; ",
+            "area assumed to be 1 ha when calculating emissions and product totals.")
+    sim$standDT[, area := 1]
+  }
+  groupAreas <- merge(sim$cbm_vars$key, sim$standDT, by = "pixelIndex")[, .(
+    area = sum(area) / 10000), by = row_idx]
+  data.table::setkey(groupAreas, row_idx)
+  sim$cbm_vars$state$area <- groupAreas$area
+
   # Add regeneration delay to cbm_vars$state table
   data.table::setnames(sim$cbm_vars$state, "delayRegen", "delay", skip_absent = TRUE)
   if ("delay" %in% names(sim$cbm_vars$state)){
@@ -472,17 +483,10 @@ annual_carbonDynamics <- function(sim) {
   )
 
   # Set total cohort group area in cbm_vars$state table
-  if ("area" %in% names(sim$standDT)){
-
-    groupAreas <- data.table::merge.data.table(
-      sim$cbm_vars$key, sim$standDT, by = "pixelIndex")[
-        , .(area = sum(area) / 10000), by = row_idx]
-    data.table::setkey(groupAreas, row_idx)
-    sim$cbm_vars$state$area <- groupAreas$area
-
-  }else if (time(sim) == start(sim)) warning(
-    "standDT does not have an \"area\" column; ",
-    "area assumed to be 1 ha when calculating emissions and product totals.")
+  groupAreas <- merge(sim$cbm_vars$key, sim$standDT, by = "pixelIndex")[, .(
+    area = sum(area) / 10000), by = row_idx]
+  data.table::setkey(groupAreas, row_idx)
+  sim$cbm_vars$state$area <- groupAreas$area
 
   # Summarize yearly emissions and products
   #Note: details of which source and sink pools goes into each of the columns in
