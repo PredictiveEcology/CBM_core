@@ -12,10 +12,6 @@ cbmEXN_step <- function(cbm_vars, cbm_defaults_db = NULL, cbm_exn_dir = NULL){
   if (!all(c("spatial_unit_id", "mean_annual_temperature") %in% names(cbm_vars$state)) |
       !"mean_annual_temperature" %in% names(cbm_vars$parameters)){
 
-    if (!all(c("admin_name", "eco_id") %in% names(cbm_vars$state))) stop(
-      "cbm_vars$state must have either 'spatial_unit_id' or 'admin_name' and 'eco_id' columns")
-
-    # Read spatial unit parameters
     cbmDBcon <- RSQLite::dbConnect(RSQLite::dbDriver("SQLite"), libcbmr::get_cbm_defaults_path())
     spuMeta <- data.table::as.data.table(merge(
       RSQLite::dbReadTable(cbmDBcon, "spatial_unit"),
@@ -24,21 +20,21 @@ cbmEXN_step <- function(cbm_vars, cbm_defaults_db = NULL, cbm_exn_dir = NULL){
         spatial_unit_id = id.x, admin_name = name, eco_id = eco_boundary_id, mean_annual_temperature)]
     RSQLite::dbDisconnect(cbmDBcon)
 
-    spuMeta <- merge(cbm_vars$state[, .(row_idx, admin_name, eco_id)], spuMeta,
-                     by = c("admin_name", "eco_id"), all.x = TRUE)
+    if (!"spatial_unit_id" %in% names(cbm_vars$state)){
+      if (!all(c("admin_name", "eco_id") %in% names(cbm_vars$state))) stop(
+        "cbm_vars$state must have either 'spatial_unit_id' or 'admin_name' and 'eco_id' columns")
+      cbm_vars$state <- cbm_vars$state[spuMeta, spatial_unit_id := spatial_unit_id, on = c("admin_name", "eco_id")]
+    }
+
+    spuMeta <- merge(cbm_vars$state[, .(row_idx, spatial_unit_id)], spuMeta, by = "spatial_unit_id", all.x = TRUE)
     data.table::setkey(spuMeta, row_idx)
 
-    if (!"spatial_unit_id" %in% names(cbm_vars$state)){
-      cbm_vars$state[, spatial_unit_id := spuMeta$spatial_unit_id]
-    }
     if (!"mean_annual_temperature" %in% names(cbm_vars$state)){
       cbm_vars$state[, mean_annual_temperature := spuMeta$mean_annual_temperature]
     }
     if (!"mean_annual_temperature" %in% names(cbm_vars$parameters)){
       cbm_vars$parameters[, mean_annual_temperature := spuMeta$mean_annual_temperature]
     }
-
-    rm(spuMeta)
   }
 
   # Temporarily remove row_idx column
