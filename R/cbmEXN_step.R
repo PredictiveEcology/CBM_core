@@ -41,6 +41,16 @@ cbmEXN_step <- function(cbm_vars, cbm_defaults_db = NULL, cbm_exn_dir = NULL){
     rm(spuMeta)
   }
 
+  # Set species ID
+  if (!"species" %in% names(cbm_vars$state)){
+    species <- data.table::fread(file.path(libcbmr::get_cbm_exn_parameters_dir(), "species.csv"))
+    cbm_vars$state[, species := data.table::fifelse(
+      sw_hw == 0L,
+      species[species_name == "Unspecified softwood species", species_id],
+      species[species_name == "Unspecified hardwood species", species_id]
+    )]
+  }
+
   # Temporarily remove row_idx column
   row_idx <- cbm_vars$parameters$row_idx
   for (i in 2:length(cbm_vars)) cbm_vars[[i]][, row_idx := NULL]

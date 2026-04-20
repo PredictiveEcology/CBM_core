@@ -2,7 +2,6 @@
 #' CBM-EXN Spinup
 cbmEXN_spinup <- function(cohortDT, growthMeta, growthIncr,
                           colname_gc      = intersect(names(cohortDT), names(growthMeta)),
-                          colname_species = "species",
                           colname_age     = "age",
                           colname_delay   = "delay",
                           default_delay   = 0L,
@@ -30,12 +29,9 @@ cbmEXN_spinup <- function(cohortDT, growthMeta, growthIncr,
   RSQLite::dbDisconnect(cbmDBcon)
 
   # Read input tables
-  if ("species" %in% colname_gc) stop(
-    "Cohort classifiers cannot contain the column 'species' as this is reserved for the CBM species_id")
-
   reqCols <- list(
     cohortDT   = c("cohortID", colname_gc, colname_age),
-    growthMeta = c("gcID", colname_gc, colname_species, "sw_hw"),
+    growthMeta = c("gcID", colname_gc, "sw_hw"),
     growthIncr = c("gcID", "age", "merch_inc", "foliage_inc", "other_inc")
   )
   cohortDT   <- readDataTable(cohortDT,   "cohortDT",   colRequired = reqCols$cohortDT)
@@ -72,13 +68,17 @@ cbmEXN_spinup <- function(cohortDT, growthMeta, growthIncr,
   cohortGroups[, area := 1L] # 1ha
 
   # Prepare sw_hw column for Python
-  if (is.character(cohortGroups$sw_hw)) cohortGroups[, sw_hw := data.table::fifelse(sw_hw == "sw", 0L, 1L)]
+  if (!is.integer(cohortGroups$sw_hw)) cohortGroups[, sw_hw := data.table::fifelse(as.character(sw_hw) == "sw", 0L, 1L)]
+
+  # Set species ID
+  species <- data.table::fread(file.path(libcbmr::get_cbm_exn_parameters_dir(), "species.csv"))
+  cohortGroups[, species := data.table::fifelse(
+    sw_hw == 0L,
+    species[species_name == "Unspecified softwood species", species_id],
+    species[species_name == "Unspecified hardwood species", species_id]
+  )]
 
   # Set column names for Python
-  if (colname_species != "species"){
-    data.table::setnames(
-      cohortGroups, c(colname_species, "species"), c("species", "species_in"), skip_absent = TRUE)
-  }
   if (colname_age != "age"){
     data.table::setnames(
       cohortGroups, c(colname_age, "age"), c("age", "age_in"), skip_absent = TRUE)
