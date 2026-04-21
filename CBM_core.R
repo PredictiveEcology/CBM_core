@@ -79,9 +79,8 @@ defineModule(sim, list(
       objectName = "gcMeta", objectClass = "data.table",
       desc = "Growth curve metadata",
       columns = c(
-        gcID       = "Growth curve ID",
-        species_id = "CBM-CFS3 species ID",
-        sw_hw      = "'sw' or 'hw'"
+        gcID  = "Growth curve ID",
+        sw_hw = "'sw' or 'hw'"
       )),
     expectsInput(
       objectName = "gcIncrements", objectClass = "data.table",
@@ -266,7 +265,6 @@ spinup <- function(sim) {
     cohortDT        = merge(sim$cohortDT, sim$standDT, by = "pixelIndex", sort = FALSE, all.x = TRUE),
     growthMeta      = sim$gcMeta,
     growthIncr      = sim$gcIncrements,
-    colname_species = "species_id",
     colname_age     = ifelse("ageSpinup"   %in% names(sim$cohortDT), "ageSpinup",   "age"),
     colname_delay   = ifelse("delaySpinup" %in% names(sim$cohortDT), "delaySpinup", "delay"),
     default_delay   = P(sim)$default_delay_spinup,
