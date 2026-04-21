@@ -220,31 +220,34 @@ Init <- function(sim){
       "Failed to remove existing SpaDES CBM database: ", sim$spadesCBMdb)
   }
 
-  # Set up Python virtual environment
-  reticulate::virtualenv_create(
-    "r-spadesCBM",
-    python = CBMutils::ReticulateFindPython(
-      version        = ">=3.9,<=3.12.7",
-      versionInstall = "3.11:latest",
-      pyenvOnly      = TRUE))
+  if (Sys.getenv("VIRTUAL_ENV") == ""){
 
-  reticulate::virtualenv_install(
-    "r-spadesCBM",
-    pip_options = c("--upgrade", "-q"[identical(Sys.getenv("TESTTHAT"), "true")]),
-    packages = c(
-      "numpy<2",
-      "pandas>=1.1.5,<=2.3.3",
-      "scipy",
-      "numexpr>=2.8.7",
-      "numba",
-      "pyyaml",
-      "mock",
-      "openpyxl",
-      "libcbm"
-    ))
+    # Set up Python virtual environment
+    reticulate::virtualenv_create(
+      "r-spadesCBM",
+      python = CBMutils::ReticulateFindPython(
+        version        = ">=3.9,<=3.12.7",
+        versionInstall = "3.11:latest",
+        pyenvOnly      = TRUE))
 
-  # Use Python virtual environment
-  reticulate::use_virtualenv("r-spadesCBM")
+    reticulate::virtualenv_install(
+      "r-spadesCBM",
+      pip_options = c("--upgrade", "-q"[identical(Sys.getenv("TESTTHAT"), "true")]),
+      packages = c(
+        "numpy<2",
+        "pandas>=1.1.5,<=2.3.3",
+        "scipy",
+        "numexpr>=2.8.7",
+        "numba",
+        "pyyaml",
+        "mock",
+        "openpyxl",
+        "libcbm"
+      ))
+
+    # Use Python virtual environment
+    reticulate::use_virtualenv("r-spadesCBM")
+  }
 
   # Return simList
   return(invisible(sim))
