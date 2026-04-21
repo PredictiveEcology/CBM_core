@@ -71,12 +71,12 @@ cbmEXN_spinup <- function(cohortDT, growthMeta, growthIncr,
   if (!is.integer(cohortGroups$sw_hw)) cohortGroups[, sw_hw := data.table::fifelse(as.character(sw_hw) == "sw", 0L, 1L)]
 
   # Set species ID
-  species <- data.table::fread(file.path(libcbmr::get_cbm_exn_parameters_dir(), "species.csv"))
-  cohortGroups[, species := data.table::fifelse(
-    sw_hw == 0L,
-    species[species_name == "Unspecified softwood species", species_id],
-    species[species_name == "Unspecified hardwood species", species_id]
-  )]
+  speciesCBM <- data.table::fread(file.path(libcbmr::get_cbm_exn_parameters_dir(), "species.csv"))
+  speciesIDs <- c(
+    sw = speciesCBM[species_name == "Unspecified softwood species", species_id],
+    hw = speciesCBM[species_name == "Unspecified hardwood species", species_id]
+  )
+  cohortGroups[, species := data.table::fifelse(sw_hw == 0L,speciesIDs[["sw"]], speciesIDs[["hw"]])]
 
   # Set column names for Python
   if (colname_age != "age"){

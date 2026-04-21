@@ -39,12 +39,12 @@ cbmEXN_step <- function(cbm_vars, cbm_defaults_db = NULL, cbm_exn_dir = NULL){
 
   # Set species ID
   if (!"species" %in% names(cbm_vars$state)){
-    species <- data.table::fread(file.path(libcbmr::get_cbm_exn_parameters_dir(), "species.csv"))
-    cbm_vars$state[, species := data.table::fifelse(
-      sw_hw == 0L,
-      species[species_name == "Unspecified softwood species", species_id],
-      species[species_name == "Unspecified hardwood species", species_id]
-    )]
+    speciesCBM <- data.table::fread(file.path(libcbmr::get_cbm_exn_parameters_dir(), "species.csv"))
+    speciesIDs <- c(
+      sw = speciesCBM[species_name == "Unspecified softwood species", species_id],
+      hw = speciesCBM[species_name == "Unspecified hardwood species", species_id]
+    )
+    cbm_vars$state[, species := data.table::fifelse(sw_hw == 0L,speciesIDs[["sw"]], speciesIDs[["hw"]])]
   }
 
   # Temporarily remove row_idx column
