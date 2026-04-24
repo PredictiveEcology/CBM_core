@@ -22,7 +22,7 @@ test_that("Module: with regeneration delay", {
       outputPath  = file.path(spadesTestPaths$temp$outputs, projectName)
     ),
 
-    params = list(CBM_core = list(.plot = FALSE)),
+    params = list(CBM_core = list(.useCacheCBM4 = FALSE, .plot = FALSE)),
 
     masterRaster = terra::rast(ncol = 1, nrow = 2, res = 10, crs = "local"),
 

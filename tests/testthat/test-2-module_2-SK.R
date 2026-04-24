@@ -23,7 +23,7 @@ test_that("Module: SK 1985-2011", {
       testdata    = spadesTestPaths$testdata
     ),
 
-    params = list(CBM_core = list(.plot = FALSE)),
+    params = list(CBM_core = list(.useCacheCBM4 = FALSE, .plot = FALSE)),
 
     masterRaster = terra::rast(
       crs  = "EPSG:3979",
@@ -47,7 +47,8 @@ test_that("Module: SK 1985-2011", {
   simTest <- SpaDES.core::spades(simTestInit)
   expect_s4_class(simTest, "simList")
 
-  # Check outputs
+  ## Check outputs ----
+
   testResults <- list(
     emissionsProducts = simTest$emissionsProducts,
     pools = CBM4r::cbm4_results_pools_by_timestep(simTest$CBM4data, units = "t"),

@@ -61,9 +61,8 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
         sppEquivCol = 'LandR'
       ),
       CBM_core = list(
-        .plot = FALSE,
-        skipCohortGroupHandling = TRUE,
-        skipPrepareCBMvars = TRUE
+        .useCacheCBM4 = FALSE, .plot = FALSE,
+        fixedCohorts = FALSE
       ))
   )
 

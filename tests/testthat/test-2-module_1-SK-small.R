@@ -86,7 +86,7 @@ test_that("Module: SK-small 1998-2000", {
   }
 
 
-  ## Run with fixedCohorts = FALSE; fixedGrowth = FALSE ----
+  ## Run with fixedCohorts = FALSE ----
 
   # Set up project
   simInitInputUnfixed <- SpaDES.project::setupProject(
@@ -103,7 +103,7 @@ test_that("Module: SK-small 1998-2000", {
       testdata    = spadesTestPaths$testdata
     ),
 
-    params = list(CBM_core = list(.plot = FALSE, fixedCohorts = FALSE, fixedGrowth = FALSE)),
+    params = list(CBM_core = list(.plot = FALSE, fixedCohorts = FALSE)),
 
     masterRaster = terra::rast(
       crs  = "EPSG:3979",

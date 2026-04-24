@@ -14,25 +14,25 @@ defineModule(sim, list(
   citation = list("citation.bib"),
   documentation = list("README.txt", "CBM_core.Rmd"),
   reqdPkgs = list(
-    "data.table", "arrow", "dplyr",
+    "data.table", "arrow", "dplyr", "zip",
     "PredictiveEcology/CBM4r@development",
     "PredictiveEcology/CBMutils@suz-CBM4 (>=2.5.3)", "gert"
   ),
   parameters = rbind(
     defineParameter("fixedCohorts", "logical", TRUE, NA, NA, "Stand cohorts are fixed for simulation duration"),
-    defineParameter("fixedGrowth",  "logical", TRUE, NA, NA, "Growth curves are fixed for simulation duration"),
-    defineParameter("chunks",      "integer", 1L, NA, NA, "Number of partition chunks"),
-    defineParameter("max_workers", "integer", NA, NA, NA, "Number of parallel processes"),
     defineParameter("def_delay_spinup", "integer", 0L, 0L, NA, "Default regeneration delay used in the spinup"),
     defineParameter("def_delay_regen",  "integer", 0L, 0L, NA, "Default regeneration delay post disturbance"),
     defineParameter("def_historic_disturbance_type",  "character", "Wildfire", NA, NA, "Default historic disturbance type."),
     defineParameter("def_last_pass_disturbance_type", "character", "Wildfire", NA, NA, "Default last pass disturbance type."),
-    defineParameter(".plot",       "logical",   TRUE,     NA, NA, "Plot simulation results"),
-    defineParameter(".saveAll",    "logical",   FALSE,    NA, NA, "Save all available data"),
-    defineParameter(".emissions",  "character", NA,       NA, NA, "Emissions columns to return"),
-    defineParameter(".useCache",   "logical",   FALSE,    NA, NA, "Cache module events"),
-    defineParameter(".virtualenv", "character", "r-CBM4", NA, NA, "Python virtual environment"),
-    defineParameter(".cbm4vers",   "character", NA,       NA, NA, "CBM4 version")
+    defineParameter(".useCache",    "logical",   FALSE,    NA, NA, "Cache module events"),
+    defineParameter(".useCacheCBM4","logical",   TRUE,     NA, NA, "Cache CBM4 processes"),
+    defineParameter(".virtualenv",  "character", "r-CBM4", NA, NA, "Python virtual environment"),
+    defineParameter(".cbm4vers",    "character", NA,       NA, NA, "CBM4 version"),
+    defineParameter(".chunks",      "integer", 1L, NA, NA, "Number of partition chunks"),
+    defineParameter(".max_workers", "integer", NA, NA, NA, "Number of parallel processes"),
+    defineParameter(".emissions",   "character", NA,       NA, NA, "Emissions columns to return"),
+    defineParameter(".saveAll",     "logical",   FALSE,    NA, NA, "Save all available data"),
+    defineParameter(".plot",        "logical",   TRUE,     NA, NA, "Plot simulation results")
   ),
   inputObjects = bindrows(
     expectsInput(
@@ -227,7 +227,7 @@ spinup <- function(sim) {
 
   message("Writing CBM4 dataset: inventory")
   CBM4r::cbm4_write_inventory(
-    sim$CBM4data,
+    cbm4_data       = sim$CBM4data,
     cbm_defaults_db = sim$cbm_defaults_db,
     cohortDT        = sim$cohortDT,
     classifiers     = sim$cohortClassifiers,
@@ -237,24 +237,41 @@ spinup <- function(sim) {
     def_delay                      = P(sim)$def_delay_spinup,
     def_historic_disturbance_type  = P(sim)$def_historic_disturbance_type,
     def_last_pass_disturbance_type = P(sim)$def_last_pass_disturbance_type
-  )
+  ) |>
+    reproducible::Cache(
+      omitArgs    = c("cbm4_data", "cbm_defaults_db"),
+      .cacheExtra = digestFile(sim$cbm_defaults_db),
+      useCache    = P(sim)$.useCacheCBM4,
+      verbose     = P(sim)$.useCacheCBM4) |>
+    CacheCBM4dataset(sim$CBM4data, "inventory")
 
   message("Writing CBM4 dataset: spinup_parameters")
   CBM4r::cbm4_write_spinup_parameters(
-    sim$CBM4data,
-    template_name   = "inventory",
+    cbm4_data       = sim$CBM4data,
     cbm_defaults_db = sim$cbm_defaults_db,
     classifiers     = intersect(sim$cohortClassifiers, names(sim$gcMeta)),
     gcMeta          = sim$gcMeta,
     gcIncr          = sim$gcIncrements
-  )
+  ) |>
+    reproducible::Cache(
+      omitArgs    = c("cbm4_data", "cbm_defaults_db"),
+      .cacheExtra = digestFile(sim$cbm_defaults_db),
+      useCache    = P(sim)$.useCacheCBM4,
+      verbose     = P(sim)$.useCacheCBM4) |>
+    CacheCBM4dataset(sim$CBM4data, "spinup_parameters")
 
   message("Running CBM4 spinup")
   CBM4r::cbm4_spinup(
-    sim$CBM4data,
+    cbm4_data       = sim$CBM4data,
     cbm_defaults_db = sim$cbm_defaults_db,
-    max_workers     = P(sim)$max_workers
-  )
+    max_workers     = P(sim)$.max_workers
+  ) |>
+    reproducible::Cache(
+      omitArgs    = c("cbm4_data", "cbm_defaults_db", "max_workers"),
+      .cacheExtra = c(digestFile(sim$cbm_defaults_db), digestDir(sim$CBM4data)),
+      useCache    = P(sim)$.useCacheCBM4,
+      verbose     = P(sim)$.useCacheCBM4) |>
+    CacheCBM4dataset(sim$CBM4data, "simulation")
 
   # Alter simulation data to set true ages & regeneration delay
   simulation_data <- arrow::open_dataset(file.path(sim$CBM4data, "simulation/simulation"))
@@ -342,13 +359,19 @@ annual_disturbances <- function(sim) {
   }else distEvents <- NULL
 
   CBM4r::cbm4_write_disturbance(
-    sim$CBM4data,
+    cbm4_data       = sim$CBM4data,
     cbm_defaults_db = sim$cbm_defaults_db,
     classifiers     = intersect(sim$cohortClassifiers, names(sim$disturbanceMeta)),
     distMeta        = sim$disturbanceMeta,
     distEvents      = distEvents,
     grid_meta       = sim$standDT
-  )
+  ) |>
+    reproducible::Cache(
+      omitArgs    = c("cbm4_data", "cbm_defaults_db"),
+      .cacheExtra = digestFile(sim$cbm_defaults_db),
+      useCache    = P(sim)$.useCacheCBM4,
+      verbose     = P(sim)$.useCacheCBM4) |>
+    CacheCBM4dataset(sim$CBM4data, "disturbance")
 
   # Return simList
   return(invisible(sim))
@@ -376,14 +399,14 @@ annual_step <- function(sim) {
 
     if (!file.exists(simulation_dataset)){
       CBM4r::cbm4_copy_dataset(
-        sim$CBM4data,
+        cbm4_data    = sim$CBM4data,
         dataset_name = "simulation",
         dataset_path = simulation_dataset
       )
     }
 
     CBM4r::cbm4_write_simulation_inventory(
-      sim$CBM4data,
+      cbm4_data    = sim$CBM4data,
       dataset_name = "simulation",
       dataset_path = simulation_dataset,
       timestep     = timestep,
@@ -395,33 +418,28 @@ annual_step <- function(sim) {
   }
 
   # Write parameters
-  if (P(sim)$fixedGrowth){
-    parameters_dataset <- file.path(sim$CBM4data, "step_parameters")
-  }else{
-    parameters_dataset <- file.path(sim$CBM4data, "step_parameters", paste0("timestep=", timestep))
-  }
-
-  if (!file.exists(parameters_dataset)){
-
-    message("Writing CBM4 dataset: step_parameters")
-    CBM4r::cbm4_write_step_parameters(
-      sim$CBM4data,
-      dataset_path    = parameters_dataset,
-      cbm_defaults_db = sim$cbm_defaults_db,
-      classifiers     = intersect(sim$cohortClassifiers, names(sim$gcMeta)),
-      gcMeta          = sim$gcMeta,
-      gcIncr          = sim$gcIncrements
-    )
-  }
+  message("Writing CBM4 dataset: step_parameters")
+  CBM4r::cbm4_write_step_parameters(
+    cbm4_data       = sim$CBM4data,
+    cbm_defaults_db = sim$cbm_defaults_db,
+    classifiers     = intersect(sim$cohortClassifiers, names(sim$gcMeta)),
+    gcMeta          = sim$gcMeta,
+    gcIncr          = sim$gcIncrements
+  ) |>
+    reproducible::Cache(
+      omitArgs    = c("cbm4_data", "cbm_defaults_db"),
+      .cacheExtra = digestFile(sim$cbm_defaults_db),
+      useCache    = P(sim)$.useCacheCBM4,
+      verbose     = P(sim)$.useCacheCBM4) |>
+    CacheCBM4dataset(sim$CBM4data, "step_parameters")
 
   message("Running CBM4 annual step")
   CBM4r::cbm4_step(
-    sim$CBM4data,
-    timestep                = timestep,
-    simulation_dataset      = simulation_dataset,
-    step_parameters_dataset = parameters_dataset,
-    cbm_defaults_db         = sim$cbm_defaults_db,
-    max_workers             = P(sim)$max_workers
+    cbm4_data          = sim$CBM4data,
+    timestep           = timestep,
+    simulation_dataset = simulation_dataset,
+    cbm_defaults_db    = sim$cbm_defaults_db,
+    max_workers        = P(sim)$.max_workers
   )
 
   if (!P(sim)$fixedCohorts){
@@ -551,7 +569,9 @@ plot <- function(sim){
 
 .inputObjects <- function(sim){
 
-  if (isTRUE(P(sim)$.useCache)) stop("CBM_core module does not support event caching. Set parameter .useCache = FALSE")
+  if (isTRUE(P(sim)$.useCache)) stop(
+    "CBM_core module does not support event caching. Set parameter .useCache = FALSE and .useCacheCBM4 = TRUE")
+  P(sim)$.useCacheCBM4 <- getOption("reproducible.useCache", TRUE) & P(sim)$.useCacheCBM4
 
   # CBM-CFS3 defaults SQLite database
   if (!suppliedElsewhere("cbm_defaults_db", sim)){
