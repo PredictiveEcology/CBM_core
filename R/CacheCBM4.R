@@ -15,7 +15,7 @@ CacheCBM4dataset <- function(cacheOut, cbm4_data, dataset_name, overwrite = TRUE
     if (file.exists(cacheZIP)){
       dir.create(cbm4_data, recursive = TRUE, showWarnings = FALSE)
       zip::unzip(cacheZIP, exdir = cbm4_data, overwrite = overwrite)
-      message(cli::col_blue("Cached CBM4 dataset retrieved: ", dataset_name))
+      message(cli::col_blue("Loaded CBM4 dataset cache: ", dataset_name))
 
     }else{
       reproducible::clearCache(cacheId = cacheId, ask = FALSE, verbose = FALSE)

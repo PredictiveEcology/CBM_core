@@ -261,6 +261,7 @@ spinup <- function(sim) {
     CacheCBM4dataset(sim$CBM4data, "spinup_parameters")
 
   message("Running CBM4 spinup")
+  if (P(sim)$.useCacheCBM4) cbm4_data_digest <- digestDir(sim$CBM4data)
   CBM4r::cbm4_spinup(
     cbm4_data       = sim$CBM4data,
     cbm_defaults_db = sim$cbm_defaults_db,
@@ -268,7 +269,7 @@ spinup <- function(sim) {
   ) |>
     reproducible::Cache(
       omitArgs    = c("cbm4_data", "cbm_defaults_db", "max_workers"),
-      .cacheExtra = c(digestFile(sim$cbm_defaults_db), digestDir(sim$CBM4data)),
+      .cacheExtra = c(digestFile(sim$cbm_defaults_db), cbm4_data_digest),
       useCache    = P(sim)$.useCacheCBM4,
       verbose     = P(sim)$.useCacheCBM4) |>
     CacheCBM4dataset(sim$CBM4data, "simulation")
