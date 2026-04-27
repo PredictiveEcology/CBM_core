@@ -13,8 +13,17 @@ CacheCBM4dataset <- function(cacheOut, cbm4_data, dataset_name, overwrite = TRUE
 
   }else{
     if (file.exists(cacheZIP)){
+
+      if (!overwrite){
+        files <- setdiff(
+          subset(zip::zip_list(cacheZIP), uncompressed_size > 0)$filename,
+          list.files(cbm4_data, recursive = TRUE))
+        if (length(files) == 0) return(invisible())
+
+      }else files <- NULL
+
       dir.create(cbm4_data, recursive = TRUE, showWarnings = FALSE)
-      zip::unzip(cacheZIP, exdir = cbm4_data, overwrite = overwrite)
+      zip::unzip(cacheZIP, exdir = cbm4_data, files = files, overwrite = overwrite)
       message(cli::col_blue("Loaded CBM4 dataset cache: ", dataset_name))
 
     }else{
