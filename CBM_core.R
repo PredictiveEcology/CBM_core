@@ -155,6 +155,25 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
       sim <- annual_step(sim)
 
       sim <- scheduleEvent(sim, time(sim) + 1, "CBM_core", "annual_step", eventPriority = 9)
+
+      # Remove interim data
+      if (!P(sim)$.saveAll){
+        rmDirs <- "spinup_parameters"
+        if (time(sim) == end(sim)){
+          rmDirs <- c(rmDirs, "disturbance", "step_parameters", "simulation_init")
+        }else{
+          timestep <- time(sim) - start(sim) + 1
+          rmDirs <- c(rmDirs, do.call(c, lapply(c("disturbance", "simulation_init"), function(dataset){
+            dirs <- list.dirs(file.path(sim$CBM4data, dataset))
+            dirs[basename(dirs) == paste0("timestep=", timestep - 1)]
+          })))
+        }
+        rmDirs <- rmDirs[file.exists(file.path(sim$CBM4data, rmDirs))]
+        for (rmDir in rmDirs){
+          message(cli::col_blue("Removing interim data: ", file.path(basename(sim$CBM4data), rmDir)))
+          unlink(file.path(sim$CBM4data, rmDir), recursive = TRUE)
+        }
+      }
     },
 
     plot = {
@@ -298,11 +317,6 @@ spinup <- function(sim) {
       partitioning = c("timestep", "cohort_index", "chunk_index"))
 
   unlink(simulation_data_pq)
-
-  # Remove interim datasets
-  if (!P(sim)$.saveAll){
-    unlink(file.path(sim$CBM4data, "spinup_parameters"), recursive = TRUE)
-  }
 
   # Read cohort data
   if (!P(sim)$fixedCohorts){
@@ -466,28 +480,6 @@ annual_step <- function(sim) {
 
     message("Reading CBM4 dataset: simulation: inventory")
     sim$cohortDT <- CBM4r::cbm4_read_simulation_inventory(sim$CBM4data, timestep = timestep)
-  }
-
-  # Remove interim datasets
-  if (!P(sim)$.saveAll){
-
-    if (time(sim) == end(sim)){
-      interimDirs <- c("step_parameters","disturbance", "simulation_init")
-    }else{
-      interimDirs <- file.path(c(
-        "step_parameters",
-        "disturbance/disturbance",
-        "disturbance/disturbance-raster_index",
-        "simulation_init/simulation",
-        "simulation_init/simulation-raster_index",
-        "simulation_init/simulation-table-annual_process_flux",
-        "simulation_init/simulation-table-disturbance_flux",
-        "simulation_init/simulation-table-disturbance_raster_index",
-        "simulation_init/simulation-table-step_parameters"
-      ), paste0("timestep=", timestep - 1))
-    }
-
-    unlink(file.path(sim$CBM4data, interimDirs), recursive = TRUE)
   }
 
   message("Summarizing yearly emissions and products")
