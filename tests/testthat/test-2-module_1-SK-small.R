@@ -120,7 +120,7 @@ test_that("Module: SK-small 1998-2000", {
   )
 
   # Run simInit
-  simTestInitUnfixed <- SpaDES.core::simInit2(simInitInput)
+  simTestInitUnfixed <- SpaDES.core::simInit2(simInitInputUnfixed)
   expect_s4_class(simTestInitUnfixed, "simList")
 
   # Run spades
