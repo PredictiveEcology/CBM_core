@@ -128,6 +128,9 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
       # Initiate module
       sim <- Init(sim)
 
+      # Schedule set stand metadata
+      sim <- scheduleEvent(sim, start(sim), "CBM_core", "setStands", eventPriority = 5)
+
       # Schedule spinup
       sim <- scheduleEvent(sim, start(sim), "CBM_core", "spinup", eventPriority = 5)
 
@@ -137,6 +140,10 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
 
       # Schedule plotting
       if (P(sim)$.plot) sim <- scheduleEvent(sim, end(sim), "CBM_core", "plot", eventPriority = 10)
+    },
+
+    setStands = {
+      sim <- setStands(sim)
     },
 
     spinup = {
@@ -218,6 +225,25 @@ Init <- function(sim){
 
 }
 
+setStands <- function(sim){
+
+  message("Setting stand metadata")
+
+  # Convert to data.table
+  if (!data.table::is.data.table(sim$standDT)) sim$standDT <- data.table::as.data.table(sim$standDT)
+
+  # Rename table columns for duration of module event
+  cbm4_table_setnames(sim)
+  on.exit(cbm4_table_setnames_revert(sim))
+
+  # Set stand metadata
+  CBM4r::cbm4_set_grid_meta(sim$standDT, cbm_defaults_db = sim$cbm_defaults_db)
+
+  # Return simList
+  return(invisible(sim))
+
+}
+
 spinup <- function(sim) {
 
   # Get classifiers
@@ -227,7 +253,7 @@ spinup <- function(sim) {
   }
 
   # Convert to data.table
-  for (table in c("standDT", "cohortDT", "gcMeta", "gcIncrements")){
+  for (table in c("cohortDT", "gcMeta", "gcIncrements")){
     if (!data.table::is.data.table(sim[[table]])) sim[[table]] <- data.table::as.data.table(sim[[table]])
   }
 
