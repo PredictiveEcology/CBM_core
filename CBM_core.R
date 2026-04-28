@@ -448,13 +448,13 @@ annual_step <- function(sim) {
 
     CBM4r::cbm4_write_simulation_inventory(
       cbm4_data    = sim$CBM4data,
-      dataset_name = "simulation",
       dataset_path = simulation_dataset,
-      timestep     = timestep,
+      timestep     = timestep - 1,
       cohortDT     = sim$cohortDT,
       classifiers  = sim$cohortClassifiers,
       col_ignore   = "cohortID",
-      grid_meta    = sim$standDT
+      grid_meta    = sim$standDT,
+      def_state.regeneration_delay = P(sim)$def_delay_regen
     )
   }
 
@@ -486,22 +486,13 @@ annual_step <- function(sim) {
   if (!P(sim)$fixedCohorts){
 
     # Copy new simulation data to final destination
-    newDataDirs <- file.path(c(
-      "simulation",
-      "simulation-raster_index",
-      "simulation-table-annual_process_flux",
-      "simulation-table-disturbance_flux",
-      "simulation-table-disturbance_raster_index"
-    ), paste0("timestep=", timestep))
-
+    newDataDirs <- list.dirs(simulation_dataset, full.names = FALSE)
+    newDataDirs <- newDataDirs[basename(newDataDirs) == paste0("timestep=", timestep)]
     for (dir in newDataDirs){
       dir.create(file.path(sim$CBM4data, "simulation", dirname(dir)), showWarnings = FALSE)
-      if (file.exists(file.path(simulation_dataset, dir))){
-        unlink(file.path(sim$CBM4data, "simulation", dir), recursive = TRUE)
-        file.copy(file.path(simulation_dataset, dir),
-                  file.path(sim$CBM4data, "simulation", dirname(dir)),
-                  recursive = TRUE)
-      }
+      file.copy(file.path(simulation_dataset, dir),
+                file.path(sim$CBM4data, "simulation", dirname(dir)),
+                recursive = TRUE)
     }
 
     message("Reading CBM4 dataset: simulation: inventory")
@@ -526,8 +517,8 @@ annual_step <- function(sim) {
     user = na.omit(P(sim)$.emissions)
   )
   if (!all(epCols$user %in% names(emissionsProducts))) stop(
-      ".emissions column(s) not available: ", shQuote(setdiff(epCols$user, names(emissionsProducts))),
-      ". Choose from: ", paste(shQuote(setdiff(names(emissionsProducts), epCols$core)), collapse = ", "))
+    ".emissions column(s) not available: ", shQuote(setdiff(epCols$user, names(emissionsProducts))),
+    ". Choose from: ", paste(shQuote(setdiff(names(emissionsProducts), epCols$core)), collapse = ", "))
 
   sim$emissionsProducts <- rbind(sim$emissionsProducts, emissionsProducts[, .SD, .SDcols = unique(do.call(c, epCols))])
   data.table::setkey(sim$emissionsProducts, year)
