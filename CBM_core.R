@@ -67,7 +67,7 @@ defineModule(sim, list(
       desc = "Growth curve metadata. One or more `cohortDT` classifiers must be present.",
       columns = c(
         gcID  = "Growth curve ID",
-        sw_hw = "'sw' or 'hw'"
+        sw    = "TRUE (softwood) or FALSE (hardwood)"
       )),
     expectsInput(
       objectName = "gcIncrements", objectClass = "data.table",
