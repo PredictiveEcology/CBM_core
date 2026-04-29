@@ -74,8 +74,8 @@ test_that("Module: SK-small 1998-2000", {
 
   testResults <- list(
     emissionsProducts = simTest$emissionsProducts,
-    pools = CBM4r::cbm4_results_pools_by_timestep(simTest$CBM4data, units = "t"),
-    flux  = CBM4r::cbm4_results_flux_by_timestep(simTest$CBM4data,  units = "t")
+    pools = CBM4r::cbm4_results_totals(simTest$CBM4data, "pool_indicators"),
+    flux  = CBM4r::cbm4_results_totals(simTest$CBM4data, "flux_indicators")
   )
   testValid <- lapply(setNames(names(testResults), names(testResults)), function(table){
     data.table::fread(file.path(spadesTestPaths$testdata, "SK-small", "valid", paste0(table, ".csv")))
@@ -130,10 +130,11 @@ test_that("Module: SK-small 1998-2000", {
   # Check outputs
   testResultsUnfixed <- list(
     emissionsProducts = simTestUnfixed$emissionsProducts,
-    pools = CBM4r::cbm4_results_pools_by_timestep(simTestUnfixed$CBM4data, units = "t"),
-    flux  = CBM4r::cbm4_results_flux_by_timestep(simTestUnfixed$CBM4data,  units = "t")
+    pools = CBM4r::cbm4_results_totals(simTestUnfixed$CBM4data, "pool_indicators"),
+    flux  = CBM4r::cbm4_results_totals(simTestUnfixed$CBM4data, "flux_indicators")
   )
   for (table in names(testResults)) expect_equal(testResults[[table]], testResultsUnfixed[[table]], scale = 1, tolerance = 0.001)
+
 })
 
 

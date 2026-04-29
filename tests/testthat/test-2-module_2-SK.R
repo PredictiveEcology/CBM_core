@@ -51,8 +51,8 @@ test_that("Module: SK 1985-2011", {
 
   testResults <- list(
     emissionsProducts = simTest$emissionsProducts,
-    pools = CBM4r::cbm4_results_pools_by_timestep(simTest$CBM4data, units = "t"),
-    flux  = CBM4r::cbm4_results_flux_by_timestep(simTest$CBM4data,  units = "t")
+    pools = CBM4r::cbm4_results_totals(simTest$CBM4data, "pool_indicators"),
+    flux  = CBM4r::cbm4_results_totals(simTest$CBM4data, "flux_indicators")
   )
   testValid <- lapply(setNames(names(testResults), names(testResults)), function(table){
     data.table::fread(file.path(spadesTestPaths$testdata, "SK", "valid", paste0(table, ".csv")))

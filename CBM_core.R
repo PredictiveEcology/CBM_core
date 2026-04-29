@@ -24,13 +24,12 @@ defineModule(sim, list(
     defineParameter("def_delay_regen",  "integer", 0L, 0L, NA, "Default regeneration delay post disturbance"),
     defineParameter("def_historic_disturbance_type",  "character", "Wildfire", NA, NA, "Default historic disturbance type."),
     defineParameter("def_last_pass_disturbance_type", "character", "Wildfire", NA, NA, "Default last pass disturbance type."),
-    defineParameter(".useCache",    "logical",   FALSE,    NA, NA, "Cache module events"),
-    defineParameter(".useCacheCBM4","logical",   TRUE,     NA, NA, "Cache CBM4 processes"),
     defineParameter(".virtualenv",  "character", "r-CBM4", NA, NA, "Python virtual environment"),
     defineParameter(".cbm4vers",    "character", NA,       NA, NA, "CBM4 version"),
+    defineParameter(".useCache",    "logical",   FALSE,    NA, NA, "Cache module events"),
+    defineParameter(".useCacheCBM4","logical",   TRUE,     NA, NA, "Cache CBM4 processes"),
     defineParameter(".chunks",      "integer", 1L, NA, NA, "Number of partition chunks"),
     defineParameter(".max_workers", "integer", NA, NA, NA, "Number of parallel processes"),
-    defineParameter(".emissions",   "character", NA,       NA, NA, "Emissions columns to return"),
     defineParameter(".saveAll",     "logical",   FALSE,    NA, NA, "Save all available data"),
     defineParameter(".plot",        "logical",   TRUE,     NA, NA, "Plot simulation results")
   ),
@@ -160,6 +159,8 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
     annual_step = {
 
       sim <- annual_step(sim)
+
+      sim <- annual_totals(sim)
 
       sim <- scheduleEvent(sim, time(sim) + 1, "CBM_core", "annual_step", eventPriority = 9)
 
@@ -356,11 +357,6 @@ spinup <- function(sim) {
 
 annual_disturbances <- function(sim) {
 
-  # Convert to data.table
-  for (table in c("disturbanceMeta", "disturbanceEvents")){
-    if (!data.table::is.data.table(sim[[table]])) sim[[table]] <- data.table::as.data.table(sim[[table]])
-  }
-
   # Rename table columns for duration of module event
   cbm4_table_setnames(sim)
   on.exit(cbm4_table_setnames_revert(sim))
@@ -368,6 +364,11 @@ annual_disturbances <- function(sim) {
   message("Writing CBM4 dataset: disturbances")
 
   if (!is.null(sim$disturbanceEvents) && nrow(sim$disturbanceEvents) > 0){
+
+    # Convert to data.table
+    for (table in c("disturbanceMeta", "disturbanceEvents")){
+      if (!data.table::is.data.table(sim[[table]])) sim[[table]] <- data.table::as.data.table(sim[[table]])
+    }
 
     distEvents <- sim$disturbanceEvents[year == time(sim)]
     distEvents[, timestep := time(sim) - start(sim) + 1]
@@ -440,9 +441,9 @@ annual_step <- function(sim) {
 
     if (!file.exists(simulation_dataset)){
       CBM4r::cbm4_copy_dataset(
-        cbm4_data    = sim$CBM4data,
-        dataset_name = "simulation",
-        dataset_path = simulation_dataset
+        cbm4_data     = sim$CBM4data,
+        dataset_name  = "simulation",
+        dataset_path  = simulation_dataset
       )
     }
 
@@ -499,28 +500,49 @@ annual_step <- function(sim) {
     sim$cohortDT <- CBM4r::cbm4_read_simulation_inventory(sim$CBM4data, timestep = timestep)
   }
 
+  # Return simList
+  return(invisible(sim))
+
+}
+
+annual_totals <- function(sim) {
+
   message("Summarizing yearly emissions and products")
 
-  emissionsProducts <- cbind(
-    CBM4r::cbm4_results_emissions_by_timestep(sim$CBM4data, units = "t", timestep = timestep),
-    CBM4r::cbm4_results_pools_by_timestep(sim$CBM4data,     units = "t", timestep = timestep)[, .(Products)]
-  )[, year := as.integer(time(sim))]
+  # Set timestep
+  timestep <- time(sim) - start(sim) + 1
 
-  # Summarize emissions
-  emissionsProducts[, Emissions := sum(CO2, CH4, CO)]
+  # Read results
+  cbm4_results <- CBM4r::cbm4_results_processor(sim$CBM4data)
 
-  # Summarize yearly (non-cumulative) products
-  emissionsProducts[, Products := Products - sum(sim$emissionsProducts[["Products"]])]
+  emissionsProducts <- merge(
+    CBM4r::cbm4_results_totals(
+      cbm4_results,
+      timestep     = timestep,
+      view_name    = "composite_flux_indicators",
+      view_columns = c(
+        "CH4" = "Emissions - Emissions By Gas - Total CH4",
+        "CO"  = "Emissions - Emissions By Gas - Total CO",
+        "CO2" = "Emissions - Emissions By Gas - Total CO2"
+      )),
+    CBM4r::cbm4_results_totals(
+      cbm4_results,
+      timestep     = timestep,
+      view_name    = "composite_disturbance_indicators",
+      view_columns = c(
+        "Products" = "Ecosystem Transfers - Ecosystem to Forest Products - Total Harvest (Biomass + Snags)"
+      )),
+    all = TRUE)[, .(
+      year      = as.integer(time(sim)),
+      timestep  = timestep,
+      Products  = data.table::fcoalesce(Products, 0),
+      Emissions = CO2 + CH4 + CO,
+      CO2       = CO2,
+      CH4       = CH4,
+      CO        = CO
+    )]
 
-  epCols <- list(
-    core = c("year", "timestep", "Products", "Emissions", "CO2", "CH4", "CO"),
-    user = na.omit(P(sim)$.emissions)
-  )
-  if (!all(epCols$user %in% names(emissionsProducts))) stop(
-    ".emissions column(s) not available: ", shQuote(setdiff(epCols$user, names(emissionsProducts))),
-    ". Choose from: ", paste(shQuote(setdiff(names(emissionsProducts), epCols$core)), collapse = ", "))
-
-  sim$emissionsProducts <- rbind(sim$emissionsProducts, emissionsProducts[, .SD, .SDcols = unique(do.call(c, epCols))])
+  sim$emissionsProducts <- rbind(sim$emissionsProducts, emissionsProducts)
   data.table::setkey(sim$emissionsProducts, year)
   data.table::setcolorder(sim$emissionsProducts)
 
