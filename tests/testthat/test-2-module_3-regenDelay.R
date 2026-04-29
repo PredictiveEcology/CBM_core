@@ -50,7 +50,7 @@ test_that("Module: with regeneration delay", {
       gcID       = 1,
       admin_name = "Saskatchewan",
       eco_id     = 9,
-      sw_hw      = "sw"
+      sw         = TRUE
     ),
     gcIncrements = data.table::data.table(
       gcID        = 1,

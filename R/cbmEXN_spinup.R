@@ -31,7 +31,7 @@ cbmEXN_spinup <- function(cohortDT, growthMeta, growthIncr,
   # Read input tables
   reqCols <- list(
     cohortDT   = c("cohortID", colname_gc, colname_age),
-    growthMeta = c("gcID", colname_gc, "sw_hw"),
+    growthMeta = c("gcID", colname_gc, "sw"),
     growthIncr = c("gcID", "age", "merch_inc", "foliage_inc", "other_inc")
   )
   cohortDT   <- readDataTable(cohortDT,   "cohortDT",   colRequired = reqCols$cohortDT)
@@ -67,16 +67,17 @@ cbmEXN_spinup <- function(cohortDT, growthMeta, growthIncr,
   # Set area to 1ha
   cohortGroups[, area := 1L] # 1ha
 
-  # Prepare sw_hw column for Python
-  if (!is.integer(cohortGroups$sw_hw)) cohortGroups[, sw_hw := data.table::fifelse(as.character(sw_hw) == "sw", 0L, 1L)]
-
   # Set species ID
   speciesCBM <- data.table::fread(file.path(libcbmr::get_cbm_exn_parameters_dir(), "species.csv"))
   speciesIDs <- c(
     sw = speciesCBM[species_name == "Unspecified softwood species", species_id],
     hw = speciesCBM[species_name == "Unspecified hardwood species", species_id]
   )
-  cohortGroups[, species := data.table::fifelse(sw_hw == 0L,speciesIDs[["sw"]], speciesIDs[["hw"]])]
+  cohortGroups[, species := data.table::fifelse(sw, speciesIDs[["sw"]], speciesIDs[["hw"]])]
+
+  # Prepare sw_hw column for Python
+  cohortGroups[, sw_hw := as.integer(!sw)]
+  cohortGroups[, sw    := NULL]
 
   # Set column names for Python
   if (colname_age != "age"){
