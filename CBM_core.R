@@ -540,7 +540,6 @@ plot <- function(sim){
 
   bPlot <- CBMutils::simPlotPoolProportions(
     sim, years = c(0[P(sim)$.saveSpinup], saveYears), useCache = FALSE)
-
   SpaDES.core::Plots(bPlot,
                      filename = "poolProportions",
                      path = figPath,
@@ -549,49 +548,29 @@ plot <- function(sim){
   rm(bPlot)
   gc(full = FALSE, verbose = FALSE)
 
-  if (!is.null(sim$masterRaster)){
+  if (!is.null(sim$masterRaster)) for (year in range(saveYears)){
 
-    nPlotStart <- CBMutils::simMapNPP(
-      sim, year = saveYears[[1]], useCache = FALSE)
-    SpaDES.core::Plots(nPlotStart,
-                       filename = paste0("NPP-", saveYears[[1]]),
+    nPlot <- CBMutils::simMapNPP(
+      sim, year = year, useCache = FALSE)
+    SpaDES.core::Plots(nPlot,
+                       filename = paste0("NPP-", year),
                        path = figPath,
                        ggsaveArgs = list(width = 7, height = 5, units = "in", dpi = 300),
                        types = "png")
-    rm(nPlotStart)
-    gc(full = FALSE, verbose = FALSE)
-
-    nPlotEnd <- CBMutils::simMapNPP(
-      sim, year = saveYears[[length(saveYears)]], useCache = FALSE)
-    SpaDES.core::Plots(nPlotEnd,
-                       filename = paste0("NPP-", saveYears[[length(saveYears)]]),
-                       path = figPath,
-                       ggsaveArgs = list(width = 7, height = 5, units = "in", dpi = 300),
-                       types = "png")
-    rm(nPlotEnd)
+    rm(nPlot)
     gc(full = FALSE, verbose = FALSE)
   }
 
-  if (!is.null(sim$masterRaster)){
+  if (!is.null(sim$masterRaster)) for (year in range(saveYears)){
 
-    sPlotStart <- CBMutils::simMapTotalCarbon(
-      sim, year = saveYears[[1]], useCache = FALSE)
-    SpaDES.core::Plots(sPlotStart,
-                       filename = paste0("totalCarbon-", saveYears[[1]]),
+    sPlot <- CBMutils::simMapTotalCarbon(
+      sim, year = year, useCache = FALSE)
+    SpaDES.core::Plots(sPlot,
+                       filename = paste0("totalCarbon-", year),
                        path = figPath,
                        ggsaveArgs = list(width = 7, height = 5, units = "in", dpi = 300),
                        types = "png")
-    rm(sPlotStart)
-    gc(full = FALSE, verbose = FALSE)
-
-    sPlotEnd <- CBMutils::simMapTotalCarbon(
-      sim, year = saveYears[[length(saveYears)]], useCache = FALSE)
-    SpaDES.core::Plots(sPlotEnd,
-                       filename = paste0("totalCarbon-", saveYears[[length(saveYears)]]),
-                       path = figPath,
-                       ggsaveArgs = list(width = 7, height = 5, units = "in", dpi = 300),
-                       types = "png")
-    rm(sPlotEnd)
+    rm(sPlot)
     gc(full = FALSE, verbose = FALSE)
   }
 
