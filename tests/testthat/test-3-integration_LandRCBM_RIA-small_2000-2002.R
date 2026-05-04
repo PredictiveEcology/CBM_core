@@ -28,32 +28,33 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
         packagePath = spadesTestPaths$packagePath,
         inputPath   = spadesTestPaths$inputPath,
         cachePath   = spadesTestPaths$cachePath,
-        outputPath  = file.path(spadesTestPaths$temp$outputs, projectName)
+        outputPath  = file.path(spadesTestPaths$temp$outputs, projectName),
+        testdata    = spadesTestPaths$testdata
       ),
 
       require = c("terra", "reproducible"),
 
       # Prepare input objects
-      studyArea             = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "studyArea.shp") |> sf::st_read(),
-      rasterToMatch         = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "rasterToMatch.tif") |> terra::rast(),
-      standDT               = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "standDT.csv") |> data.table::fread(),
-      biomassMap            = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "biomassMap.tif") |> terra::rast(),
-      cohortData            = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "cohortData.csv") |> data.table::fread(stringsAsFactors = TRUE),
-      pixelGroupMap         = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "pixelGroupMap.tif") |> terra::rast(),
-      speciesLayers         = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "speciesLayers.tif") |> terra::rast(),
-      ecoregionMap          = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "ecoregionMap.tif") |> terra::rast(),
-      minRelativeB          = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "minRelativeB.csv") |> data.table::fread(stringsAsFactors = TRUE),
-      ecoregion             = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "ecoregion.csv") |>
+      studyArea             = file.path(paths$testdata, "LandRCBM-RIA-small/input", "studyArea.shp") |> sf::st_read(),
+      rasterToMatch         = file.path(paths$testdata, "LandRCBM-RIA-small/input", "rasterToMatch.tif") |> terra::rast(),
+      standDT               = file.path(paths$testdata, "LandRCBM-RIA-small/input", "standDT.csv") |> data.table::fread(),
+      biomassMap            = file.path(paths$testdata, "LandRCBM-RIA-small/input", "biomassMap.tif") |> terra::rast(),
+      cohortData            = file.path(paths$testdata, "LandRCBM-RIA-small/input", "cohortData.csv") |> data.table::fread(stringsAsFactors = TRUE),
+      pixelGroupMap         = file.path(paths$testdata, "LandRCBM-RIA-small/input", "pixelGroupMap.tif") |> terra::rast(),
+      speciesLayers         = file.path(paths$testdata, "LandRCBM-RIA-small/input", "speciesLayers.tif") |> terra::rast(),
+      ecoregionMap          = file.path(paths$testdata, "LandRCBM-RIA-small/input", "ecoregionMap.tif") |> terra::rast(),
+      minRelativeB          = file.path(paths$testdata, "LandRCBM-RIA-small/input", "minRelativeB.csv") |> data.table::fread(stringsAsFactors = TRUE),
+      ecoregion             = file.path(paths$testdata, "LandRCBM-RIA-small/input", "ecoregion.csv") |>
         data.table::fread(colClasses = list(factor = c("ecoregionGroup"))),
-      species               = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "species.csv") |>
+      species               = file.path(paths$testdata, "LandRCBM-RIA-small/input", "species.csv") |>
         data.table::fread(colClasses = list(factor = c("Area", "postfireregen", "hardsoft", "speciesCode"))),
-      speciesEcoregion      = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "speciesEcoregion.csv") |> data.table::fread(stringsAsFactors = TRUE),
-      yieldTablesCumulative = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "yieldTablesCumulative.csv") |> data.table::fread(),
-      yieldTablesId         = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "yieldTablesId.csv") |> data.table::fread(),
-      pooldef               = file.path(spadesTestPaths$testdata, "SK/input", "pooldef.txt") |> readLines(),
-      spinupSQL             = file.path(spadesTestPaths$testdata, "SK/input", "spinupSQL.csv") |> data.table::fread(),
+      speciesEcoregion      = file.path(paths$testdata, "LandRCBM-RIA-small/input", "speciesEcoregion.csv") |> data.table::fread(stringsAsFactors = TRUE),
+      yieldTablesCumulative = file.path(paths$testdata, "LandRCBM-RIA-small/input", "yieldTablesCumulative.csv") |> data.table::fread(),
+      yieldTablesId         = file.path(paths$testdata, "LandRCBM-RIA-small/input", "yieldTablesId.csv") |> data.table::fread(),
+      pooldef               = file.path(paths$testdata, "SK/input", "pooldef.txt") |> readLines(),
+      spinupSQL             = file.path(paths$testdata, "SK/input", "spinupSQL.csv") |> data.table::fread(),
       sppEquiv = {
-        speciesInStudy <- LandR::speciesInStudyArea(studyArea, dPath = spadesTestPaths$inputPath)
+        speciesInStudy <- LandR::speciesInStudyArea(studyArea, dPath = paths$inputPath)
         species <- LandR::equivalentName(speciesInStudy$speciesList, df = LandR::sppEquivalencies_CA, "LandR")
         sppEquiv <- LandR::sppEquivalencies_CA[LandR %in% species]
         sppEquiv <- sppEquiv[KNN != "" & LANDIS_traits != ""]
