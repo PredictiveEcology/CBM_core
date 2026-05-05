@@ -103,8 +103,7 @@ defineModule(sim, list(
       )),
     expectsInput(
       objectName = "cbm_defaults_db", objectClass = "character",
-      desc = "Path to CBM defaults SQLite database",
-      sourceURL = "https://raw.githubusercontent.com/cat-cfs/libcbm_py/main/libcbm/resources/cbm_defaults_db/cbm_defaults_v1.2.9300.391.db"
+      desc = "Optional. Path to CBM defaults SQLite database"
     )
   ),
   outputObjects = bindrows(
@@ -201,6 +200,9 @@ Init <- function(sim){
   if (file.exists(sim$CBM4data))stop(
     "Failed to remove existing CBM4 spatial dataset directory: ", sim$CBM4data)
 
+  # Set CBM defaults SQLite database path
+  if (!is.null(sim$cbm_defaults_db)) options("CBM4r.db.path" = sim$cbm_defaults_db)
+
   # Set virtual environment
   if (Sys.getenv("VIRTUAL_ENV") == ""){
 
@@ -238,7 +240,7 @@ setStands <- function(sim){
   on.exit(cbm4_table_setnames_revert(sim))
 
   # Set stand metadata
-  CBM4r::cbm4_set_grid_meta(sim$standDT, cbm_defaults_db = sim$cbm_defaults_db)
+  CBM4r::cbm4_set_grid_meta(sim$standDT)
 
   # Return simList
   return(invisible(sim))
@@ -273,19 +275,18 @@ spinup <- function(sim) {
 
   message("Writing CBM4 dataset: inventory")
   CBM4r::cbm4_write_inventory(
-    cbm4_data       = sim$CBM4data,
-    cbm_defaults_db = sim$cbm_defaults_db,
-    cohortDT        = sim$cohortDT,
-    classifiers     = sim$cohortClassifiers,
-    col_ignore      = "cohortID",
-    grid_rast       = sim$masterRaster,
-    grid_meta       = sim$standDT,
+    cbm4_data   = sim$CBM4data,
+    cohortDT    = sim$cohortDT,
+    classifiers = sim$cohortClassifiers,
+    col_ignore  = "cohortID",
+    grid_rast   = sim$masterRaster,
+    grid_meta   = sim$standDT,
     def_delay                      = P(sim)$def_delay_spinup,
     def_historic_disturbance_type  = P(sim)$def_historic_disturbance_type,
     def_last_pass_disturbance_type = P(sim)$def_last_pass_disturbance_type
   ) |>
     reproducible::Cache(
-      omitArgs    = c("cbm4_data", "cbm_defaults_db"),
+      omitArgs    = "cbm4_data",
       .cacheExtra = digestFile(sim$cbm_defaults_db),
       useCache    = P(sim)$.useCacheCBM4,
       verbose     = P(sim)$.useCacheCBM4) |>
@@ -293,14 +294,13 @@ spinup <- function(sim) {
 
   message("Writing CBM4 dataset: spinup_parameters")
   CBM4r::cbm4_write_spinup_parameters(
-    cbm4_data       = sim$CBM4data,
-    cbm_defaults_db = sim$cbm_defaults_db,
-    classifiers     = intersect(sim$cohortClassifiers, names(sim$gcMeta)),
-    gcMeta          = sim$gcMeta,
-    gcIncr          = sim$gcIncrements
+    cbm4_data   = sim$CBM4data,
+    classifiers = intersect(sim$cohortClassifiers, names(sim$gcMeta)),
+    gcMeta      = sim$gcMeta,
+    gcIncr      = sim$gcIncrements
   ) |>
     reproducible::Cache(
-      omitArgs    = c("cbm4_data", "cbm_defaults_db"),
+      omitArgs    = "cbm4_data",
       .cacheExtra = digestFile(sim$cbm_defaults_db),
       useCache    = P(sim)$.useCacheCBM4,
       verbose     = P(sim)$.useCacheCBM4) |>
@@ -309,12 +309,11 @@ spinup <- function(sim) {
   message("Running CBM4 spinup")
   if (P(sim)$.useCacheCBM4) cbm4_data_digest <- digestDir(sim$CBM4data)
   CBM4r::cbm4_spinup(
-    cbm4_data       = sim$CBM4data,
-    cbm_defaults_db = sim$cbm_defaults_db,
-    max_workers     = P(sim)$.max_workers
+    cbm4_data   = sim$CBM4data,
+    max_workers = P(sim)$.max_workers
   ) |>
     reproducible::Cache(
-      omitArgs    = c("cbm4_data", "cbm_defaults_db", "max_workers"),
+      omitArgs    = c("cbm4_data", "max_workers"),
       .cacheExtra = c(digestFile(sim$cbm_defaults_db), cbm4_data_digest),
       useCache    = P(sim)$.useCacheCBM4,
       verbose     = P(sim)$.useCacheCBM4) |>
@@ -401,15 +400,14 @@ annual_disturbances <- function(sim) {
   }else distEvents <- NULL
 
   CBM4r::cbm4_write_disturbance(
-    cbm4_data       = sim$CBM4data,
-    cbm_defaults_db = sim$cbm_defaults_db,
-    classifiers     = intersect(sim$cohortClassifiers, names(sim$disturbanceMeta)),
-    distMeta        = sim$disturbanceMeta,
-    distEvents      = distEvents,
-    grid_meta       = sim$standDT
+    cbm4_data   = sim$CBM4data,
+    classifiers = intersect(sim$cohortClassifiers, names(sim$disturbanceMeta)),
+    distMeta    = sim$disturbanceMeta,
+    distEvents  = distEvents,
+    grid_meta   = sim$standDT
   ) |>
     reproducible::Cache(
-      omitArgs    = c("cbm4_data", "cbm_defaults_db"),
+      omitArgs    = "cbm4_data",
       .cacheExtra = digestFile(sim$cbm_defaults_db),
       useCache    = P(sim)$.useCacheCBM4,
       verbose     = P(sim)$.useCacheCBM4) |>
@@ -462,14 +460,13 @@ annual_step <- function(sim) {
   # Write parameters
   message("Writing CBM4 dataset: step_parameters")
   CBM4r::cbm4_write_step_parameters(
-    cbm4_data       = sim$CBM4data,
-    cbm_defaults_db = sim$cbm_defaults_db,
-    classifiers     = intersect(sim$cohortClassifiers, names(sim$gcMeta)),
-    gcMeta          = sim$gcMeta,
-    gcIncr          = sim$gcIncrements
+    cbm4_data   = sim$CBM4data,
+    classifiers = intersect(sim$cohortClassifiers, names(sim$gcMeta)),
+    gcMeta      = sim$gcMeta,
+    gcIncr      = sim$gcIncrements
   ) |>
     reproducible::Cache(
-      omitArgs    = c("cbm4_data", "cbm_defaults_db"),
+      omitArgs    = "cbm4_data",
       .cacheExtra = digestFile(sim$cbm_defaults_db),
       useCache    = P(sim)$.useCacheCBM4,
       verbose     = P(sim)$.useCacheCBM4) |>
@@ -480,7 +477,6 @@ annual_step <- function(sim) {
     cbm4_data          = sim$CBM4data,
     timestep           = timestep,
     simulation_dataset = simulation_dataset,
-    cbm_defaults_db    = sim$cbm_defaults_db,
     max_workers        = P(sim)$.max_workers
   )
 
@@ -604,20 +600,6 @@ plot <- function(sim){
   if (isTRUE(P(sim)$.useCache)) stop(
     "CBM_core module does not support event caching. Set parameter .useCache = FALSE and .useCacheCBM4 = TRUE")
   P(sim)$.useCacheCBM4 <- getOption("reproducible.useCache", TRUE) & P(sim)$.useCacheCBM4
-
-  # CBM-CFS3 defaults SQLite database
-  if (!suppliedElsewhere("cbm_defaults_db", sim)){
-
-    sim$cbm_defaults_db <- file.path(inputPath(sim), basename(extractURL("cbm_defaults_db")))
-
-    if (!file.exists(sim$cbm_defaults_db)) prepInputs(
-      destinationPath = inputPath(sim),
-      url         = extractURL("cbm_defaults_db"),
-      targetFile  = basename(sim$cbm_defaults_db),
-      dlFun       = download.file(extractURL("cbm_defaults_db"), sim$cbm_defaults_db, mode = "wb", quiet = TRUE),
-      fun         = NA
-    )
-  }
 
   # Return simList
   return(invisible(sim))
