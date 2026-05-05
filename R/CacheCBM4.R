@@ -24,7 +24,7 @@ CacheCBM4dataset <- function(cacheOut, cbm4_data, dataset_name, overwrite = TRUE
 
       dir.create(cbm4_data, recursive = TRUE, showWarnings = FALSE)
       zip::unzip(cacheZIP, exdir = cbm4_data, files = files, overwrite = overwrite)
-      message(cli::col_blue("Loaded CBM4 dataset cache: ", dataset_name))
+      message(cli::col_blue("Loaded CBM4 dataset from cache: ", dataset_name))
 
     }else{
       reproducible::clearCache(cacheId = cacheId, ask = FALSE, verbose = FALSE)
@@ -34,6 +34,7 @@ CacheCBM4dataset <- function(cacheOut, cbm4_data, dataset_name, overwrite = TRUE
 }
 
 digestFile <- function(f){
+  if (is.null(f)) return(digest::digest(NULL))
   md5hash <- tools::md5sum(f)
   names(md5hash) <- NULL
   md5hash
