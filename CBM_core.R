@@ -16,7 +16,7 @@ defineModule(sim, list(
   reqdPkgs = list(
     "data.table", "arrow", "dplyr", "zip", "cli",
     "PredictiveEcology/CBM4r@main", "gert",
-    "PredictiveEcology/CBMutils@development (>=2.5.3)"
+    "PredictiveEcology/CBMutils@development (>=2.5.4)"
   ),
   parameters = rbind(
     defineParameter("fixedCohorts", "logical", TRUE, NA, NA, "Stand cohorts are fixed for simulation duration"),
