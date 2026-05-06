@@ -567,7 +567,7 @@ plot <- function(sim){
 
   # Emissions and products
   SpaDES.core::Plots(
-    CBMutils::simPlotEmissionsProducts(sim, cbm4_results = cbm4_results),
+    CBMutils::cbm4PlotEmissionsProducts(cbm4_results, yearStart = start(sim)),
     filename = "emissionsProducts",
     path = figPath,
     ggsaveArgs = list(width = 14, height = 5, units = "in", dpi = 300),
@@ -575,33 +575,35 @@ plot <- function(sim){
 
   # Pool proportions
   SpaDES.core::Plots(
-    CBMutils::simPlotPoolProportions(sim, cbm4_results = cbm4_results),
+    CBMutils::cbm4PlotPoolProportions(cbm4_results, yearStart = start(sim)),
     filename = "poolProportions",
     path = figPath,
     ggsaveArgs = list(width = 7, height = 5, units = "in", dpi = 300),
     types = "png")
 
   # NPP
-  for (year in c(start(sim), end(sim))){
-
+  plotsNPP <- CBMutils::cbm4MapNPP(cbm4_results, yearStart = start(sim), years = c(start(sim), end(sim)))
+  for (year in names(plotsNPP)){
     SpaDES.core::Plots(
-      CBMutils::simMapNPP(sim, year = year, cbm4_results = cbm4_results),
+      plotsNPP[[year]],
       filename = paste0("NPP-", year),
       path = figPath,
       ggsaveArgs = list(width = 7, height = 5, units = "in", dpi = 300),
       types = "png")
   }
+  rm(plotsNPP)
 
   # Total carbon
-  for (year in c(start(sim), end(sim))){
-
+  plotsTC <- CBMutils::cbm4MapTotalCarbon(cbm4_results, yearStart = start(sim), years = c(start(sim), end(sim)))
+  for (year in names(plotsTC)){
     SpaDES.core::Plots(
-      CBMutils::simMapTotalCarbon(sim, year = year, cbm4_results = cbm4_results),
+      plotsTC[[year]],
       filename = paste0("totalCarbon-", year),
       path = figPath,
       ggsaveArgs = list(width = 7, height = 5, units = "in", dpi = 300),
       types = "png")
   }
+  rm(plotsTC)
 
   # Return simList
   return(invisible(sim))
