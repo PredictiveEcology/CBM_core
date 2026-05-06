@@ -15,8 +15,8 @@ defineModule(sim, list(
   documentation = list("README.txt", "CBM_core.Rmd"),
   reqdPkgs = list(
     "data.table", "arrow", "dplyr", "zip", "cli",
-    "PredictiveEcology/CBM4r@development",
-    "PredictiveEcology/CBMutils@suz-CBM4 (>=2.5.3)", "gert"
+    "PredictiveEcology/CBM4r@main", "gert",
+    "PredictiveEcology/CBMutils@development (>=2.5.3)"
   ),
   parameters = rbind(
     defineParameter("fixedCohorts", "logical", TRUE, NA, NA, "Stand cohorts are fixed for simulation duration"),
@@ -240,7 +240,11 @@ setStands <- function(sim){
   on.exit(cbm4_table_setnames_revert(sim))
 
   # Set stand metadata
-  CBM4r::cbm4_set_grid_meta(sim$standDT)
+  CBM4r::cbm4_set_grid_meta(sim$standDT, grid_rast = sim$masterRaster)
+
+  message("Writing stand metadata to CBM4 data")
+  dir.create(sim$CBM4data)
+  arrow::write_parquet(sim$standDT, file.path(sim$CBM4data, "grid_meta.parquet"))
 
   # Return simList
   return(invisible(sim))
@@ -276,11 +280,11 @@ spinup <- function(sim) {
   message("Writing CBM4 dataset: inventory")
   CBM4r::cbm4_write_inventory(
     cbm4_data   = sim$CBM4data,
-    cohortDT    = sim$cohortDT,
+    grid_meta   = sim$standDT,
+    grid_rast   = sim$masterRaster,
+    cohorts     = sim$cohortDT,
     classifiers = sim$cohortClassifiers,
     col_ignore  = "cohortID",
-    grid_rast   = sim$masterRaster,
-    grid_meta   = sim$standDT,
     def_delay                      = P(sim)$def_delay_spinup,
     def_historic_disturbance_type  = P(sim)$def_historic_disturbance_type,
     def_last_pass_disturbance_type = P(sim)$def_last_pass_disturbance_type
@@ -295,9 +299,9 @@ spinup <- function(sim) {
   message("Writing CBM4 dataset: spinup_parameters")
   CBM4r::cbm4_write_spinup_parameters(
     cbm4_data   = sim$CBM4data,
-    classifiers = intersect(sim$cohortClassifiers, names(sim$gcMeta)),
-    gcMeta      = sim$gcMeta,
-    gcIncr      = sim$gcIncrements
+    gc_meta     = sim$gcMeta,
+    gc_incr     = sim$gcIncrements,
+    classifiers = intersect(sim$cohortClassifiers, names(sim$gcMeta))
   ) |>
     reproducible::Cache(
       omitArgs    = "cbm4_data",
@@ -347,7 +351,11 @@ spinup <- function(sim) {
   # Read cohort data
   if (!P(sim)$fixedCohorts){
     message("Reading CBM4 dataset: simulation: inventory")
-    sim$cohortDT <- CBM4r::cbm4_read_simulation_inventory(sim$CBM4data, timestep = 0)
+    sim$cohortDT <- CBM4r::cbm4_read_simulation_inventory(
+      sim$CBM4data,
+      grid_meta = sim$standDT,
+      timestep  = 0
+    )
   }
 
   # Return simList
@@ -401,10 +409,10 @@ annual_disturbances <- function(sim) {
 
   CBM4r::cbm4_write_disturbance(
     cbm4_data   = sim$CBM4data,
+    grid_meta   = sim$standDT,
+    dist_meta   = sim$disturbanceMeta,
+    dist_events = distEvents,
     classifiers = intersect(sim$cohortClassifiers, names(sim$disturbanceMeta)),
-    distMeta    = sim$disturbanceMeta,
-    distEvents  = distEvents,
-    grid_meta   = sim$standDT
   ) |>
     reproducible::Cache(
       omitArgs    = "cbm4_data",
@@ -447,12 +455,12 @@ annual_step <- function(sim) {
 
     CBM4r::cbm4_write_simulation_inventory(
       cbm4_data    = sim$CBM4data,
+      grid_meta    = sim$standDT,
       dataset_path = simulation_dataset,
       timestep     = timestep - 1,
-      cohortDT     = sim$cohortDT,
+      cohorts      = sim$cohortDT,
       classifiers  = sim$cohortClassifiers,
       col_ignore   = "cohortID",
-      grid_meta    = sim$standDT,
       def_state.regeneration_delay = P(sim)$def_delay_regen
     )
   }
@@ -461,9 +469,9 @@ annual_step <- function(sim) {
   message("Writing CBM4 dataset: step_parameters")
   CBM4r::cbm4_write_step_parameters(
     cbm4_data   = sim$CBM4data,
-    classifiers = intersect(sim$cohortClassifiers, names(sim$gcMeta)),
-    gcMeta      = sim$gcMeta,
-    gcIncr      = sim$gcIncrements
+    gc_meta     = sim$gcMeta,
+    gc_incr     = sim$gcIncrements,
+    classifiers = intersect(sim$cohortClassifiers, names(sim$gcMeta))
   ) |>
     reproducible::Cache(
       omitArgs    = "cbm4_data",
@@ -493,7 +501,11 @@ annual_step <- function(sim) {
     }
 
     message("Reading CBM4 dataset: simulation: inventory")
-    sim$cohortDT <- CBM4r::cbm4_read_simulation_inventory(sim$CBM4data, timestep = timestep)
+    sim$cohortDT <- CBM4r::cbm4_read_simulation_inventory(
+      sim$CBM4data,
+      grid_meta = sim$standDT,
+      timestep  = timestep
+    )
   }
 
   # Return simList
@@ -509,7 +521,7 @@ annual_totals <- function(sim) {
   timestep <- time(sim) - start(sim) + 1
 
   # Read results
-  cbm4_results <- CBM4r::cbm4_results_processor(sim$CBM4data)
+  cbm4_results <- CBM4r::cbm4_results_processor(sim$CBM4data, max_workers = P(sim)$.max_workers)
 
   emissionsProducts <- merge(
     CBM4r::cbm4_results_totals(
@@ -551,7 +563,7 @@ plot <- function(sim){
 
   figPath <- file.path(outputPath(sim), "CBM_core_figures")
 
-  cbm4_results <- CBM4r::cbm4_results_processor(sim$CBM4data)
+  cbm4_results <- CBM4r::cbm4_results_processor(sim$CBM4data, max_workers = P(sim)$.max_workers)
 
   # Emissions and products
   SpaDES.core::Plots(

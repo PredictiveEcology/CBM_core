@@ -15,11 +15,15 @@ cbm4_table_rename <- function() list(
     "spatial_unit_id" = "spatial_unit"
   ),
   gcMeta = c(
+    "gcID"            = "gc_id",
     "admin_id"        = "admin_boundary_id",
     "admin_name"      = "admin_boundary",
     "eco_id"          = "eco_boundary_id",
     "eco_name"        = "eco_boundary",
     "spatial_unit_id" = "spatial_unit"
+  ),
+  gcIncrements = c(
+    "gcID"            = "gc_id"
   ),
   disturbanceMeta = c(
     "eventID" = "disturbance_id",
