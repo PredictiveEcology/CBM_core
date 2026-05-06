@@ -253,20 +253,9 @@ setStands <- function(sim){
 
 spinup <- function(sim) {
 
-  # Get classifiers
-  if (is.null(sim$cohortClassifiers)){
-    sim$cohortClassifiers <- setdiff(names(sim$cohortDT), c(
-      "cohortID", "pixelIndex", "age", "ageSpinup", "delay_spinup", "delay_regen"))
-  }
-
   # Convert to data.table
   for (table in c("cohortDT", "gcMeta", "gcIncrements")){
     if (!data.table::is.data.table(sim[[table]])) sim[[table]] <- data.table::as.data.table(sim[[table]])
-  }
-
-  # Set default delays
-  for (delay in c("spinup", "regen")) if (paste0("delay_", delay) %in% names(sim$cohortDT)){
-    data.table::setnafill(sim$cohortDT, fill = P(sim)[[paste0("def_delay_", delay)]], cols = paste0("delay_", delay))
   }
 
   # Rename table columns for duration of module event
@@ -276,6 +265,17 @@ spinup <- function(sim) {
   }
   cbm4_table_setnames(sim, cohortRename)
   on.exit(cbm4_table_setnames_revert(sim, cohortRename))
+
+  # Set classifiers
+  if (is.null(sim$cohortClassifiers)){
+    sim$cohortClassifiers <- setdiff(names(sim$cohortDT), c(
+      "cohortID", "pixel_index", "age", "ageSpinup", "delay_spinup", "delay_regen"))
+  }
+
+  # Set default delays
+  for (delay in c("spinup", "regen")) if (paste0("delay_", delay) %in% names(sim$cohortDT)){
+    data.table::setnafill(sim$cohortDT, fill = P(sim)[[paste0("def_delay_", delay)]], cols = paste0("delay_", delay))
+  }
 
   message("Writing CBM4 dataset: inventory")
   CBM4r::cbm4_write_inventory(
@@ -526,7 +526,7 @@ annual_totals <- function(sim) {
   emissionsProducts <- merge(
     CBM4r::cbm4_results_totals(
       cbm4_results,
-      timestep     = timestep,
+      timesteps    = timestep,
       view_name    = "composite_flux_indicators",
       view_columns = c(
         "CH4" = "Emissions - Emissions By Gas - Total CH4",
@@ -535,7 +535,7 @@ annual_totals <- function(sim) {
       )),
     CBM4r::cbm4_results_totals(
       cbm4_results,
-      timestep     = timestep,
+      timesteps    = timestep,
       view_name    = "composite_disturbance_indicators",
       view_columns = c(
         "Products" = "Ecosystem Transfers - Ecosystem to Forest Products - Total Harvest (Biomass + Snags)"

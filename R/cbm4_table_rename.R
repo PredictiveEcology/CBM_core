@@ -4,7 +4,8 @@
 cbm4_table_rename <- function() list(
 
   cohortDT = c(
-    "pixelIndex" = "pixel_index"
+    "pixelIndex" = "pixel_index",
+    "gcID"       = "gc_id"
   ),
   standDT = c(
     "pixelIndex"      = "pixel_index",
@@ -23,7 +24,7 @@ cbm4_table_rename <- function() list(
     "spatial_unit_id" = "spatial_unit"
   ),
   gcIncrements = c(
-    "gcID"            = "gc_id"
+    "gcID" = "gc_id"
   ),
   disturbanceMeta = c(
     "eventID" = "disturbance_id",
