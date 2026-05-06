@@ -33,6 +33,7 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
     require = c("terra", "reproducible"),
 
     # Prepare input objects
+    masterRaster          = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "pixelGroupMap.tif") |> terra::rast(),
     studyArea             = file.path(paths$testdata, "LandRCBM-RIA-small/input", "studyArea.shp")     |> sf::st_read(quiet = TRUE),
     rasterToMatch         = file.path(paths$testdata, "LandRCBM-RIA-small/input", "rasterToMatch.tif") |> terra::rast(),
     standDT               = file.path(paths$testdata, "LandRCBM-RIA-small/input", "standDT.qs2")       |> qs2::qs_read() |> data.table::as.data.table(),
