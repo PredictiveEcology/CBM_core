@@ -41,10 +41,11 @@ defineModule(sim, list(
       objectName = "standDT", objectClass = "data.table",
       desc = "Table of stand attributes. Stands can have 1 or more cohorts.",
       columns = c(
-        pixelIndex  = "Stand ID",
-        area        = "Stand area in meters",
-        admin_name  = "Canada province or territory name",
-        eco_id      = "Canada ecozone ID",
+        pixelIndex   = "Stand ID",
+        area         = "Stand area in meters",
+        admin_name   = "Canada province or territory name",
+        admin_abbrev = "Optional. Canada province or territory 2-character abbreviation. 'admin_name' or 'admin_abbrev' required.",
+        eco_id       = "Canada ecozone ID",
         historic_disturbance_type  = "Optional. Historic disturbance type. Defaults to parameter 'def_historic_disturbance_type'",
         last_pass_disturbance_type = "Optional. Last pass disturbance type. Defaults to parameter 'def_last_pass_disturbance_type'"
       )),
@@ -64,7 +65,8 @@ defineModule(sim, list(
     ),
     expectsInput(
       objectName = "gcMeta", objectClass = "data.table",
-      desc = "Growth curve metadata. One or more `cohortDT` classifiers must be present.",
+      desc = paste("Growth curve metadata. One or more `cohortDT` classifiers must be present.",
+                   "Can include columns `admin_name`, `admin_abbrev`, and/or `eco_id`"),
       columns = c(
         gcID  = "Growth curve ID",
         sw    = "TRUE (softwood) or FALSE (hardwood)"
