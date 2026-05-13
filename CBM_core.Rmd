@@ -85,7 +85,7 @@ This event sets the CBM4 data directory path (output `CBM4data`) and links *CBM4
 
 The `r-CBM4` Python virtual environment is set up and activated. If a suitable version of Python is not available, it will be installed.
 
-2. `setStands`
+### `setStands`
 
 This event reads the input stand table (input `standDT`) and adds additional attributes required throughout the simulation. See [`CBM4r::cbm4_set_grid_meta`](https://github.com/PredictiveEcology/CBM4r/blob/main/inst/docs/CBM4r_Reference_Manual.md#cbm4_set_grid_meta-cbm4-set-grid-metadata) for more details.
 
