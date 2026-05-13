@@ -22,20 +22,22 @@ test_that("Module: with regeneration delay", {
       outputPath  = file.path(spadesTestPaths$temp$outputs, projectName)
     ),
 
-    params = list(CBM_core = list(.plot = FALSE)),
+    params = list(CBM_core = list(.useCacheCBM4 = FALSE, .plot = FALSE)),
+
+    masterRaster = terra::rast(ncol = 1, nrow = 2, res = 10, crs = "local"),
 
     standDT = data.table::data.table(
       pixelIndex = c(1, 2),
       admin_name = "Saskatchewan",
       eco_id     = 9,
-      area       = 900
+      area       = 100
     ),
     cohortDT = data.table::data.table(
-      cohortID   = c(1, 2),
-      pixelIndex = c(1, 2),
-      gcID       = 1,
-      age        = 10,
-      delayRegen = c(0, 2)
+      cohortID    = c(1, 2),
+      pixelIndex  = c(1, 2),
+      gcID        = 1L,
+      age         = 10,
+      delay_regen = c(0, 2)
     ),
     disturbanceMeta = data.table::data.table(
       eventID = 1,
@@ -47,13 +49,13 @@ test_that("Module: with regeneration delay", {
       eventID    = 1
     ),
     gcMeta = data.table::data.table(
-      gcID       = 1,
+      gcID       = 1L,
       admin_name = "Saskatchewan",
       eco_id     = 9,
       sw         = TRUE
     ),
     gcIncrements = data.table::data.table(
-      gcID        = 1,
+      gcID        = 1L,
       age         = 0:100,
       merch_inc   = c(0, seq(0.01, 1, length.out = 100)),
       foliage_inc = c(0, seq(0.01, 1, length.out = 100)),
@@ -70,18 +72,25 @@ test_that("Module: with regeneration delay", {
   expect_s4_class(simTest, "simList")
 
   # Check result
-  expect_equal(nrow(simTest$cbm_vars$state), 2)
-  expect_equal(simTest$cbm_vars$state$age[[1]], 3)
-  expect_equal(simTest$cbm_vars$state$age[[2]], 1)
-  expect_gt(simTest$cbm_vars$pools$Merch[[1]], simTest$cbm_vars$pools$Merch[[2]])
+  simDelay <- CBM4r::cbm4_results_query(
+    simTest$CBM4data,
+    "SELECT timestep, \"state.age\", \"inventory.delay\", \"state.regeneration_delay\" FROM simulation ORDER BY timestep, index")
+
+  expect_equal(simDelay[seq(1, nrow(simDelay), by = 2),]$state.age,                c(10, 1, 2, 3))
+  expect_equal(simDelay[seq(1, nrow(simDelay), by = 2),]$inventory.delay,          c( 0, 0, 0, 0))
+  expect_equal(simDelay[seq(1, nrow(simDelay), by = 2),]$state.regeneration_delay, c( 0, 0, 0, 0))
+
+  expect_equal(simDelay[seq(2, nrow(simDelay), by = 2),]$state.age,                c(10, 0, 0, 1))
+  expect_equal(simDelay[seq(2, nrow(simDelay), by = 2),]$inventory.delay,          c( 2, 2, 2, 2))
+  expect_equal(simDelay[seq(2, nrow(simDelay), by = 2),]$state.regeneration_delay, c( 2, 1, 0, 0))
 
 
   ## Test: regeneration delay set by parameter ----
 
   # Set up project
   simInitInputParam <- simInitInput
-  simInitInputParam$params$CBM_core$default_delay_regen <- 2
-  simInitInputParam$cohortDT$delayRegen <- NULL
+  simInitInputParam$params$CBM_core$def_delay_regen <- 2
+  simInitInputParam$cohortDT$delay_regen <- NULL
 
   # Run simInit
   simTestInitParam <- SpaDES.core::simInit2(simInitInputParam)
@@ -92,9 +101,10 @@ test_that("Module: with regeneration delay", {
   expect_s4_class(simTestParam, "simList")
 
   # Check result
-  expect_equal(nrow(simTestParam$cbm_vars$state), 1)
-  expect_equal(simTestParam$cbm_vars$state$age, 1)
-  expect_equal(simTestParam$cbm_vars$pools[, -1], simTest$cbm_vars$pools[2, -1])
+  simDelay <- CBM4r::cbm4_results_query(
+    simTest$CBM4data,
+    "SELECT timestep, \"state.age\" FROM simulation ORDER BY timestep, index")
+  expect_equal(simDelay$state.age, c(10, 0, 0, 1))
 
 })
 

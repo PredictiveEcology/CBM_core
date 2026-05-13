@@ -23,8 +23,14 @@ test_that("Module: SK-small 1998-2000", {
       testdata    = spadesTestPaths$testdata
     ),
 
-    params = list(CBM_core = list(.saveSpinup = TRUE, .saveAll = TRUE, .plot = FALSE)),
+    params = list(CBM_core = list(.plot = FALSE)),
 
+    masterRaster = terra::rast(
+      crs  = "EPSG:3979",
+      ext  = c(xmin = -687696, xmax = -681036, ymin = 711955, ymax = 716183),
+      res  = 30,
+      vals = 1L
+    ),
     standDT           = file.path(paths$testdata, "SK-small/input", "standDT.qs2")           |> qs2::qs_read() |> data.table::as.data.table(),
     cohortDT          = file.path(paths$testdata, "SK-small/input", "cohortDT.qs2")          |> qs2::qs_read() |> data.table::as.data.table(),
     disturbanceMeta   = file.path(paths$testdata, "SK-small/input", "disturbanceMeta.qs2")   |> qs2::qs_read() |> data.table::as.data.table(),
@@ -56,7 +62,7 @@ test_that("Module: SK-small 1998-2000", {
   outTables <- lapply(setNames(names(refTables), names(refTables)), function(table) simTest[[table]]) |>
     lapply(data.table::copy) |> lapply(data.table::setindex, NULL)
 
-  expect_equal(outTables$standDT,           refTables$standDT)
+  expect_equal(outTables$standDT[, .SD, .SDcols = names(refTables$standDT)], refTables$standDT) # Columns are added
   expect_equal(outTables$cohortDT,          refTables$cohortDT)
   expect_equal(outTables$disturbanceMeta,   refTables$disturbanceMeta)
   expect_equal(outTables$disturbanceEvents, refTables$disturbanceEvents)
@@ -66,49 +72,69 @@ test_that("Module: SK-small 1998-2000", {
 
   ## Check outputs ----
 
-  # emissionsProducts
-  expect_true(!is.null(simTest$emissionsProducts))
-  expect_equal(
-    data.table::as.data.table(simTest$emissionsProducts),
-    qs2::qs_read(file.path(spadesTestPaths$testdata, "SK-small/valid", "emissionsProducts.qs2"))[
-      , .SD, .SDcols = colnames(simTest$emissionsProducts)],
-    check.attributes = FALSE)
-
-  # Cohort data
-  ## There should always be the same number of total cohort groups.
-  expect_true(!is.null(simTest$cbm_vars$key))
-  expect_identical(simTest$cbm_vars$key$cohortID,   simTest$cohortDT$cohortID)
-  expect_identical(simTest$cbm_vars$key$pixelIndex, simTest$cohortDT$pixelIndex)
-  expect_equal(max(simTest$cbm_vars$key$row_idx),            43)
-  expect_equal(length(unique(simTest$cbm_vars$key$row_idx)), 43)
-  expect_equal(nrow(simTest$cbm_vars$parameters),            43)
-  expect_equal(nrow(simTest$cbm_vars$state),                 43)
-  expect_equal(nrow(simTest$cbm_vars$flux),                  43)
-  expect_equal(nrow(simTest$cbm_vars$pool),                  43)
-
-  # Check sw_hw flag
-  expect_equal(unique(simTest$cbm_vars$state[species_name == "Black spruce", sw_hw]), 0)
-  expect_equal(unique(simTest$cbm_vars$state[species_name == "Jack pine",    sw_hw]), 0)
-  expect_equal(unique(simTest$cbm_vars$state[species_name == "White birch",  sw_hw]), 1)
-  expect_equal(unique(simTest$cbm_vars$state[species_name == "White spruce", sw_hw]), 0)
-
-  # Check saved data
-  outDataDir   <- file.path(simTest$spadesCBMdb, "data")
-  validDataDir <- file.path(spadesTestPaths$testdata, "SK-small/valid/cbm_vars")
-
-  for (year in times$start:times$end){
-    expect_equal(
-      qs2::qd_read(file.path(outDataDir,   paste0(year, "_key.qs2")))[, .(cohortID, pixelIndex, row_idx)],
-      qs2::qd_read(file.path(validDataDir, paste0(year, "_key.qs2")))[, .(cohortID, pixelIndex, row_idx)]
-    )
-    for (table in c("parameters", "state", "flux", "pools")){
-      tblValid <- qs2::qd_read(file.path(outDataDir,   paste0(year, "_", table, ".qs2")))
-      expect_equal(
-        qs2::qd_read(file.path(outDataDir,   paste0(year, "_", table, ".qs2")))[, .SD, .SDcols = names(tblValid)],
-        tblValid
-      )
-    }
+  testResults <- list(
+    emissionsProducts = simTest$emissionsProducts,
+    pools = CBM4r::cbm4_results_totals(simTest$CBM4data, "pool_indicators"),
+    flux  = CBM4r::cbm4_results_totals(simTest$CBM4data, "flux_indicators")
+  )
+  testValid <- lapply(setNames(names(testResults), names(testResults)), function(table){
+    data.table::fread(file.path(spadesTestPaths$testdata, "SK-small", "valid", paste0(table, ".csv")))
+  })
+  for (table in names(testResults)){
+    expect_equal(names(testResults[[table]]), names(testValid[[table]]))
+    expect_equal(testResults[[table]], testValid[[table]], scale = 1, tolerance = 0.001, check.attributes = FALSE)
   }
+
+
+  ## Run with fixedCohorts = FALSE ----
+
+  # Set up project
+  simInitInputUnfixed <- SpaDES.project::setupProject(
+
+    modules = "CBM_core",
+    times   = times,
+    paths   = list(
+      projectPath = spadesTestPaths$projectPath,
+      modulePath  = spadesTestPaths$modulePath,
+      packagePath = spadesTestPaths$packagePath,
+      inputPath   = spadesTestPaths$inputPath,
+      cachePath   = spadesTestPaths$cachePath,
+      outputPath  = file.path(spadesTestPaths$temp$outputs, paste0(projectName, "_unfixed")),
+      testdata    = spadesTestPaths$testdata
+    ),
+
+    params = list(CBM_core = list(.plot = FALSE, fixedCohorts = FALSE)),
+
+    masterRaster = terra::rast(
+      crs  = "EPSG:3979",
+      ext  = c(xmin = -687696, xmax = -681036, ymin = 711955, ymax = 716183),
+      res  = 30,
+      vals = 1L
+    ),
+    standDT           = file.path(paths$testdata, "SK-small/input", "standDT.qs2")           |> qs2::qs_read() |> data.table::as.data.table(),
+    cohortDT          = file.path(paths$testdata, "SK-small/input", "cohortDT.qs2")          |> qs2::qs_read() |> data.table::as.data.table(),
+    disturbanceMeta   = file.path(paths$testdata, "SK-small/input", "disturbanceMeta.qs2")   |> qs2::qs_read() |> data.table::as.data.table(),
+    disturbanceEvents = file.path(paths$testdata, "SK-small/input", "disturbanceEvents.qs2") |> qs2::qs_read() |> data.table::as.data.table(),
+    gcMeta            = file.path(paths$testdata, "SK/input",       "gcMeta.qs2")            |> qs2::qs_read() |> data.table::as.data.table(),
+    gcIncrements      = file.path(paths$testdata, "SK/input",       "gcIncrements.qs2")      |> qs2::qs_read() |> data.table::as.data.table()
+  )
+
+  # Run simInit
+  simTestInitUnfixed <- SpaDES.core::simInit2(simInitInputUnfixed)
+  expect_s4_class(simTestInitUnfixed, "simList")
+
+  # Run spades
+  simTestUnfixed <- SpaDES.core::spades(simTestInitUnfixed)
+  expect_s4_class(simTestUnfixed, "simList")
+
+  # Check outputs
+  testResultsUnfixed <- list(
+    emissionsProducts = simTestUnfixed$emissionsProducts,
+    pools = CBM4r::cbm4_results_totals(simTestUnfixed$CBM4data, "pool_indicators"),
+    flux  = CBM4r::cbm4_results_totals(simTestUnfixed$CBM4data, "flux_indicators")
+  )
+  for (table in names(testResults)) expect_equal(testResults[[table]], testResultsUnfixed[[table]], scale = 1, tolerance = 0.001)
+
 })
 
 
