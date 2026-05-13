@@ -156,7 +156,7 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
 
       sim <- annualStep(sim)
 
-      sim <- annual_totals(sim)
+      sim <- annualTotals(sim)
 
       sim <- scheduleEvent(sim, time(sim) + 1, "CBM_core", "annualStep", eventPriority = 9)
 
@@ -510,7 +510,7 @@ annualStep <- function(sim) {
 
 }
 
-annual_totals <- function(sim) {
+annualTotals <- function(sim) {
 
   message("Summarizing yearly emissions and products")
 
