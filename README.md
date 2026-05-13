@@ -1,8 +1,6 @@
-CBM_core Manual
+CBM_core
 ================
 Last updated: 2026-05-12
-
-# CBM_core
 
 <div class="rmdimportant">
 
@@ -151,7 +149,7 @@ modules.
 This final optional event is where all plotting occurs. Plots will be
 saved as `.png` files in the project outputs folder.
 
-## Module outputs
+### Module outputs
 
 The primary output produced by *CBM_core* is the CBM4 data directory
 containing simulation data in the [CBM4 spatial
@@ -192,7 +190,7 @@ plotTC[[as.character(start(sim))]]
 plotTC[[as.character(end(sim))]]
 ```
 
-## Links to other modules
+# Links to other modules
 
 - [CBM_defaults](https://github.com/PredictiveEcology/CBM_defaults)
 - [CBM_dataPrep](https://github.com/PredictiveEcology/CBM_dataPrep)

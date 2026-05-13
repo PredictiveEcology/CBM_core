@@ -1,5 +1,5 @@
 ---
-title: "CBM_core Manual"
+title: "CBM_core"
 subtitle: "v.`r SpaDES.core::moduleMetadata(module = 'CBM_core', path = '..')$version`"
 date: "Last updated: `r Sys.Date()`"
 output:
@@ -34,8 +34,6 @@ md_table <- function(mdTable){
   mdTable[, intersect(c("Name", "Class", "Description", "Table columns"), names(mdTable))]
 }
 ```
-
-# CBM_core
 
 :::{.rmdimportant}
 This documentation is a work in progress. Potential discrepancies and omissions may exist for the time being. If you find any, please contact us [here]("https://github.com/PredictiveEcology/CBM_core/issues").
@@ -121,7 +119,7 @@ This final optional event is where all plotting occurs.
 Plots will be saved as `.png` files in the project outputs folder.
 
 
-## Module outputs
+### Module outputs
 
 The primary output produced by *CBM_core* is the CBM4 data directory containing simulation data in the [CBM4 spatial dataset](https://github.com/cat-cfs/tech_docs/tree/main/dev/cbm4/structure#cbm4-spatial-datasets) format.
 Simulation results can either be read directly as Parquet tables or more easily with the [CBM4 results processor](https://github.com/cat-cfs/tech_docs/tree/main/dev/cbm4/structure#results-processing).
@@ -159,7 +157,7 @@ plotTC[[as.character(end(sim))]]
 
 ```
 
-## Links to other modules
+# Links to other modules
 
 - [CBM_defaults](https://github.com/PredictiveEcology/CBM_defaults)
 - [CBM_dataPrep](https://github.com/PredictiveEcology/CBM_dataPrep)
