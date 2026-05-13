@@ -42,7 +42,6 @@ defineModule(sim, list(
       desc = "Table of stand attributes. Stands can have 1 or more cohorts.",
       columns = c(
         pixelIndex   = "Stand ID",
-        area         = "Stand area in meters",
         admin_name   = "Canada province or territory name",
         admin_abbrev = "Optional. Canada province or territory 2-character abbreviation. 'admin_name' or 'admin_abbrev' required.",
         eco_id       = "Canada ecozone ID",
