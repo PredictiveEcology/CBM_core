@@ -238,9 +238,11 @@ setStands <- function(sim){
   # Set stand metadata
   CBM4r::cbm4_set_grid_meta(sim$standDT, grid_rast = sim$masterRaster)
 
-  message("Writing stand metadata to CBM4 data")
-  dir.create(sim$CBM4data)
-  arrow::write_parquet(sim$standDT, file.path(sim$CBM4data, "grid_meta.parquet"))
+  if (P(sim)$.saveAll){
+    message("Writing stand metadata to CBM4 data")
+    dir.create(sim$CBM4data)
+    arrow::write_parquet(sim$standDT, file.path(sim$CBM4data, "grid_meta.parquet"))
+  }
 
   # Return simList
   return(invisible(sim))
