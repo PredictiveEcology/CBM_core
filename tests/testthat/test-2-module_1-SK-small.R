@@ -103,7 +103,10 @@ test_that("Module: SK-small 1998-2000", {
       testdata    = spadesTestPaths$testdata
     ),
 
-    params = list(CBM_core = list(.plot = FALSE, fixedCohorts = FALSE)),
+    params = list(CBM_core = list(
+      fixedCohorts = FALSE,
+      .plot = FALSE
+    )),
 
     masterRaster = terra::rast(
       crs  = "EPSG:3979",

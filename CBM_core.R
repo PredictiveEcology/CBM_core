@@ -141,7 +141,12 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
     },
 
     spinup = {
+
       sim <- spinup(sim)
+
+      if (!P(sim)$fixedCohorts){
+        sim <- annualReadInventory(sim, timestep = 0)
+      }
     },
 
     annualDisturbances = {
@@ -156,6 +161,10 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
       sim <- annualStep(sim)
 
       sim <- annualTotals(sim)
+
+      if (!P(sim)$fixedCohorts){
+        sim <- annualReadInventory(sim)
+      }
 
       sim <- scheduleEvent(sim, time(sim) + 1, "CBM_core", "annualStep", eventPriority = 9)
 
@@ -358,18 +367,35 @@ spinup <- function(sim) {
 
   unlink(simulation_data_pq)
 
-  # Read cohort data
-  if (!P(sim)$fixedCohorts){
-    message("Reading CBM4 dataset: simulation: inventory")
-    sim$cohortDT <- CBM4r::cbm4_read_simulation_inventory(
-      sim$CBM4data,
-      grid_meta = sim$standDT,
-      timestep  = 0
-    )
-  }
+  # Return simList
+  return(invisible(sim))
+}
+
+annualReadInventory <- function(sim, timestep = NULL){
+
+  message("Reading CBM4 dataset: simulation: inventory")
+
+  # Rename table columns for duration of module event
+  cbm4_table_setnames(sim)
+  on.exit(cbm4_table_setnames_revert(sim))
+
+  # Set timestep
+  if (is.null(timestep)) timestep <- time(sim) - start(sim) + 1
+
+  # Read inventory
+  sim$cohortDT <- CBM4r::cbm4_read_simulation_inventory(
+    sim$CBM4data,
+    grid_meta = sim$standDT,
+    timestep  = timestep
+  )
+
+  sim$cohortDT[, chunk_index  := NULL]
+  sim$cohortDT[, raster_index := NULL]
+  sim$cohortDT[, cohort_index := NULL]
 
   # Return simList
   return(invisible(sim))
+
 }
 
 annualDisturbances <- function(sim) {
@@ -509,18 +535,10 @@ annualStep <- function(sim) {
                 file.path(sim$CBM4data, "simulation", dirname(dir)),
                 recursive = TRUE)
     }
-
-    message("Reading CBM4 dataset: simulation: inventory")
-    sim$cohortDT <- CBM4r::cbm4_read_simulation_inventory(
-      sim$CBM4data,
-      grid_meta = sim$standDT,
-      timestep  = timestep
-    )
   }
 
   # Return simList
   return(invisible(sim))
-
 }
 
 annualTotals <- function(sim) {
