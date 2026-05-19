@@ -23,8 +23,6 @@ test_that("Module: SK-small 1998-2000", {
       testdata    = spadesTestPaths$testdata
     ),
 
-    params = list(CBM_core = list(.plot = FALSE)),
-
     masterRaster = terra::rast(
       crs  = "EPSG:3979",
       ext  = c(xmin = -687696, xmax = -681036, ymin = 711955, ymax = 716183),
@@ -84,6 +82,14 @@ test_that("Module: SK-small 1998-2000", {
     expect_equal(names(testResults[[table]]), names(testValid[[table]]))
     expect_equal(testResults[[table]], testValid[[table]], scale = 1, tolerance = 0.001, check.attributes = FALSE)
   }
+
+  # Check that plots are created
+  expect_equal(list.files(file.path(outputPath(simTest), "CBM_core_figures")), c(
+    "emissionsProducts.png",
+    "NPP-1998.png", "NPP-2000.png",
+    "poolProportions.png",
+    "totalCarbon-1998.png", "totalCarbon-2000.png"
+  ))
 
 
   ## Run with fixedCohorts = FALSE ----
