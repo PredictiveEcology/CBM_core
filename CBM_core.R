@@ -28,7 +28,7 @@ defineModule(sim, list(
     defineParameter(".cbm4vers",    "character", NA,       NA, NA, "CBM4 version"),
     defineParameter(".useCache",    "logical",   FALSE,    NA, NA, "Cache module events"),
     defineParameter(".useCacheCBM4","logical",   TRUE,     NA, NA, "Cache CBM4 processes"),
-    defineParameter(".chunks",      "integer", 1L, NA, NA, "Number of partition chunks"),
+    defineParameter(".chunk_size",  "integer", NA, NA, NA, "Number of cohort groups per processing chunk"),
     defineParameter(".max_workers", "integer", NA, NA, NA, "Number of parallel processes"),
     defineParameter(".saveAll",     "logical",   FALSE,    NA, NA, "Save all available data"),
     defineParameter(".plot",        "logical",   TRUE,     NA, NA, "Plot simulation results")
@@ -236,7 +236,19 @@ setStands <- function(sim){
   on.exit(cbm4_table_setnames_revert(sim))
 
   # Set stand metadata
-  CBM4r::cbm4_set_grid_meta(sim$standDT, grid_rast = sim$masterRaster)
+  CBM4r::cbm4_set_grid_meta(
+    sim$standDT,
+    grid_rast  = sim$masterRaster,
+    chunk_size = P(sim)$.chunk_size,
+    chunk_meta = if (!is.na(P(sim)$.chunk_size)){
+      if ("cohortID" %in% names(sim$cohortDT)){
+        sim$cohortDT[, .SD, .SDcols = setdiff(names(sim$cohortDT), "cohortID")]
+      }else sim$cohortDT
+    }
+  )
+
+  if (!is.na(P(sim)$.chunk_size)) message(cli::col_blue(
+    "Partitions: ", sum(!is.na(unique(sim$standDT$chunk_index))), " chunk(s) of ", P(sim)$.chunk_size))
 
   if (P(sim)$.saveAll){
     message("Writing stand metadata to CBM4 data")
