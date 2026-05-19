@@ -23,7 +23,11 @@ test_that("Module: SK 1985-2011", {
       testdata    = spadesTestPaths$testdata
     ),
 
-    params = list(CBM_core = list(.useCacheCBM4 = FALSE, .plot = FALSE)),
+    params = list(CBM_core = list(
+      .chunk_size   = 100,
+      .useCacheCBM4 = FALSE,
+      .plot         = FALSE
+    )),
 
     masterRaster = terra::rast(
       crs  = "EPSG:3979",
@@ -46,6 +50,7 @@ test_that("Module: SK 1985-2011", {
   # Run spades
   simTest <- SpaDES.core::spades(simTestInit)
   expect_s4_class(simTest, "simList")
+
 
   ## Check outputs ----
 
