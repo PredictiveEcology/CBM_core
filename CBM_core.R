@@ -172,10 +172,10 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
       if (!P(sim)$.saveAll){
         rmDirs <- "spinup_parameters"
         if (time(sim) == end(sim)){
-          rmDirs <- c(rmDirs, "disturbance", "step_parameters", "simulation_init")
+          rmDirs <- c(rmDirs, "disturbance", "step_parameters", "simulation_in")
         }else{
           timestep <- time(sim) - start(sim) + 1
-          rmDirs <- c(rmDirs, do.call(c, lapply(c("disturbance", "simulation_init"), function(dataset){
+          rmDirs <- c(rmDirs, do.call(c, lapply(c("disturbance", "simulation_in"), function(dataset){
             dirs <- list.dirs(file.path(sim$CBM4data, dataset))
             dirs[basename(dirs) == paste0("timestep=", timestep - 1)]
           })))
