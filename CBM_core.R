@@ -212,7 +212,6 @@ Init <- function(sim){
   if (Sys.getenv("VIRTUAL_ENV") == ""){
 
     message("Setting up CBM4 Python virtual environment: ", P(sim)$.virtualenv)
-
     CBM4r::cbm4_virtualenv_create(
       P(sim)$.virtualenv,
       version = if (!is.na(P(sim)$.cbm4vers)) P(sim)$.cbm4vers,
@@ -226,6 +225,23 @@ Init <- function(sim){
 
     # Use Python virtual environment
     reticulate::use_virtualenv(P(sim)$.virtualenv)
+
+    # Try importing pyarrow to check for library loading issue
+    ## See Github issue: https://github.com/apache/arrow/issues/40073
+    tryCatch(
+      reticulate::import("pyarrow"),
+      error = function(e){
+        if (grepl("DLL load failed while importing lib", e$message)){
+          stop("Importing Python package pyarrow failed:\n", e$message, "\n",
+               "Loading the R arrow package before pyarrow may cause issues due to library incompatibilities. ",
+               "This is a known issue: https://github.com/apache/arrow/issues/40073", "\n",
+               "Refreshing your R session may resolve the issue. ",
+               "If it persists, import pyarrow in your session before running SpaDES using the following code: \n",
+               cli::col_green("reticulate::use_virtualenv(\"", P(sim)$.virtualenv, "\")", "\n",
+                              "reticulate::import(\"pyarrow\")"),
+               call. = FALSE)
+        }else stop(e)
+    })
   }
 
   # Return simList
