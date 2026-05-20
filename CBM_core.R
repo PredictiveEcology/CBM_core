@@ -201,12 +201,17 @@ Init <- function(sim){
 
   # Set CBM4 data directory
   sim$CBM4data <- file.path(outputPath(sim), "CBM4data")
-  unlink(sim$CBM4data, recursive = TRUE)
-  if (file.exists(sim$CBM4data))stop(
-    "Failed to remove existing CBM4 spatial dataset directory: ", sim$CBM4data)
+  message("CBM4 data directory set to: ", sim$CBM4data)
 
-  # Set CBM defaults SQLite database path
-  if (!is.null(sim$cbm_defaults_db)) options("CBM4r.db.path" = sim$cbm_defaults_db)
+  unlink(sim$CBM4data, recursive = TRUE)
+  if (file.exists(sim$CBM4data)) stop(
+    "Failed to remove existing CBM4 data directory: ", sim$CBM4data)
+
+  # Set CBM parameters SQLite database path
+  if (!is.null(sim$cbm_defaults_db)){
+    CBM4r::cbm4_set_db_path(sim$cbm_defaults_db)
+    message("CBM parameters database set to: ", sim$cbm_defaults_db)
+  }
 
   # Set virtual environment
   if (Sys.getenv("VIRTUAL_ENV") == ""){
