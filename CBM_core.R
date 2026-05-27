@@ -132,7 +132,8 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
       sim <- scheduleEvent(sim, start(sim), "CBM_core", "annualDisturbances", eventPriority = 8)
       sim <- scheduleEvent(sim, start(sim), "CBM_core", "annualStep",         eventPriority = 10)
 
-      # Schedule plotting
+      # Schedule summaries
+      sim <- scheduleEvent(sim, end(sim), "CBM_core", "summarize", eventPriority = 10)
       if (P(sim)$.plot) sim <- scheduleEvent(sim, end(sim), "CBM_core", "plot", eventPriority = 10)
     },
 
@@ -160,8 +161,6 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
 
       sim <- annualStep(sim)
 
-      sim <- annualTotals(sim)
-
       if (!P(sim)$fixedCohorts){
         sim <- annualReadInventory(sim)
       }
@@ -188,6 +187,9 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
       }
     },
 
+    summarize = {
+      sim <- summarize(sim)
+    },
     plot = {
       sim <- plot(sim)
     },
@@ -562,20 +564,15 @@ annualStep <- function(sim) {
   return(invisible(sim))
 }
 
-annualTotals <- function(sim) {
+summarize <- function(sim) {
 
-  message("Summarizing yearly emissions and products")
+  message("Reading yearly totals for emissions and products")
 
-  # Set timestep
-  timestep <- time(sim) - start(sim) + 1
-
-  # Read results
   cbm4_results <- CBM4r::cbm4_results_processor(sim$CBM4data, max_workers = P(sim)$.max_workers)
 
-  emissionsProducts <- merge(
+  sim$emissionsProducts <- merge(
     CBM4r::cbm4_results_totals(
       cbm4_results,
-      timesteps    = timestep,
       view_name    = "composite_flux_indicators",
       view_columns = c(
         "CH4" = "Emissions - Emissions By Gas - Total CH4",
@@ -584,13 +581,12 @@ annualTotals <- function(sim) {
       )),
     CBM4r::cbm4_results_totals(
       cbm4_results,
-      timesteps    = timestep,
       view_name    = "composite_disturbance_indicators",
       view_columns = c(
         "Products" = "Ecosystem Transfers - Ecosystem to Forest Products - Total Harvest (Biomass + Snags)"
       )),
-    all = TRUE)[, .(
-      year      = as.integer(time(sim)),
+    by = "timestep", all = TRUE)[, .(
+      year      = as.numeric(start(sim)) + timestep - 1,
       timestep  = timestep,
       Products  = data.table::fcoalesce(Products, 0),
       Emissions = CO2 + CH4 + CO,
@@ -598,8 +594,6 @@ annualTotals <- function(sim) {
       CH4       = CH4,
       CO        = CO
     )]
-
-  sim$emissionsProducts <- rbind(sim$emissionsProducts, emissionsProducts)
   data.table::setkey(sim$emissionsProducts, year)
   data.table::setcolorder(sim$emissionsProducts)
 
