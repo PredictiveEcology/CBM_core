@@ -341,7 +341,7 @@ spinup <- function(sim) {
     cbm4_data   = sim$CBM4data,
     gc_meta     = sim$gcMeta,
     gc_incr     = sim$gcIncrements,
-    classifiers = intersect(sim$cohortClassifiers, names(sim$gcMeta))
+    classifiers = sim$cohortClassifiers
   ) |>
     reproducible::Cache(
       omitArgs    = "cbm4_data",
@@ -469,7 +469,7 @@ annualDisturbances <- function(sim) {
     grid_meta   = sim$standDT,
     dist_meta   = sim$disturbanceMeta,
     dist_events = distEvents,
-    classifiers = intersect(sim$cohortClassifiers, names(sim$disturbanceMeta)),
+    classifiers = sim$cohortClassifiers,
   ) |>
     reproducible::Cache(
       omitArgs    = "cbm4_data",
@@ -528,7 +528,7 @@ annualStep <- function(sim) {
     cbm4_data   = sim$CBM4data,
     gc_meta     = sim$gcMeta,
     gc_incr     = sim$gcIncrements,
-    classifiers = intersect(sim$cohortClassifiers, names(sim$gcMeta))
+    classifiers = sim$cohortClassifiers
   ) |>
     reproducible::Cache(
       omitArgs    = "cbm4_data",
