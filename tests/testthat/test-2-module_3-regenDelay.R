@@ -49,13 +49,13 @@ test_that("Module: with regeneration delay", {
       eventID    = 1
     ),
     gcMeta = data.table::data.table(
-      gcID       = 1L,
+      gcID       = 1,
       admin_name = "Saskatchewan",
       eco_id     = 9,
       sw         = TRUE
     ),
     gcIncrements = data.table::data.table(
-      gcID        = 1L,
+      gcID        = 1,
       age         = 0:100,
       merch_inc   = c(0, seq(0.01, 1, length.out = 100)),
       foliage_inc = c(0, seq(0.01, 1, length.out = 100)),
@@ -74,15 +74,15 @@ test_that("Module: with regeneration delay", {
   # Check result
   simDelay <- CBM4r::cbm4_results_query(
     simTest$CBM4data,
-    "SELECT timestep, \"state.age\", \"inventory.delay\", \"state.regeneration_delay\" FROM simulation ORDER BY timestep, index")
+    "SELECT timestep, index, \"state.age\", \"inventory.delay\", \"state.regeneration_delay\" FROM simulation ORDER BY timestep, index")
 
-  expect_equal(simDelay[seq(1, nrow(simDelay), by = 2),]$state.age,                c(10, 1, 2, 3))
-  expect_equal(simDelay[seq(1, nrow(simDelay), by = 2),]$inventory.delay,          c( 0, 0, 0, 0))
-  expect_equal(simDelay[seq(1, nrow(simDelay), by = 2),]$state.regeneration_delay, c( 0, 0, 0, 0))
+  expect_equal(simDelay[index == 0]$state.age,                c(10, 1, 2, 3))
+  expect_equal(simDelay[index == 0]$inventory.delay,          c( 0, 0, 0, 0))
+  expect_equal(simDelay[index == 0]$state.regeneration_delay, c( 0, 0, 0, 0))
 
-  expect_equal(simDelay[seq(2, nrow(simDelay), by = 2),]$state.age,                c(10, 0, 0, 1))
-  expect_equal(simDelay[seq(2, nrow(simDelay), by = 2),]$inventory.delay,          c( 2, 2, 2, 2))
-  expect_equal(simDelay[seq(2, nrow(simDelay), by = 2),]$state.regeneration_delay, c( 2, 1, 0, 0))
+  expect_equal(simDelay[index == 1]$state.age,                c(10, 0, 0, 1))
+  expect_equal(simDelay[index == 1]$inventory.delay,          c( 2, 2, 2, 2))
+  expect_equal(simDelay[index == 1]$state.regeneration_delay, c( 2, 1, 0, 0))
 
 
   ## Test: regeneration delay set by parameter ----
@@ -103,7 +103,7 @@ test_that("Module: with regeneration delay", {
   # Check result
   simDelay <- CBM4r::cbm4_results_query(
     simTest$CBM4data,
-    "SELECT timestep, \"state.age\" FROM simulation ORDER BY timestep, index")
+    "SELECT timestep, index, \"state.age\" FROM simulation ORDER BY timestep, index")
   expect_equal(simDelay$state.age, c(10, 0, 0, 1))
 
 })
