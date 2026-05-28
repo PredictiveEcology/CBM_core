@@ -21,7 +21,8 @@ test_that("Module: with regeneration delay", {
         packagePath = spadesTestPaths$packagePath,
         inputPath   = spadesTestPaths$inputPath,
         cachePath   = spadesTestPaths$cachePath,
-        outputPath  = file.path(spadesTestPaths$temp$outputs, projectName)
+        outputPath  = file.path(spadesTestPaths$temp$outputs, projectName),
+        testdata    = spadesTestPaths$testdata
       ),
       params = list(CBM_core = list(.plot = FALSE)),
 
@@ -58,8 +59,8 @@ test_that("Module: with regeneration delay", {
         foliage_inc = c(0, seq(0.01, 1, length.out = 100)),
         other_inc   = c(0, seq(0.01, 1, length.out = 100))
       ),
-      pooldef   = file.path(spadesTestPaths$testdata, "SK/input", "pooldef.txt")   |> readLines(),
-      spinupSQL = file.path(spadesTestPaths$testdata, "SK/input", "spinupSQL.csv") |> data.table::fread()
+      pooldef   = file.path(paths$testdata, "SK/input", "pooldef.txt")   |> readLines(),
+      spinupSQL = file.path(paths$testdata, "SK/input", "spinupSQL.csv") |> data.table::fread()
     )
   )
 

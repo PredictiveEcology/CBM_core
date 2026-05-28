@@ -21,18 +21,19 @@ test_that("Module: SK-small 1998-2000", {
         packagePath = spadesTestPaths$packagePath,
         inputPath   = spadesTestPaths$inputPath,
         cachePath   = spadesTestPaths$cachePath,
-        outputPath  = file.path(spadesTestPaths$temp$outputs, projectName)
+        outputPath  = file.path(spadesTestPaths$temp$outputs, projectName),
+        testdata    = spadesTestPaths$testdata
       ),
       params = list(CBM_core = list(.saveSpinup = TRUE, .saveAll = TRUE, .plot = FALSE)),
 
-      cohortDT          = data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/input", "cohortDT.csv")),
-      standDT           = data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/input", "standDT.csv"))[, area := 900],
-      disturbanceEvents = file.path(spadesTestPaths$testdata, "SK-small/input", "disturbanceEvents.csv") |> data.table::fread(),
-      disturbanceMeta   = file.path(spadesTestPaths$testdata, "SK/input", "disturbanceMeta.csv")   |> data.table::fread(),
-      gcMeta            = file.path(spadesTestPaths$testdata, "SK/input", "gcMeta.csv")            |> data.table::fread(),
-      growth_increments = file.path(spadesTestPaths$testdata, "SK/input", "growth_increments.csv") |> data.table::fread(),
-      pooldef           = file.path(spadesTestPaths$testdata, "SK/input", "pooldef.txt")           |> readLines(),
-      spinupSQL         = file.path(spadesTestPaths$testdata, "SK/input", "spinupSQL.csv")         |> data.table::fread()
+      cohortDT          = data.table::fread(file.path(paths$testdata, "SK-small/input", "cohortDT.csv")),
+      standDT           = data.table::fread(file.path(paths$testdata, "SK-small/input", "standDT.csv"))[, area := 900],
+      disturbanceEvents = file.path(paths$testdata, "SK-small/input", "disturbanceEvents.csv") |> data.table::fread(),
+      disturbanceMeta   = file.path(paths$testdata, "SK/input", "disturbanceMeta.csv")   |> data.table::fread(),
+      gcMeta            = file.path(paths$testdata, "SK/input", "gcMeta.csv")            |> data.table::fread(),
+      growth_increments = file.path(paths$testdata, "SK/input", "growth_increments.csv") |> data.table::fread(),
+      pooldef           = file.path(paths$testdata, "SK/input", "pooldef.txt")           |> readLines(),
+      spinupSQL         = file.path(paths$testdata, "SK/input", "spinupSQL.csv")         |> data.table::fread()
     )
   )
 

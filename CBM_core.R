@@ -8,16 +8,14 @@ defineModule(sim, list(
     person("Susan",   "Murray",    email = "murray.e.susan@gmail.com",           role = c("ctb"))
   ),
   childModules = character(0),
-  version = list(CBM_core = "0.0.2"),
+  version = list(CBM_core = "1.0.0"),
   timeframe = as.POSIXlt(c(NA, NA)),
   timeunit = "year",
   citation = list("citation.bib"),
   documentation = list("README.txt", "CBM_core.Rmd"),
   reqdPkgs = list(
-
     "data.table", "reticulate", "qs2",
-    "PredictiveEcology/CBMutils@development (>=2.5)",
-
+    "PredictiveEcology/CBMutils@v2.5.1",
     "PredictiveEcology/libcbmr"
   ),
   parameters = rbind(
@@ -313,7 +311,7 @@ Init <- function(sim){
       pyenvOnly      = TRUE),
     packages = c(
       "numpy<2",
-      "pandas>=1.1.5",
+      "pandas>=1.1.5,<=2.3.3",
       "scipy",
       "numexpr>=2.8.7",
       "numba",
