@@ -505,7 +505,7 @@ annualStep <- function(sim) {
     simulation_dataset <- file.path(sim$CBM4data, "simulation_init")
 
     if (!file.exists(simulation_dataset)){
-      CBM4r::cbm4_copy_dataset(
+      CBM4r::cbm4_data_copy_dataset(
         cbm4_data     = sim$CBM4data,
         dataset_name  = "simulation",
         dataset_path  = simulation_dataset
