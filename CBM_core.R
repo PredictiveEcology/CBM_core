@@ -394,7 +394,7 @@ spinup <- function(sim) {
 
 annualReadInventory <- function(sim, timestep = NULL){
 
-  message("Reading CBM4 dataset: simulation: inventory")
+  message("Reading CBM4 dataset: simulation: cohorts")
 
   # Rename table columns for duration of module event
   cbm4_table_setnames(sim)
@@ -404,7 +404,7 @@ annualReadInventory <- function(sim, timestep = NULL){
   if (is.null(timestep)) timestep <- time(sim) - start(sim) + 1
 
   # Read inventory
-  sim$cohortDT <- CBM4r::cbm4_read_simulation_inventory(
+  sim$cohortDT <- CBM4r::cbm4_read_cohorts(
     sim$CBM4data,
     grid_meta = sim$standDT,
     timestep  = timestep
@@ -492,37 +492,6 @@ annualStep <- function(sim) {
   # Set timestep
   timestep <- time(sim) - start(sim) + 1
 
-  # Write inventory
-  if (P(sim)$fixedCohorts){
-
-    simulation_dataset <- file.path(sim$CBM4data, "simulation")
-
-  }else{
-
-    message("Writing CBM4 dataset: simulation_init")
-
-    simulation_dataset <- file.path(sim$CBM4data, "simulation_init")
-
-    if (!file.exists(simulation_dataset)){
-      CBM4r::cbm4_data_copy_dataset(
-        cbm4_data     = sim$CBM4data,
-        dataset_name  = "simulation",
-        dataset_path  = simulation_dataset
-      )
-    }
-
-    CBM4r::cbm4_write_simulation_inventory(
-      cbm4_data    = sim$CBM4data,
-      grid_meta    = sim$standDT,
-      dataset_path = simulation_dataset,
-      timestep     = timestep - 1,
-      cohorts      = sim$cohortDT,
-      classifiers  = sim$cohortClassifiers,
-      col_ignore   = "cohortID",
-      def_state.regeneration_delay = P(sim)$def_delay_regen
-    )
-  }
-
   # Write parameters
   message("Writing CBM4 dataset: step_parameters")
   CBM4r::cbm4_write_step_parameters(
@@ -540,25 +509,24 @@ annualStep <- function(sim) {
     CacheCBM4dataset(sim$CBM4data, "step_parameters")
 
   message("Running CBM4 annual step")
-  CBM4r::cbm4_step(
-    cbm4_data          = sim$CBM4data,
-    cbm_defaults_db    = sim$cbm_defaults_db,
-    timestep           = timestep,
-    simulation_dataset = simulation_dataset,
-    max_workers        = P(sim)$.max_workers
-  )
+  if (P(sim)$fixedCohorts){
+    CBM4r::cbm4_step(
+      cbm4_data       = sim$CBM4data,
+      cbm_defaults_db = sim$cbm_defaults_db,
+      timestep        = timestep,
+      max_workers     = P(sim)$.max_workers
+    )
 
-  if (!P(sim)$fixedCohorts){
-
-    # Copy new simulation data to final destination
-    newDataDirs <- list.dirs(simulation_dataset, full.names = FALSE)
-    newDataDirs <- newDataDirs[basename(newDataDirs) == paste0("timestep=", timestep)]
-    for (dir in newDataDirs){
-      dir.create(file.path(sim$CBM4data, "simulation", dirname(dir)), showWarnings = FALSE)
-      file.copy(file.path(simulation_dataset, dir),
-                file.path(sim$CBM4data, "simulation", dirname(dir)),
-                recursive = TRUE)
-    }
+  }else{
+    CBM4r::cbm4_step_with_cohorts(
+      cbm4_data       = sim$CBM4data,
+      cbm_defaults_db = sim$cbm_defaults_db,
+      timestep        = timestep,
+      max_workers     = P(sim)$.max_workers,
+      cohorts         = sim$cohortDT,
+      grid_meta       = sim$standDT,
+      def_regeneration_delay = P(sim)$def_delay_regen
+    )
   }
 
   # Return simList
