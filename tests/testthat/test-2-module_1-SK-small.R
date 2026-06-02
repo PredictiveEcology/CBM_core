@@ -70,17 +70,15 @@ test_that("Module: SK-small 1998-2000", {
 
   ## Check outputs ----
 
-  testResults <- list(
-    emissionsProducts = simTest$emissionsProducts,
-    pools = CBM4r::cbm4_results_totals(simTest$CBM4data, "pool_indicators"),
-    flux  = CBM4r::cbm4_results_totals(simTest$CBM4data, "flux_indicators")
-  )
-  testValid <- lapply(setNames(names(testResults), names(testResults)), function(table){
-    data.table::fread(file.path(spadesTestPaths$testdata, "SK-small", "valid", paste0(table, ".csv")))
-  })
+  testResults <- list(emissionsProducts = simTest$emissionsProducts)
+  cbm4_results <- CBM4r::cbm4_results_processor(simTest$CBM4data)
+  for (view_name in c("pool_indicators", "flux_indicators", "disturbance_indicators")){
+    testResults[[view_name]] <- CBM4r::cbm4_results_totals(cbm4_results, view_name)
+  }
   for (table in names(testResults)){
-    expect_equal(names(testResults[[table]]), names(testValid[[table]]))
-    expect_equal(testResults[[table]], testValid[[table]], scale = 1, tolerance = 0.001, check.attributes = FALSE)
+    testValid <- data.table::fread(file.path(spadesTestPaths$testdata, "SK-small", "valid", paste0(table, ".csv")))
+    expect_equal(names(testResults[[table]]), names(testValid))
+    expect_equal(testResults[[table]], testValid, scale = 1, tolerance = 0.001, check.attributes = FALSE)
   }
 
   # Check that plots are created
@@ -137,13 +135,14 @@ test_that("Module: SK-small 1998-2000", {
   expect_s4_class(simTestUnfixed, "simList")
 
   # Check outputs
-  testResultsUnfixed <- list(
-    emissionsProducts = simTestUnfixed$emissionsProducts,
-    pools = CBM4r::cbm4_results_totals(simTestUnfixed$CBM4data, "pool_indicators"),
-    flux  = CBM4r::cbm4_results_totals(simTestUnfixed$CBM4data, "flux_indicators")
-  )
-  for (table in names(testResults)) expect_equal(testResults[[table]], testResultsUnfixed[[table]], scale = 1, tolerance = 0.001)
-
+  testResultsUnfixed <- list(emissionsProducts = simTestUnfixed$emissionsProducts)
+  cbm4_results <- CBM4r::cbm4_results_processor(simTestUnfixed$CBM4data)
+  for (view_name in c("pool_indicators", "flux_indicators", "disturbance_indicators")){
+    testResultsUnfixed[[view_name]] <- CBM4r::cbm4_results_totals(cbm4_results, view_name)
+  }
+  for (table in names(testResults)){
+    expect_equal(testResults[[table]], testResultsUnfixed[[table]], scale = 1, tolerance = 0.001)
+  }
 })
 
 
