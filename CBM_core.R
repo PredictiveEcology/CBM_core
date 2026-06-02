@@ -209,12 +209,6 @@ Init <- function(sim){
   if (file.exists(sim$CBM4data)) stop(
     "Failed to remove existing CBM4 data directory: ", sim$CBM4data)
 
-  # Set CBM parameters SQLite database path
-  if (!is.null(sim$cbm_defaults_db)){
-    CBM4r::cbm4_set_db_path(sim$cbm_defaults_db)
-    message("CBM parameters database set to: ", sim$cbm_defaults_db)
-  }
-
   # Set virtual environment
   if (Sys.getenv("VIRTUAL_ENV") == ""){
 
@@ -269,14 +263,15 @@ setStands <- function(sim){
 
   # Set stand metadata
   CBM4r::cbm4_set_grid_meta(
-    sim$standDT,
-    grid_rast  = sim$masterRaster,
-    chunk_size = P(sim)$.chunk_size,
-    chunk_meta = if (!is.na(P(sim)$.chunk_size)){
+    cbm_defaults_db = sim$cbm_defaults_db,
+    grid_meta       = sim$standDT,
+    grid_rast       = sim$masterRaster,
+    chunk_size      = P(sim)$.chunk_size,
+    chunk_meta      = if (!is.na(P(sim)$.chunk_size)){
       if ("cohortID" %in% names(sim$cohortDT)){
         sim$cohortDT[, .SD, .SDcols = setdiff(names(sim$cohortDT), "cohortID")]
       }else sim$cohortDT
-    }
+    },
   )
 
   if (!is.na(P(sim)$.chunk_size)) message(cli::col_blue(
@@ -321,13 +316,14 @@ spinup <- function(sim) {
 
   message("Writing CBM4 dataset: inventory")
   CBM4r::cbm4_write_inventory(
-    cbm4_data   = sim$CBM4data,
-    grid_meta   = sim$standDT,
-    grid_rast   = sim$masterRaster,
-    cohorts     = sim$cohortDT,
-    classifiers = sim$cohortClassifiers,
-    col_ignore  = "cohortID",
-    def_delay                      = P(sim)$def_delay_spinup,
+    cbm4_data       = sim$CBM4data,
+    cbm_defaults_db = sim$cbm_defaults_db,
+    grid_meta       = sim$standDT,
+    grid_rast       = sim$masterRaster,
+    cohorts         = sim$cohortDT,
+    classifiers     = sim$cohortClassifiers,
+    col_ignore      = "cohortID",
+    def_delay       = P(sim)$def_delay_spinup,
     def_historic_disturbance_type  = P(sim)$def_historic_disturbance_type,
     def_last_pass_disturbance_type = P(sim)$def_last_pass_disturbance_type
   ) |>
@@ -340,10 +336,11 @@ spinup <- function(sim) {
 
   message("Writing CBM4 dataset: spinup_parameters")
   CBM4r::cbm4_write_spinup_parameters(
-    cbm4_data   = sim$CBM4data,
-    gc_meta     = sim$gcMeta,
-    gc_incr     = sim$gcIncrements,
-    classifiers = sim$cohortClassifiers
+    cbm4_data       = sim$CBM4data,
+    cbm_defaults_db = sim$cbm_defaults_db,
+    gc_meta         = sim$gcMeta,
+    gc_incr         = sim$gcIncrements,
+    classifiers     = sim$cohortClassifiers
   ) |>
     reproducible::Cache(
       omitArgs    = "cbm4_data",
@@ -355,8 +352,9 @@ spinup <- function(sim) {
   message("Running CBM4 spinup")
   if (P(sim)$.useCacheCBM4) cbm4_data_digest <- digestDir(sim$CBM4data)
   CBM4r::cbm4_spinup(
-    cbm4_data   = sim$CBM4data,
-    max_workers = P(sim)$.max_workers
+    cbm4_data       = sim$CBM4data,
+    cbm_defaults_db = sim$cbm_defaults_db,
+    max_workers     = P(sim)$.max_workers
   ) |>
     reproducible::Cache(
       omitArgs    = c("cbm4_data", "max_workers"),
@@ -467,11 +465,12 @@ annualDisturbances <- function(sim) {
   }else distEvents <- NULL
 
   CBM4r::cbm4_write_disturbance(
-    cbm4_data   = sim$CBM4data,
-    grid_meta   = sim$standDT,
-    dist_meta   = sim$disturbanceMeta,
-    dist_events = distEvents,
-    classifiers = sim$cohortClassifiers,
+    cbm4_data       = sim$CBM4data,
+    cbm_defaults_db = sim$cbm_defaults_db,
+    grid_meta       = sim$standDT,
+    dist_meta       = sim$disturbanceMeta,
+    dist_events     = distEvents,
+    classifiers     = sim$cohortClassifiers
   ) |>
     reproducible::Cache(
       omitArgs    = "cbm4_data",
@@ -527,10 +526,11 @@ annualStep <- function(sim) {
   # Write parameters
   message("Writing CBM4 dataset: step_parameters")
   CBM4r::cbm4_write_step_parameters(
-    cbm4_data   = sim$CBM4data,
-    gc_meta     = sim$gcMeta,
-    gc_incr     = sim$gcIncrements,
-    classifiers = sim$cohortClassifiers
+    cbm4_data       = sim$CBM4data,
+    cbm_defaults_db = sim$cbm_defaults_db,
+    gc_meta         = sim$gcMeta,
+    gc_incr         = sim$gcIncrements,
+    classifiers     = sim$cohortClassifiers
   ) |>
     reproducible::Cache(
       omitArgs    = "cbm4_data",
@@ -542,6 +542,7 @@ annualStep <- function(sim) {
   message("Running CBM4 annual step")
   CBM4r::cbm4_step(
     cbm4_data          = sim$CBM4data,
+    cbm_defaults_db    = sim$cbm_defaults_db,
     timestep           = timestep,
     simulation_dataset = simulation_dataset,
     max_workers        = P(sim)$.max_workers
@@ -657,6 +658,10 @@ plot <- function(sim){
   if (isTRUE(P(sim)$.useCache)) stop(
     "CBM_core module does not support event caching. Set parameter .useCache = FALSE and .useCacheCBM4 = TRUE")
   P(sim)$.useCacheCBM4 <- getOption("reproducible.useCache", TRUE) & P(sim)$.useCacheCBM4
+
+  if (!suppliedElsewhere("cbm_defaults_db", sim)){
+    sim$cbm_defaults_db <- getOption("CBM4r.db.path")
+  }
 
   # Return simList
   return(invisible(sim))
