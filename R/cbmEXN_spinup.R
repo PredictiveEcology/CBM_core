@@ -12,8 +12,10 @@ cbmEXN_spinup <- function(cohortDT, growthMeta, growthIncr,
   ## Prepare input for spinup ----
 
   # Set resource paths
-  withr::local_options(list(
-    libcbmr.cbm_defaults_path      = cbm_defaults_db,
+  if (!is.null(cbm_defaults_db)) withr::local_options(list(
+    libcbmr.cbm_defaults_path = cbm_defaults_db
+  ))
+  if (!is.null(cbm_exn_dir)) withr::local_options(list(
     libcbmr.cbm_exn_parameters_dir = cbm_exn_dir
   ))
 
