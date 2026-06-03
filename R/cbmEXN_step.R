@@ -52,7 +52,15 @@ cbmEXN_step <- function(cbm_vars, cbm_defaults_db = NULL, cbm_exn_dir = NULL){
       sw = speciesCBM[species_name == "Unspecified softwood species", species_id],
       hw = speciesCBM[species_name == "Unspecified hardwood species", species_id]
     )
-    cbm_vars$state[, species := data.table::fifelse(sw_hw == 0L, speciesIDs[["sw"]], speciesIDs[["hw"]])]
+    cbm_vars$state[, species := data.table::fifelse(sw_hw == 0L, speciesIDs[["sw"]], speciesIDs[["hw"]], 0L)]
+  }
+
+  # Set sw_hw flag where increments==0
+  if (anyNA(cbm_vars$state$sw_hw)){
+    if (any(cbm_vars$parameters[is.na(cbm_vars$state$sw_hw), .(merch_inc, foliage_inc, other_inc)] != 0)){
+      stop("Cohorts with increments != 0 must have the cbm_vars$state$sw_hw flag set")
+    }
+    cbm_vars$state[is.na(sw_hw), sw_hw := 0L]
   }
 
   # Temporarily remove row_idx column
