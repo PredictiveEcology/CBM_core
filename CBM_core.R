@@ -254,6 +254,8 @@ setStands <- function(sim){
 
   message("Setting stand metadata")
 
+  if (is.null(sim$masterRaster)) stop("masterRaster not found")
+
   # Convert to data.table
   if (!data.table::is.data.table(sim$standDT)) sim$standDT <- data.table::as.data.table(sim$standDT)
 
