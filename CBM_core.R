@@ -330,7 +330,7 @@ spinup <- function(sim) {
     def_last_pass_disturbance_type = P(sim)$def_last_pass_disturbance_type
   ) |>
     reproducible::Cache(
-      omitArgs    = "cbm4_data",
+      omitArgs    = c("cbm4_data", "cbm_defaults_db"),
       .cacheExtra = digestFile(sim$cbm_defaults_db),
       useCache    = P(sim)$.useCacheCBM4,
       verbose     = P(sim)$.useCacheCBM4) |>
@@ -345,7 +345,7 @@ spinup <- function(sim) {
     classifiers     = sim$cohortClassifiers
   ) |>
     reproducible::Cache(
-      omitArgs    = "cbm4_data",
+      omitArgs    = c("cbm4_data", "cbm_defaults_db"),
       .cacheExtra = digestFile(sim$cbm_defaults_db),
       useCache    = P(sim)$.useCacheCBM4,
       verbose     = P(sim)$.useCacheCBM4) |>
@@ -359,8 +359,8 @@ spinup <- function(sim) {
     max_workers     = P(sim)$.max_workers
   ) |>
     reproducible::Cache(
-      omitArgs    = c("cbm4_data", "max_workers"),
-      .cacheExtra = c(digestFile(sim$cbm_defaults_db), cbm4_data_digest),
+      omitArgs    = c("cbm4_data", "cbm_defaults_db", "max_workers"),
+      .cacheExtra = cbm4_data_digest,
       useCache    = P(sim)$.useCacheCBM4,
       verbose     = P(sim)$.useCacheCBM4) |>
     CacheCBM4dataset(sim$CBM4data, "simulation")
@@ -475,7 +475,7 @@ annualDisturbances <- function(sim) {
     classifiers     = sim$cohortClassifiers
   ) |>
     reproducible::Cache(
-      omitArgs    = "cbm4_data",
+      omitArgs    = c("cbm4_data", "cbm_defaults_db"),
       .cacheExtra = digestFile(sim$cbm_defaults_db),
       useCache    = P(sim)$.useCacheCBM4,
       verbose     = P(sim)$.useCacheCBM4) |>
@@ -504,7 +504,7 @@ annualStep <- function(sim) {
     classifiers     = sim$cohortClassifiers
   ) |>
     reproducible::Cache(
-      omitArgs    = "cbm4_data",
+      omitArgs    = c("cbm4_data", "cbm_defaults_db"),
       .cacheExtra = digestFile(sim$cbm_defaults_db),
       useCache    = P(sim)$.useCacheCBM4,
       verbose     = P(sim)$.useCacheCBM4) |>
