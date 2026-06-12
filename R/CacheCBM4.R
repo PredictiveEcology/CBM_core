@@ -42,7 +42,7 @@ digestFile <- function(f){
 
 digestDir <- function(d){
   fs <- list.files(d, recursive = TRUE)
-  fs_hash <- setNames(tools::md5sum(file.path(d, fs)), fs)
+  fs_hash <- setNames(tools::md5sum(file.path(d, fs)), dirname(fs))
   digest::digest(fs)
 }
 
