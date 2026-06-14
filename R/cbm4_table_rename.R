@@ -28,7 +28,8 @@ cbm4_table_rename <- function() list(
   ),
   disturbanceMeta = c(
     "eventID" = "disturbance_id",
-    "disturbance_type_name" = "disturbance_type"
+    "disturbance_type_name" = "disturbance_type",
+    "gcID"    = "gc_id"
   ),
   disturbanceEvents = c(
     "eventID"    = "disturbance_id",
@@ -42,6 +43,7 @@ cbm4_table_setnames <- function(sim, cohortRename = NULL){
   for (table in intersect(names(colRename), names(sim))){
     data.table::setnames(sim[[table]], names(colRename[[table]]), colRename[[table]], skip_absent = TRUE)
   }
+  if ("gcID" %in% sim$cohortClassifiers) sim$cohortClassifiers[sim$cohortClassifiers %in% "gcID"] <- "gc_id"
 }
 
 cbm4_table_setnames_revert <- function(sim, cohortRename = NULL){
@@ -50,6 +52,7 @@ cbm4_table_setnames_revert <- function(sim, cohortRename = NULL){
   for (table in intersect(names(colRename), names(sim))){
     data.table::setnames(sim[[table]], colRename[[table]], names(colRename[[table]]), skip_absent = TRUE)
   }
+  if ("gc_id" %in% sim$cohortClassifiers) sim$cohortClassifiers[sim$cohortClassifiers %in% "gc_id"] <- "gcID"
 }
 
 

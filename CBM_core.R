@@ -129,8 +129,7 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
       sim <- scheduleEvent(sim, start(sim), "CBM_core", "spinup", eventPriority = 5)
 
       # Schedule annual event
-      sim <- scheduleEvent(sim, start(sim), "CBM_core", "annualDisturbances", eventPriority = 8)
-      sim <- scheduleEvent(sim, start(sim), "CBM_core", "annualStep",         eventPriority = 10)
+      sim <- scheduleEvent(sim, start(sim), "CBM_core", "step", eventPriority = 10)
 
       # Schedule summaries
       sim <- scheduleEvent(sim, end(sim), "CBM_core", "summarize", eventPriority = 10)
@@ -145,27 +144,16 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
 
       sim <- spinup(sim)
 
-      if (!P(sim)$fixedCohorts){
-        sim <- annualReadInventory(sim, timestep = 0)
-      }
+      if (!P(sim)$fixedCohorts) sim <- readCohorts(sim, timestep = 0)
     },
 
-    annualDisturbances = {
+    step = {
 
-      sim <- annualDisturbances(sim)
+      sim <- step(sim)
 
-      sim <- scheduleEvent(sim, time(sim) + 1, "CBM_core", "annualDisturbances", eventPriority = 8)
-    },
+      sim <- scheduleEvent(sim, time(sim) + 1, "CBM_core", "step", eventPriority = 10)
 
-    annualStep = {
-
-      sim <- annualStep(sim)
-
-      if (!P(sim)$fixedCohorts){
-        sim <- annualReadInventory(sim)
-      }
-
-      sim <- scheduleEvent(sim, time(sim) + 1, "CBM_core", "annualStep", eventPriority = 9)
+      if (!P(sim)$fixedCohorts) sim <- readCohorts(sim)
 
       # Remove interim data
       if (!P(sim)$.saveAll){
@@ -394,39 +382,16 @@ spinup <- function(sim) {
   return(invisible(sim))
 }
 
-annualReadInventory <- function(sim, timestep = NULL){
-
-  message("Reading CBM4 dataset: simulation: cohorts")
+step <- function(sim) {
 
   # Rename table columns for duration of module event
   cbm4_table_setnames(sim)
   on.exit(cbm4_table_setnames_revert(sim))
 
   # Set timestep
-  if (is.null(timestep)) timestep <- time(sim) - start(sim) + 1
+  timestep <- time(sim) - start(sim) + 1
 
-  # Read inventory
-  sim$cohortDT <- CBM4r::cbm4_read_cohorts(
-    sim$CBM4data,
-    grid_meta = sim$standDT,
-    timestep  = timestep
-  )
-
-  sim$cohortDT[, chunk_index  := NULL]
-  sim$cohortDT[, raster_index := NULL]
-  sim$cohortDT[, cohort_index := NULL]
-
-  # Return simList
-  return(invisible(sim))
-
-}
-
-annualDisturbances <- function(sim) {
-
-  # Rename table columns for duration of module event
-  cbm4_table_setnames(sim)
-  on.exit(cbm4_table_setnames_revert(sim))
-
+  # Write disturbances
   message("Writing CBM4 dataset: disturbances")
 
   if (!is.null(sim$disturbanceEvents) && nrow(sim$disturbanceEvents) > 0){
@@ -481,19 +446,6 @@ annualDisturbances <- function(sim) {
       verbose     = P(sim)$.useCacheCBM4) |>
     CacheCBM4dataset(sim$CBM4data, "disturbance")
 
-  # Return simList
-  return(invisible(sim))
-}
-
-annualStep <- function(sim) {
-
-  # Rename table columns for duration of module event
-  cbm4_table_setnames(sim)
-  on.exit(cbm4_table_setnames_revert(sim))
-
-  # Set timestep
-  timestep <- time(sim) - start(sim) + 1
-
   # Write parameters
   message("Writing CBM4 dataset: step_parameters")
   CBM4r::cbm4_write_step_parameters(
@@ -533,6 +485,37 @@ annualStep <- function(sim) {
 
   # Return simList
   return(invisible(sim))
+}
+
+readCohorts <- function(sim, timestep = NULL){
+
+  message("Reading CBM4 dataset: simulation: cohorts")
+
+  # Rename table columns for duration of module event
+  cbm4_table_setnames(sim)
+  on.exit(cbm4_table_setnames_revert(sim))
+
+  # Set timestep
+  if (is.null(timestep)) timestep <- time(sim) - start(sim) + 1
+
+  # Read inventory
+  sim$cohortDT <- CBM4r::cbm4_read_cohorts(
+    sim$CBM4data,
+    grid_meta = sim$standDT,
+    timestep  = timestep
+  )
+
+  sim$cohortDT[, chunk_index  := NULL]
+  sim$cohortDT[, raster_index := NULL]
+  sim$cohortDT[, cohort_index := NULL]
+
+  data.table::setnames(sim$cohortDT, "state.age", "age")
+
+  sim$cohortDT[, pools.Input  := NULL]
+
+  # Return simList
+  return(invisible(sim))
+
 }
 
 summarize <- function(sim) {
