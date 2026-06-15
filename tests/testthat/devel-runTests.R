@@ -1,9 +1,6 @@
 
 ## OPTIONS ----
 
-  # Suppress warnings from calls to setupProject, simInit, and spades
-  options("spades.test.suppressWarnings" = TRUE)
-
   # Set custom directory paths
   ## Speed up tests by allowing inputs, cache, and R packages to persist between runs
   options("spades.test.paths.inputs"   = NULL) # inputPath
@@ -26,6 +23,9 @@
 
 
 ## RUN TEST SUBSETS ----
+
+  # Run function tests
+  testthat::test_dir("tests/testthat", filter = "function")
 
   # Run module tests
   testthat::test_dir("tests/testthat", filter = "module")
