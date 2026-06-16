@@ -262,6 +262,8 @@ setStands <- function(sim){
         sim$cohortDT[, .SD, .SDcols = setdiff(names(sim$cohortDT), "cohortID")]
       }else sim$cohortDT
     },
+    def_historic_disturbance_type  = P(sim)$def_historic_disturbance_type,
+    def_last_pass_disturbance_type = P(sim)$def_last_pass_disturbance_type
   )
 
   if (!is.na(P(sim)$.chunk_size)) message(cli::col_blue(
@@ -313,9 +315,7 @@ spinup <- function(sim) {
     cohorts         = sim$cohortDT,
     classifiers     = sim$cohortClassifiers,
     col_ignore      = "cohortID",
-    def_delay       = P(sim)$def_delay_spinup,
-    def_historic_disturbance_type  = P(sim)$def_historic_disturbance_type,
-    def_last_pass_disturbance_type = P(sim)$def_last_pass_disturbance_type
+    def_delay       = P(sim)$def_delay_spinup
   ) |>
     reproducible::Cache(
       omitArgs    = c("cbm4_data", "cbm_defaults_db"),
