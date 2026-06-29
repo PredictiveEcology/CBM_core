@@ -54,7 +54,6 @@ defineModule(sim, list(
       columns = c(
         pixelIndex   = "Stand ID",
         age          = "Cohort age at simulation start",
-        ageSpinup    = "Optional. Alternative cohort age to use in the spinup",
         delay_spinup = "Optional. Regeneration delay used in the spinup. Defaults to parameter `def_delay_spinup`",
         delay_regen  = "Optional. Regeneration delay post disturbance in years. Defaults to parameter `def_delay_regen`"
       )),
@@ -289,16 +288,13 @@ spinup <- function(sim) {
 
   # Rename table columns for duration of module event
   cohortRename <- c("delay" = "delay_spinup")
-  if ("ageSpinup" %in% names(sim$cohortDT)){
-    cohortRename <- c(cohortRename, c("ageSpinup" = "age", "age" = "ageIn"))
-  }
   cbm4_table_setnames(sim, cohortRename)
   on.exit(cbm4_table_setnames_revert(sim, cohortRename))
 
   # Set classifiers
   if (is.null(sim$cohortClassifiers)){
     sim$cohortClassifiers <- setdiff(names(sim$cohortDT), c(
-      "cohortID", "pixel_index", "age", "ageSpinup", "delay_spinup", "delay_regen"))
+      "cohortID", "pixel_index", "age", "delay_spinup", "delay_regen"))
   }
 
   # Set default delays
@@ -362,10 +358,6 @@ spinup <- function(sim) {
     simulation_data <- dplyr::mutate(simulation_data, inventory.delay = as.integer(P(sim)$def_delay_regen))
   }
   simulation_data <- dplyr::mutate(simulation_data, state.regeneration_delay = inventory.delay)
-
-  if ("ageSpinup" %in% names(sim$cohortDT)){
-    simulation_data <- dplyr::mutate(simulation_data, inventory.age = as.integer(inventory.ageIn))
-  }
 
   simulation_data_pq <- list.files(
     file.path(sim$CBM4data, "simulation/simulation", "timestep=0"),
