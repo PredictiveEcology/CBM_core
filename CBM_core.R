@@ -541,7 +541,6 @@ summarize <- function(sim) {
       CO        = CO
     )]
   data.table::setkey(sim$emissionsProducts, year)
-  data.table::setcolorder(sim$emissionsProducts)
 
   # Return simList
   return(invisible(sim))
