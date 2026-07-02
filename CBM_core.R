@@ -156,20 +156,16 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
 
       # Remove interim data
       if (!P(sim)$.saveAll){
-        rmDirs <- "spinup_parameters"
+        rmDirs <- file.path(sim$CBM4data, "spinup_parameters")
         if (time(sim) == end(sim)){
-          rmDirs <- c(rmDirs, "disturbance", "step_parameters", "simulation_in")
+          rmDirs <- c(rmDirs, file.path(sim$CBM4data, c("disturbance", "step_parameters")))
         }else{
-          timestep <- time(sim) - start(sim) + 1
-          rmDirs <- c(rmDirs, do.call(c, lapply(c("disturbance", "simulation_in"), function(dataset){
-            dirs <- list.dirs(file.path(sim$CBM4data, dataset))
-            dirs[basename(dirs) == paste0("timestep=", timestep - 1)]
-          })))
+          rmDirs <- c(rmDirs, file.path(sim$CBM4data, "disturbance", c("disturbance", "disturbance-raster_index")))
         }
-        rmDirs <- rmDirs[file.exists(file.path(sim$CBM4data, rmDirs))]
+        rmDirs <- rmDirs[file.exists(rmDirs)]
         for (rmDir in rmDirs){
-          message(cli::col_blue("Removing interim data: ", file.path(basename(sim$CBM4data), rmDir)))
-          unlink(file.path(sim$CBM4data, rmDir), recursive = TRUE)
+          message(cli::col_blue("Removing interim data: ", rmDir))
+          unlink(rmDir, recursive = TRUE)
         }
       }
     },
