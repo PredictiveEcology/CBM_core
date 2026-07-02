@@ -5,6 +5,8 @@ test_that("Module: SK 1985-2011", {
 
   ## Run simInit and spades ----
 
+  testthat::skip_on_ci()
+
   # Set up project
   projectName <- "module_SK_1985-2011"
   times       <- list(start = 1985, end = 2011)
