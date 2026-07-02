@@ -455,7 +455,7 @@ step <- function(sim) {
     CacheCBM4dataset(sim$CBM4data, "step_parameters")
 
   message("Running CBM4 annual step")
-  if (P(sim)$fixedCohorts){
+  if (P(sim)$fixedCohorts | timestep == 1){
     CBM4r::cbm4_step(
       cbm4_data       = sim$CBM4data,
       cbm_defaults_db = sim$cbm_defaults_db,
