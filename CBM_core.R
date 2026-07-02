@@ -291,12 +291,6 @@ spinup <- function(sim) {
   cbm4_table_setnames(sim, cohortRename)
   on.exit(cbm4_table_setnames_revert(sim, cohortRename))
 
-  # Set classifiers
-  if (is.null(sim$cohortClassifiers)){
-    sim$cohortClassifiers <- setdiff(names(sim$cohortDT), c(
-      "cohortID", "pixel_index", "age", "delay_spinup", "delay_regen"))
-  }
-
   # Set default delays
   for (delay in c("spinup", "regen")) if (paste0("delay_", delay) %in% names(sim$cohortDT)){
     data.table::setnafill(sim$cohortDT, fill = P(sim)[[paste0("def_delay_", delay)]], cols = paste0("delay_", delay))
@@ -309,7 +303,7 @@ spinup <- function(sim) {
     grid_meta       = sim$standDT,
     grid_rast       = sim$masterRaster,
     cohorts         = sim$cohortDT,
-    classifiers     = sim$cohortClassifiers,
+    classifiers     = cohortClassifiers(sim),
     col_ignore      = "cohortID",
     def_delay       = P(sim)$def_delay_spinup
   ) |>
@@ -325,8 +319,7 @@ spinup <- function(sim) {
     cbm4_data       = sim$CBM4data,
     cbm_defaults_db = sim$cbm_defaults_db,
     gc_meta         = sim$gcMeta,
-    gc_incr         = sim$gcIncrements,
-    classifiers     = sim$cohortClassifiers
+    gc_incr         = sim$gcIncrements
   ) |>
     reproducible::Cache(
       omitArgs    = c("cbm4_data", "cbm_defaults_db"),
@@ -428,8 +421,7 @@ step <- function(sim) {
     cbm_defaults_db = sim$cbm_defaults_db,
     grid_meta       = sim$standDT,
     dist_meta       = sim$disturbanceMeta,
-    dist_events     = distEvents,
-    classifiers     = sim$cohortClassifiers
+    dist_events     = distEvents
   ) |>
     reproducible::Cache(
       omitArgs    = c("cbm4_data", "cbm_defaults_db"),
@@ -444,8 +436,7 @@ step <- function(sim) {
     cbm4_data       = sim$CBM4data,
     cbm_defaults_db = sim$cbm_defaults_db,
     gc_meta         = sim$gcMeta,
-    gc_incr         = sim$gcIncrements,
-    classifiers     = sim$cohortClassifiers
+    gc_incr         = sim$gcIncrements
   ) |>
     reproducible::Cache(
       omitArgs    = c("cbm4_data", "cbm_defaults_db"),
