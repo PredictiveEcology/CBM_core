@@ -483,7 +483,7 @@ step <- function(sim) {
     CacheCBM4dataset(sim$CBM4data, "step_parameters")
 
   message("Running CBM4 annual step")
-  if (P(sim)$fixedCohorts | timestep == 1){
+  if (P(sim)$fixedCohorts){
     CBM4r::cbm4_step(
       cbm4_data       = sim$CBM4data,
       cbm_defaults_db = sim$cbm_defaults_db,
@@ -492,6 +492,17 @@ step <- function(sim) {
     )
 
   }else{
+
+    # If cohort_proportion not present: assume it should be 1 for all cohorts
+    ## total cohort_proportion of >1 is not allowed for any pixel at this time
+    ## Set cohort_proportion to allow up to 100 cohorts per pixel during the step
+    ## Reset to 1 after the step
+    cohort_proportion_NULL <- !"cohort_proportion" %in% names(sim$cohortDT)
+
+    if (cohort_proportion_NULL){
+      sim$cohortDT[, cohort_proportion := 1 / 100]
+    }
+
     CBM4r::cbm4_step_with_cohorts(
       cbm4_data       = sim$CBM4data,
       cbm_defaults_db = sim$cbm_defaults_db,
@@ -501,6 +512,23 @@ step <- function(sim) {
       grid_meta       = sim$standDT,
       def_regeneration_delay = P(sim)$def_delay_regen
     )
+
+    if (cohort_proportion_NULL){
+
+      sim$cohortDT[, cohort_proportion := NULL]
+
+      simulation_dataset <- file.path(sim$CBM4data, "simulation/simulation")
+
+      arrow::open_dataset(simulation_dataset) |>
+        dplyr::filter(timestep == !!timestep) |>
+        dplyr::collect() |> data.table::as.data.table() |>
+        dplyr::mutate(cohort_proportion = 1) |>
+        arrow::write_dataset(
+          simulation_dataset,
+          partitioning = c("timestep", "cohort_index", "chunk_index"),
+          existing_data_behavior = "overwrite"
+        )
+    }
   }
 
   # Return simList
