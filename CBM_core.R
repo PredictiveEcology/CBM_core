@@ -19,6 +19,7 @@ defineModule(sim, list(
     "PredictiveEcology/CBMutils@development (>=2.5.4)"
   ),
   parameters = rbind(
+    defineParameter("spinup", "logical", TRUE, NA, NA, "Run CBM spinup"),
     defineParameter("fixedCohorts", "logical", TRUE, NA, NA, "Stand cohorts are fixed for simulation duration"),
     defineParameter("def_delay_spinup", "integer", 0L, 0L, NA, "Default regeneration delay used in the spinup"),
     defineParameter("def_delay_regen",  "integer", 0L, 0L, NA, "Default regeneration delay post disturbance"),
@@ -50,12 +51,13 @@ defineModule(sim, list(
       )),
     expectsInput(
       objectName = "cohortDT", objectClass = "data.table",
-      desc = "Table of cohort attributes. Must contain one or more additional classifier columns.",
+      desc = paste("Table of cohort attributes. Must contain one or more additional classifier columns.",
+                   "If parameter `spinup` == FALSE, a column must be present with carbon (t/ha) for every aboveground and belowground pool."),
       columns = c(
         pixelIndex   = "Stand ID",
         age          = "Cohort age at simulation start",
         delay_spinup = "Optional. Regeneration delay used in the spinup. Defaults to parameter `def_delay_spinup`",
-        delay_regen  = "Optional. Regeneration delay post disturbance in years. Defaults to parameter `def_delay_regen`"
+        delay        = "Optional. Regeneration delay post disturbance in years. Defaults to parameter `def_delay_regen`"
       )),
     expectsInput(
       objectName = "cohortClassifiers", objectClass = "character",
@@ -282,82 +284,115 @@ spinup <- function(sim) {
     if (!data.table::is.data.table(sim[[table]])) sim[[table]] <- data.table::as.data.table(sim[[table]])
   }
 
+  # Set default delays
+  if ("delay_spinup" %in% names(sim$cohortDT)){
+    data.table::setnafill(sim$cohortDT, fill = P(sim)$def_delay_spinup, cols = "delay_spinup")
+  }
+  if ("delay" %in% names(sim$cohortDT)){
+    data.table::setnafill(sim$cohortDT, fill = P(sim)$def_delay_regen, cols = "delay")
+  }
+
   # Rename table columns for duration of module event
-  cohortRename <- c("delay" = "delay_spinup")
+  cohortRename <- if (P(sim)$spinup) c("delay_spinup" = "delay", "delay" = "delay_regen")
   cbm4_table_setnames(sim, cohortRename)
   on.exit(cbm4_table_setnames_revert(sim, cohortRename))
 
-  # Set default delays
-  for (delay in c("spinup", "regen")) if (paste0("delay_", delay) %in% names(sim$cohortDT)){
-    data.table::setnafill(sim$cohortDT, fill = P(sim)[[paste0("def_delay_", delay)]], cols = paste0("delay_", delay))
-  }
+  if (P(sim)$spinup){
 
-  message("Writing CBM4 dataset: inventory")
-  CBM4r::cbm4_write_inventory(
-    cbm4_data       = sim$CBM4data,
-    cbm_defaults_db = sim$cbm_defaults_db,
-    grid_meta       = sim$standDT,
-    grid_rast       = sim$masterRaster,
-    cohorts         = sim$cohortDT,
-    classifiers     = cohortClassifiers(sim),
-    col_ignore      = "cohortID",
-    def_delay       = P(sim)$def_delay_spinup
-  ) |>
-    reproducible::Cache(
-      omitArgs    = c("cbm4_data", "cbm_defaults_db"),
-      .cacheExtra = digestFile(sim$cbm_defaults_db),
-      useCache    = P(sim)$.useCacheCBM4,
-      verbose     = P(sim)$.useCacheCBM4) |>
-    CacheCBM4dataset(sim$CBM4data, "inventory")
+    message("Writing CBM4 dataset: inventory")
+    CBM4r::cbm4_write_inventory(
+      cbm4_data       = sim$CBM4data,
+      cbm_defaults_db = sim$cbm_defaults_db,
+      grid_meta       = sim$standDT,
+      grid_rast       = sim$masterRaster,
+      cohorts         = sim$cohortDT,
+      classifiers     = cohortClassifiers(sim),
+      col_ignore      = "cohortID",
+      def_delay       = P(sim)$def_delay_spinup
+    ) |>
+      reproducible::Cache(
+        omitArgs    = c("cbm4_data", "cbm_defaults_db"),
+        .cacheExtra = digestFile(sim$cbm_defaults_db),
+        useCache    = P(sim)$.useCacheCBM4,
+        verbose     = P(sim)$.useCacheCBM4) |>
+      CacheCBM4dataset(sim$CBM4data, "inventory")
 
-  message("Writing CBM4 dataset: spinup_parameters")
-  CBM4r::cbm4_write_spinup_parameters(
-    cbm4_data       = sim$CBM4data,
-    cbm_defaults_db = sim$cbm_defaults_db,
-    gc_meta         = sim$gcMeta,
-    gc_incr         = sim$gcIncrements
-  ) |>
-    reproducible::Cache(
-      omitArgs    = c("cbm4_data", "cbm_defaults_db"),
-      .cacheExtra = digestFile(sim$cbm_defaults_db),
-      useCache    = P(sim)$.useCacheCBM4,
-      verbose     = P(sim)$.useCacheCBM4) |>
-    CacheCBM4dataset(sim$CBM4data, "spinup_parameters")
+    message("Writing CBM4 dataset: spinup_parameters")
+    CBM4r::cbm4_write_spinup_parameters(
+      cbm4_data       = sim$CBM4data,
+      cbm_defaults_db = sim$cbm_defaults_db,
+      gc_meta         = sim$gcMeta,
+      gc_incr         = sim$gcIncrements
+    ) |>
+      reproducible::Cache(
+        omitArgs    = c("cbm4_data", "cbm_defaults_db"),
+        .cacheExtra = digestFile(sim$cbm_defaults_db),
+        useCache    = P(sim)$.useCacheCBM4,
+        verbose     = P(sim)$.useCacheCBM4) |>
+      CacheCBM4dataset(sim$CBM4data, "spinup_parameters")
 
-  message("Running CBM4 spinup")
-  if (P(sim)$.useCacheCBM4) cbm4_data_digest <- digestDir(sim$CBM4data)
-  CBM4r::cbm4_spinup(
-    cbm4_data       = sim$CBM4data,
-    cbm_defaults_db = sim$cbm_defaults_db,
-    max_workers     = P(sim)$.max_workers
-  ) |>
-    reproducible::Cache(
-      omitArgs    = c("cbm4_data", "cbm_defaults_db", "max_workers"),
-      .cacheExtra = cbm4_data_digest,
-      useCache    = P(sim)$.useCacheCBM4,
-      verbose     = P(sim)$.useCacheCBM4) |>
-    CacheCBM4dataset(sim$CBM4data, "simulation")
+    message("Running CBM4 spinup")
+    if (P(sim)$.useCacheCBM4) cbm4_data_digest <- digestDir(sim$CBM4data)
+    CBM4r::cbm4_spinup(
+      cbm4_data       = sim$CBM4data,
+      cbm_defaults_db = sim$cbm_defaults_db,
+      max_workers     = P(sim)$.max_workers
+    ) |>
+      reproducible::Cache(
+        omitArgs    = c("cbm4_data", "cbm_defaults_db", "max_workers"),
+        .cacheExtra = cbm4_data_digest,
+        useCache    = P(sim)$.useCacheCBM4,
+        verbose     = P(sim)$.useCacheCBM4) |>
+      CacheCBM4dataset(sim$CBM4data, "simulation")
 
-  # Alter simulation data to set true ages & regeneration delay
-  simulation_data <- arrow::open_dataset(file.path(sim$CBM4data, "simulation/simulation"))
+    # Alter simulation data to set true ages & regeneration delay
+    simulation_data <- arrow::open_dataset(file.path(sim$CBM4data, "simulation/simulation"))
 
-  if ("delay_regen" %in% names(sim$cohortDT)){
-    simulation_data <- dplyr::mutate(simulation_data, inventory.delay = inventory.delay_regen)
+    if ("delay_regen" %in% names(sim$cohortDT)){
+      simulation_data <- dplyr::mutate(simulation_data, inventory.delay = inventory.delay_regen)
+    }else{
+      simulation_data <- dplyr::mutate(simulation_data, inventory.delay = as.integer(P(sim)$def_delay_regen))
+    }
+    simulation_data <- dplyr::mutate(simulation_data, state.regeneration_delay = inventory.delay)
+
+    simulation_data_pq <- list.files(
+      file.path(sim$CBM4data, "simulation/simulation", "timestep=0"),
+      recursive = TRUE, full.names = TRUE)
+
+    simulation_data |>
+      arrow::write_dataset(
+        file.path(sim$CBM4data, "simulation/simulation"),
+        partitioning = c("timestep", "cohort_index", "chunk_index"))
+
+    unlink(simulation_data_pq)
+
   }else{
-    simulation_data <- dplyr::mutate(simulation_data, inventory.delay = as.integer(P(sim)$def_delay_regen))
+
+    message("Initiating CBM4 dataset: inventory")
+    CBM4r::cbm4_write_inventory(
+      cbm4_data       = sim$CBM4data,
+      cbm_defaults_db = sim$cbm_defaults_db,
+      grid_rast       = sim$masterRaster,
+      grid_meta       = sim$standDT,
+      classifiers     = cohortClassifiers(sim)
+    ) |>
+      reproducible::Cache(
+        omitArgs    = c("cbm4_data", "cbm_defaults_db"),
+        .cacheExtra = digestFile(sim$cbm_defaults_db),
+        useCache    = P(sim)$.useCacheCBM4,
+        verbose     = P(sim)$.useCacheCBM4) |>
+      CacheCBM4dataset(sim$CBM4data, "inventory")
+
+    message("Writing CBM4 dataset: simulation: timestep = 0")
+    CBM4r::cbm4_write_simulation(
+      cbm4_data       = sim$CBM4data,
+      cbm_defaults_db = sim$cbm_defaults_db,
+      grid_meta       = sim$standDT,
+      cohorts         = sim$cohortDT,
+      timestep        = 0,
+      def_regeneration_delay = P(sim)$def_delay_regen
+    )
   }
-  simulation_data <- dplyr::mutate(simulation_data, state.regeneration_delay = inventory.delay)
-
-  simulation_data_pq <- list.files(
-    file.path(sim$CBM4data, "simulation/simulation", "timestep=0"),
-    recursive = TRUE, full.names = TRUE)
-
-  simulation_data |>
-    arrow::write_dataset(
-      file.path(sim$CBM4data, "simulation/simulation"),
-      partitioning = c("timestep", "cohort_index", "chunk_index"))
-
-  unlink(simulation_data_pq)
 
   # Return simList
   return(invisible(sim))

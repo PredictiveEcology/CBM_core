@@ -37,7 +37,7 @@ test_that("Module: with regeneration delay", {
       pixelIndex  = c(1, 2),
       gcID        = 1L,
       age         = 10,
-      delay_regen = c(0, 2)
+      delay       = c(0, 2)
     ),
     disturbanceMeta = data.table::data.table(
       eventID = 1,
@@ -90,7 +90,7 @@ test_that("Module: with regeneration delay", {
   # Set up project
   simInitInputParam <- simInitInput
   simInitInputParam$params$CBM_core$def_delay_regen <- 2
-  simInitInputParam$cohortDT$delay_regen <- NULL
+  simInitInputParam$cohortDT$delay <- NULL
 
   # Run simInit
   simTestInitParam <- SpaDES.core::simInit2(simInitInputParam)
