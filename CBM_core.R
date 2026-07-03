@@ -284,6 +284,12 @@ spinup <- function(sim) {
     if (!data.table::is.data.table(sim[[table]])) sim[[table]] <- data.table::as.data.table(sim[[table]])
   }
 
+  ## Temporary ban on using delays
+  if (!(is.na(P(sim)$def_delay_spinup) || P(sim)$def_delay_spinup == 0)) stop("parameter `def_delay_spinup` not yet supported")
+  if (!(is.na(P(sim)$def_delay_regen) || P(sim)$def_delay_regen == 0))   stop("parameter `def_delay_regen` not yet supported")
+  if ("delay_spinup" %in% names(sim$cohortDT)) stop("cohortDT 'delay_spinup' column not yet supported")
+  if ("delay"        %in% names(sim$cohortDT)) stop("cohortDT 'delay' column not yet supported")
+
   # Set default delays
   if ("delay_spinup" %in% names(sim$cohortDT)){
     data.table::setnafill(sim$cohortDT, fill = P(sim)$def_delay_spinup, cols = "delay_spinup")
