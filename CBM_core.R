@@ -526,7 +526,7 @@ step <- function(sim) {
         arrow::write_dataset(
           simulation_dataset,
           partitioning = c("timestep", "cohort_index", "chunk_index"),
-          existing_data_behavior = "overwrite"
+          existing_data_behavior = "delete_matching"
         )
     }
   }
