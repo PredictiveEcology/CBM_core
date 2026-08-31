@@ -482,7 +482,7 @@ step <- function(sim) {
       verbose     = P(sim)$.useCacheCBM4) |>
     CacheCBM4dataset(sim$CBM4data, "step_parameters")
 
-  message("Running CBM4 annual step")
+  message("Running CBM4 annual step for ", time(sim))
   if (P(sim)$fixedCohorts){
     CBM4r::cbm4_step(
       cbm4_data       = sim$CBM4data,
