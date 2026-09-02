@@ -3,89 +3,103 @@ if (!testthat::is_testing()) source(testthat::test_path("setup.R"))
 
 test_that("Module: step without spinup", {
 
+  gcIncrements <- list(
+
+    # Increments apply to matching age
+    age10 = data.table::data.table(gcID = 1, age =  10, merch_inc = 1, foliage_inc = 1, other_inc = 1),
+
+    # Increments apply when cohort age exceeds increment maximum age
+    age1  = data.table::data.table(gcID = 1, age =   1, merch_inc = 1, foliage_inc = 1, other_inc = 1),
+
+    # Increments apply to all ages
+    ageQ  = data.table::data.table(gcID = 1, age = "?", merch_inc = 1, foliage_inc = 1, other_inc = 1)
+  )
+
   # Set up project
-  projectName <- "module_step"
-  times       <- list(start = 2000, end = 2000)
+  for (testName in names(gcIncrements)){
 
-  simInitInput <- SpaDES.project::setupProject(
-    modules = "CBM_core",
-    times   = times,
-    paths   = list(
-      projectPath = spadesTestPaths$projectPath,
-      modulePath  = spadesTestPaths$modulePath,
-      packagePath = spadesTestPaths$packagePath,
-      inputPath   = spadesTestPaths$inputPath,
-      cachePath   = spadesTestPaths$cachePath,
-      outputPath  = file.path(spadesTestPaths$temp$outputs, projectName)
-    ),
-    params = list(
-      CBM_core = list(
-        .useCacheCBM4 = FALSE,
-        .plot         = FALSE,
-        spinup        = FALSE,
-        fixedCohorts  = FALSE
-      )
-    ),
-    masterRaster = terra::rast(
-      crs  = "EPSG:3979",
-      ext  = c(xmin = -687696, xmax = -687696 + 1, ymin = 711955, ymax = 711955 + 1),
-      res  = 1,
-      vals = 1L
-    ),
-    standDT           = data.table::data.table(pixelIndex = 1, admin_abbrev = "SK", eco_id = 9),
-    cohortDT          = data.table::data.table(
-      pixelIndex = 1, gcID = 1, age = 10,
-      SoftwoodMerch           = 0,
-      SoftwoodFoliage         = 0,
-      SoftwoodOther           = 0,
-      SoftwoodCoarseRoots     = 0,
-      SoftwoodFineRoots       = 0,
-      SoftwoodStemSnag        = 0,
-      SoftwoodBranchSnag      = 0,
-      HardwoodMerch           = 0,
-      HardwoodFoliage         = 0,
-      HardwoodOther           = 0,
-      HardwoodCoarseRoots     = 0,
-      HardwoodFineRoots       = 0,
-      HardwoodStemSnag        = 0,
-      HardwoodBranchSnag      = 0,
-      AboveGroundVeryFastSoil = 0,
-      BelowGroundVeryFastSoil = 0,
-      AboveGroundFastSoil     = 0,
-      BelowGroundFastSoil     = 0,
-      MediumSoil              = 0,
-      AboveGroundSlowSoil     = 0,
-      BelowGroundSlowSoil     = 0
-    ),
-    gcMeta            = data.table::data.table(gcID = 1, sw = TRUE),
-    gcIncrements      = data.table::data.table(gcID = 1, age = "?", merch_inc = 1, foliage_inc = 1, other_inc = 1)
-  )
+    projectName <- paste0("module_step_", testName)
+    times       <- list(start = 2000, end = 2000)
 
-  # Run simInit
-  simTestInit <- SpaDES.core::simInit2(simInitInput)
-  expect_s4_class(simTestInit, "simList")
+    simInitInput <- SpaDES.project::setupProject(
+      modules = "CBM_core",
+      times   = times,
+      paths   = list(
+        projectPath = spadesTestPaths$projectPath,
+        modulePath  = spadesTestPaths$modulePath,
+        packagePath = spadesTestPaths$packagePath,
+        inputPath   = spadesTestPaths$inputPath,
+        cachePath   = spadesTestPaths$cachePath,
+        outputPath  = file.path(spadesTestPaths$temp$outputs, projectName)
+      ),
+      params = list(
+        CBM_core = list(
+          .useCacheCBM4 = FALSE,
+          .plot         = FALSE,
+          spinup        = FALSE,
+          fixedCohorts  = FALSE
+        )
+      ),
+      masterRaster = terra::rast(
+        crs  = "EPSG:3979",
+        ext  = c(xmin = -687696, xmax = -687696 + 1, ymin = 711955, ymax = 711955 + 1),
+        res  = 1,
+        vals = 1L
+      ),
+      standDT           = data.table::data.table(pixelIndex = 1, admin_abbrev = "SK", eco_id = 9),
+      cohortDT          = data.table::data.table(
+        pixelIndex = 1, gcID = 1, age = 10,
+        SoftwoodMerch           = 0,
+        SoftwoodFoliage         = 0,
+        SoftwoodOther           = 0,
+        SoftwoodCoarseRoots     = 0,
+        SoftwoodFineRoots       = 0,
+        SoftwoodStemSnag        = 0,
+        SoftwoodBranchSnag      = 0,
+        HardwoodMerch           = 0,
+        HardwoodFoliage         = 0,
+        HardwoodOther           = 0,
+        HardwoodCoarseRoots     = 0,
+        HardwoodFineRoots       = 0,
+        HardwoodStemSnag        = 0,
+        HardwoodBranchSnag      = 0,
+        AboveGroundVeryFastSoil = 0,
+        BelowGroundVeryFastSoil = 0,
+        AboveGroundFastSoil     = 0,
+        BelowGroundFastSoil     = 0,
+        MediumSoil              = 0,
+        AboveGroundSlowSoil     = 0,
+        BelowGroundSlowSoil     = 0
+      ),
+      gcMeta            = data.table::data.table(gcID = 1, sw = TRUE),
+      gcIncrements      = gcIncrements[[testName]]
+    )
 
-  # Run spades
-  simTest <- SpaDES.core::spades(simTestInit)
-  expect_s4_class(simTest, "simList")
+    # Run simInit
+    simTestInit <- SpaDES.core::simInit2(simInitInput)
+    expect_s4_class(simTestInit, "simList")
 
-  # Check outputs
-  pools <- simTest$cohortDT[, .SD, .SDcols = names(simTest$cohortDT)[grepl("pools\\.", names(simTest$cohortDT))]]
+    # Run spades
+    simTest <- SpaDES.core::spades(simTestInit)
+    expect_s4_class(simTest, "simList")
 
-  poolsValid <- data.table::data.table(
-    pools.SoftwoodMerch       = 1,
-    pools.SoftwoodFoliage     = 1,
-    pools.SoftwoodOther       = 1,
-    pools.SoftwoodCoarseRoots = 0.4004544,
-    pools.SoftwoodFineRoots   = 0.2655456
-  )
-  for (pool in setdiff(names(pools), names(poolsValid))) poolsValid[[pool]] <- 0
+    # Check outputs
+    pools <- simTest$cohortDT[, .SD, .SDcols = names(simTest$cohortDT)[grepl("pools\\.", names(simTest$cohortDT))]]
 
-  expect_equal(pools[, .SD, .SDcols = names(poolsValid)], poolsValid, tolerance = 0.000001, scale = 1)
+    poolsValid <- data.table::data.table(
+      pools.SoftwoodMerch       = 1,
+      pools.SoftwoodFoliage     = 1,
+      pools.SoftwoodOther       = 1,
+      pools.SoftwoodCoarseRoots = 0.4004544,
+      pools.SoftwoodFineRoots   = 0.2655456
+    )
+    for (pool in setdiff(names(pools), names(poolsValid))) poolsValid[[pool]] <- 0
 
-  expect_equal(simTest$emissionsProducts, data.table::data.table(
-    year = 2000, timestep = 1, Products = 0, Emissions = 0, CO2 = 0, CH4 = 0, CO = 0, key = "year"))
+    expect_equal(pools[, .SD, .SDcols = names(poolsValid)], poolsValid, tolerance = 0.000001, scale = 1)
 
+    expect_equal(simTest$emissionsProducts, data.table::data.table(
+      year = 2000, timestep = 1, Products = 0, Emissions = 0, CO2 = 0, CH4 = 0, CO = 0, key = "year"))
+  }
 })
 
 test_that("Module: step without spinup: with disturbance", {
