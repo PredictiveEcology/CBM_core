@@ -3,20 +3,14 @@ if (!testthat::is_testing()) source(testthat::test_path("setup.R"))
 
 test_that("Module: step without spinup", {
 
-  gcIncrements <- list(
-
-    # Increments apply to matching age
-    age10 = data.table::data.table(gcID = 1, age =  10, merch_inc = 1, foliage_inc = 1, other_inc = 1),
-
-    # Increments apply when cohort age exceeds increment maximum age
-    age1  = data.table::data.table(gcID = 1, age =   1, merch_inc = 1, foliage_inc = 1, other_inc = 1),
-
-    # Increments apply to all ages
-    ageQ  = data.table::data.table(gcID = 1, age = "?", merch_inc = 1, foliage_inc = 1, other_inc = 1)
+  incAges <- list(
+    age10 = 10, # Increments apply to matching age
+    age1  =  1, # Increments apply when cohort age exceeds increment maximum age
+    ageQ  = "?" # Increments apply to all ages
   )
 
   # Set up project
-  for (testName in names(gcIncrements)){
+  for (testName in names(incAges)){
 
     projectName <- paste0("module_step_", testName)
     times       <- list(start = 2000, end = 2000)
@@ -72,8 +66,9 @@ test_that("Module: step without spinup", {
         BelowGroundSlowSoil     = 0
       ),
       gcMeta            = data.table::data.table(gcID = 1, sw = TRUE),
-      gcIncrements      = gcIncrements[[testName]]
+      gcIncrements      = data.table::data.table(gcID = 1, age = NA, merch_inc = 1, foliage_inc = 1, other_inc = 1)
     )
+    simInitInput$gcIncrements$age <- incAges[[testName]]
 
     # Run simInit
     simTestInit <- SpaDES.core::simInit2(simInitInput)
