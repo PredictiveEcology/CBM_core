@@ -203,5 +203,105 @@ test_that("Module: step without spinup: with disturbance", {
     tolerance = 0.000001, scale = 1)
 })
 
+test_that("Module: step without spinup: with partial disturbance", {
 
+  # Set up project
+  projectName <- "module_step-disturbance-partial"
+  times       <- list(start = 2000, end = 2000)
+
+  simInitInput <- SpaDES.project::setupProject(
+    modules = "CBM_core",
+    times   = times,
+    paths   = list(
+      projectPath = spadesTestPaths$projectPath,
+      modulePath  = spadesTestPaths$modulePath,
+      packagePath = spadesTestPaths$packagePath,
+      inputPath   = spadesTestPaths$inputPath,
+      cachePath   = spadesTestPaths$cachePath,
+      outputPath  = file.path(spadesTestPaths$temp$outputs, projectName)
+    ),
+    params = list(
+      CBM_core = list(
+        .useCacheCBM4 = FALSE,
+        .plot         = FALSE,
+        spinup        = FALSE,
+        fixedCohorts  = FALSE
+      )
+    ),
+    masterRaster = terra::rast(
+      crs  = "EPSG:3979",
+      ext  = c(xmin = -687696, xmax = -687696 + 1, ymin = 711955, ymax = 711955 + 1),
+      res  = 1,
+      vals = 1L
+    ),
+    standDT           = data.table::data.table(pixelIndex = 1, admin_abbrev = "SK", eco_id = 9),
+
+    cohortDT          = data.table::data.table(
+      pixelIndex              = 1,
+      species                 = c("A", "B"), # 2 cohorts
+      age                     = 10,
+      SoftwoodMerch           = 1,
+      SoftwoodFoliage         = 1,
+      SoftwoodOther           = 1,
+      SoftwoodCoarseRoots     = 1,
+      SoftwoodFineRoots       = 1,
+      SoftwoodStemSnag        = 1,
+      SoftwoodBranchSnag      = 1,
+      HardwoodMerch           = 1,
+      HardwoodFoliage         = 1,
+      HardwoodOther           = 1,
+      HardwoodCoarseRoots     = 1,
+      HardwoodFineRoots       = 1,
+      HardwoodStemSnag        = 1,
+      HardwoodBranchSnag      = 1,
+      AboveGroundVeryFastSoil = 1,
+      BelowGroundVeryFastSoil = 1,
+      AboveGroundFastSoil     = 1,
+      BelowGroundFastSoil     = 1,
+      MediumSoil              = 1,
+      AboveGroundSlowSoil     = 1,
+      BelowGroundSlowSoil     = 1
+    ),
+
+    gcMeta            = data.table::data.table(gcID = 1:2, species = c("A", "B"), sw = TRUE),
+    gcIncrements      = data.table::data.table(gcID = 1:2, age = "?", merch_inc = 0, foliage_inc = 0, other_inc = 0),
+
+    disturbanceMeta   = data.table::data.table(eventID = 1, species = "A", disturbance_type_name = "Wildfire"),
+    disturbanceEvents = data.table::data.table(pixelIndex = 1, year = 2000, eventID = 1)
+  )
+
+  # Run simInit
+  simTestInit <- SpaDES.core::simInit2(simInitInput)
+  expect_s4_class(simTestInit, "simList")
+
+  # Run spades
+  simTest <- SpaDES.core::spades(simTestInit)
+  expect_s4_class(simTest, "simList")
+
+  # Check outputs
+  expect_equal(simTest$cohortDT[, .(species, age)], data.table::data.table(species = c("A", "B"), age = c(1, 11)))
+
+  pools <- simTest$cohortDT[, .SD, .SDcols = names(simTest$cohortDT)[grepl("pools\\.", names(simTest$cohortDT))]]
+
+  poolsValid <- data.table::data.table(
+    pools.SoftwoodMerch       = 0,
+    pools.SoftwoodFoliage     = 0,
+    pools.SoftwoodOther       = 0,
+    pools.SoftwoodCoarseRoots = 0,
+    pools.SoftwoodFineRoots   = 0,
+    pools.HardwoodMerch       = 0,
+    pools.HardwoodFoliage     = 0,
+    pools.HardwoodOther       = 0,
+    pools.HardwoodCoarseRoots = 0,
+    pools.HardwoodFineRoots   = 0,
+    pools.CO2                 = 5.747076,
+    pools.CH4                 = 0.053862,
+    pools.CO                  = 0.484750,
+    pools.NO2                 = 0,
+    pools.Products            = 0
+  )
+
+  expect_equal(pools[1, .SD, .SDcols = names(poolsValid)], poolsValid, tolerance = 0.000001, scale = 1)
+
+})
 
