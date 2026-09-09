@@ -1,16 +1,16 @@
 
 if (!testthat::is_testing()) source(testthat::test_path("setup.R"))
 
-test_that("Module: RIA-small 1998-2000", {
+test_that("Module: RIA-small 2000-2001", {
 
   cohortDTin <- file.path(spadesTestPaths$testdata, "RIA-small/input", "cohortDT.qs2") |>
     qs2::qs_read() |> data.table::as.data.table()
 
-  for (fixedCohorts in c(TRUE, FALSE)){
+  for (fixedCohorts in c(TRUE, FALSE)) for (disturbances in c(FALSE, TRUE)){
 
     # Set up project
-    projectName <- paste0("module_RIA-small_1998-2000_fixedCohorts", fixedCohorts)
-    times       <- list(start = 1998, end = 2000)
+    projectName <- paste0("module_RIA-small_1998-2000_dist", disturbances, "_fixedCohorts", fixedCohorts)
+    times       <- list(start = 2000, end = 2001)
 
     simInitInput <- SpaDES.project::setupProject(
 
@@ -44,6 +44,11 @@ test_that("Module: RIA-small 1998-2000", {
       gcIncrements = file.path(paths$testdata, "RIA-small/input", "gcIncrements.qs2") |> qs2::qs_read() |> data.table::as.data.table()
     )
 
+    if (disturbances){
+      simInitInput$disturbanceMeta   <- data.table::data.table(eventID = 1, disturbance_type_name = "Wildfire")
+      simInitInput$disturbanceEvents <- data.table::data.table(pixelIndex = 1, year = 2001, eventID = 1)
+    }
+
     # Run simInit
     simTestInit <- SpaDES.core::simInit2(simInitInput)
     expect_s4_class(simTestInit, "simList")
@@ -53,25 +58,32 @@ test_that("Module: RIA-small 1998-2000", {
     expect_s4_class(simTest, "simList")
 
     # Check results
+    if (!disturbances){
+      expect_equal(simTest$emissionsProducts,
+                   data.table::fread(file.path(spadesTestPaths$testdata, "RIA-small", "valid", "emissionsProducts.csv")),
+                   scale = 1, tolerance = 0.001, check.attributes = FALSE)
+    }
+
     cbm4_results <- CBM4r::cbm4_results_processor(simTest$CBM4data)
-
-    expect_equal(simTest$emissionsProducts,
-                 data.table::fread(file.path(spadesTestPaths$testdata, "RIA-small", "valid", "emissionsProducts.csv")),
-                 scale = 1, tolerance = 0.001, check.attributes = FALSE)
-
-    ## Check there are results for all input cohorts through all simulation stages
-    simResults <- CBM4r::cbm4_results_query(cbm4_results, c(
+    simResults   <- CBM4r::cbm4_results_query(cbm4_results, c(
       "SELECT a.raster_index, b.* FROM raster_index a LEFT JOIN simulation b",
       "ON a.timestep = b.timestep AND a.index = b.index AND a.cohort_index = b.cohort_index AND a.chunk_index = b.chunk_index"
-    ))
+    ))[order(raster_index, classifiers.gc_id)]
+
+    ## Check there are results for all input cohorts through all simulation stages
     for (t in 0:2){
 
       expect_equal(sum(simResults$timestep == t), nrow(cohortDTin))
 
-      expect_equal(
-        simResults[timestep == t][, .(pixelIndex = raster_index + 1, age = state.age - t, gcID = classifiers.gc_id)][order(pixelIndex, gcID)],
-        cohortDTin[, .(pixelIndex, age, gcID)],
-        check.attributes = FALSE)
+      cohortIn  <- cohortDTin[, .(raster_index = pixelIndex - 1, state.age = age + t, classifiers.gc_id = gcID)]
+      cohortOut <- simResults[timestep == t][, .(raster_index, state.age, classifiers.gc_id)]
+
+      if (disturbances & t == 2){
+        expect_equal(cohortOut[raster_index == 0, state.age], rep(1, 2))
+        cohortIn  <- cohortIn[raster_index != 0]
+        cohortOut <- cohortOut[raster_index != 0]
+      }
+      expect_equal(cohortOut, cohortIn, check.attributes = FALSE)
     }
 
     ## Check that cohorts have expected total C
@@ -85,6 +97,7 @@ test_that("Module: RIA-small 1998-2000", {
                       by = c("raster_index", "classifiers.gc_id", "cohort_index", "chunk_index"))
       C_diff[, C_diff := C.y - C.x]
       C_diff <- merge(C_diff, simTest$gcIncrements, by.x = c("classifiers.gc_id", "state.age"), by.y = c("gcID", "age"))
+      if (disturbances & t == 2) C_diff <- C_diff[raster_index != 0]
       expect_equal(
         C_diff$C_diff,
         C_diff$merch_inc + C_diff$foliage_inc + C_diff$other_inc
