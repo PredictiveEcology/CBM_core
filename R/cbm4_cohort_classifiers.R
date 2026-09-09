@@ -10,7 +10,9 @@ cohortClassifiers <- function(sim){
     poolCols <- CBM4r::cbm_defaults_readTable("pool", cbm_defaults_db = sim$cbm_defaults_db)$code
 
     classifiers <- setdiff(names(sim$cohortDT), c(
-      "cohortID", "pixel_index", "age", "delay", "delay_spinup", "delay_regen", poolCols, paste0("pools.", poolCols)))
+      "cohortID", "pixel_index", "age", "delay", "delay_spinup", "delay_regen",
+      "cohort_index", "cohort_proportion",
+      poolCols, paste0("pools.", poolCols)))
   }
 
   if ("gcID" %in% classifiers){
