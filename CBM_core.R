@@ -497,9 +497,9 @@ step <- function(sim) {
     ## total cohort_proportion of >1 is not allowed for any pixel at this time
     ## Set cohort_proportion to allow up to 100 cohorts per pixel during the step
     ## Reset to 1 after the step
-    cohort_proportion_NULL <- !"cohort_proportion" %in% names(sim$cohortDT)
-
-    if (cohort_proportion_NULL){
+    cohort_proportion_set <- !"cohort_proportion" %in% names(sim$cohortDT) ||
+      all(sim$cohortDT$cohort_proportion == 1)
+    if (cohort_proportion_set){
       sim$cohortDT[, cohort_proportion := 1 / 100]
     }
 
@@ -513,7 +513,7 @@ step <- function(sim) {
       def_regeneration_delay = P(sim)$def_delay_regen
     )
 
-    if (cohort_proportion_NULL){
+    if (cohort_proportion_set){
 
       sim$cohortDT[, cohort_proportion := NULL]
 
