@@ -518,7 +518,6 @@ step <- function(sim) {
       sim$cohortDT[, cohort_proportion := NULL]
 
       simulation_dataset <- file.path(sim$CBM4data, "simulation/simulation")
-
       arrow::open_dataset(simulation_dataset) |>
         dplyr::filter(timestep == !!timestep) |>
         dplyr::collect() |> data.table::as.data.table() |>
@@ -528,6 +527,21 @@ step <- function(sim) {
           partitioning = c("timestep", "cohort_index", "chunk_index"),
           existing_data_behavior = "delete_matching"
         )
+
+      for (dataset_table in c("simulation-table-annual_process_flux", "simulation-table-disturbance_flux")){
+        dataset_table <- file.path(sim$CBM4data, "simulation", dataset_table)
+        if (file.exists(dataset_table)){
+          arrow::open_dataset(dataset_table) |>
+            dplyr::filter(timestep == !!timestep) |>
+            dplyr::collect() |> data.table::as.data.table() |>
+            dplyr::mutate(cohort_proportion = 1) |>
+            arrow::write_dataset(
+              dataset_table,
+              partitioning = c("timestep", "chunk_index"),
+              existing_data_behavior = "delete_matching"
+            )
+        }
+      }
     }
   }
 
