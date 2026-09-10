@@ -314,7 +314,10 @@ spinup <- function(sim) {
       cohorts         = sim$cohortDT,
       classifiers     = cohortClassifiers(sim),
       col_ignore      = "cohortID",
-      def_delay       = P(sim)$def_delay_spinup
+      def_delay       = P(sim)$def_delay_spinup,
+      def_cohort_proportion = ifelse(
+        P(sim)$fixedCohorts && anyDuplicated(sim$cohortDT$pixel_index) > 0,
+        0, 1)
     ) |>
       reproducible::Cache(
         omitArgs    = c("cbm4_data", "cbm_defaults_db"),
@@ -396,7 +399,10 @@ spinup <- function(sim) {
       grid_meta       = sim$standDT,
       cohorts         = sim$cohortDT,
       timestep        = 0,
-      def_regeneration_delay = P(sim)$def_delay_regen
+      def_regeneration_delay = P(sim)$def_delay_regen,
+      def_cohort_proportion = ifelse(
+        P(sim)$fixedCohorts && anyDuplicated(sim$cohortDT$pixel_index) > 0,
+        0, 1)
     )
   }
 
@@ -493,16 +499,9 @@ step <- function(sim) {
 
   }else{
 
-    # If cohort_proportion not present: assume it should be 1 for all cohorts
-    ## total cohort_proportion of >1 is not allowed for any pixel at this time
-    ## Set cohort_proportion to allow up to 100 cohorts per pixel during the step
-    ## Reset to 1 after the step
-    cohort_proportion_set <- !"cohort_proportion" %in% names(sim$cohortDT) ||
-      all(sim$cohortDT$cohort_proportion == 1)
-    if (cohort_proportion_set){
-      sim$cohortDT[, cohort_proportion := 1 / 100]
+    if ("cohort_proportion" %in% names(sim$cohortDT)){
+      sim$cohortDT[cohort_proportion == 1, cohort_proportion := 0]
     }
-
     CBM4r::cbm4_step_with_cohorts(
       cbm4_data       = sim$CBM4data,
       cbm_defaults_db = sim$cbm_defaults_db,
@@ -510,36 +509,23 @@ step <- function(sim) {
       max_workers     = P(sim)$.max_workers,
       cohorts         = sim$cohortDT,
       grid_meta       = sim$standDT,
-      def_regeneration_delay = P(sim)$def_delay_regen
+      def_regeneration_delay = P(sim)$def_delay_regen,
+      def_cohort_proportion = 0
     )
+  }
 
-    if (cohort_proportion_set){
-
-      sim$cohortDT[, cohort_proportion := NULL]
-
-      simulation_dataset <- file.path(sim$CBM4data, "simulation/simulation")
-      arrow::open_dataset(simulation_dataset) |>
-        dplyr::filter(timestep == !!timestep) |>
-        dplyr::collect() |> data.table::as.data.table() |>
-        dplyr::mutate(cohort_proportion = 1) |>
-        arrow::write_dataset(
-          simulation_dataset,
-          partitioning = c("timestep", "cohort_index", "chunk_index"),
-          existing_data_behavior = "delete_matching"
-        )
-
-      for (dataset_table in c("simulation-table-annual_process_flux", "simulation-table-disturbance_flux")){
-        dataset_table <- file.path(sim$CBM4data, "simulation", dataset_table)
-        if (file.exists(dataset_table)){
-          arrow::open_dataset(dataset_table) |>
-            dplyr::filter(timestep == !!timestep) |>
-            dplyr::collect() |> data.table::as.data.table() |>
-            dplyr::mutate(cohort_proportion = 1) |>
-            arrow::write_dataset(
-              dataset_table,
-              partitioning = c("timestep", "chunk_index"),
-              existing_data_behavior = "delete_matching"
-            )
+  # Set cohort_proportion to 1 where it has been set to 0
+  if (time(sim) == end(sim)){
+    for (dataset_table in c("simulation", "simulation-table-annual_process_flux", "simulation-table-disturbance_flux")){
+      dataset_table_path <- file.path(sim$CBM4data, "simulation", dataset_table)
+      if (file.exists(dataset_table_path)){
+        for (pqFile in list.files(dataset_table_path, full.names = TRUE, recursive = TRUE)){
+          dataset <- arrow::open_dataset(pqFile)
+          if (0 %in% (dplyr::collect(dplyr::select(dataset, cohort_proportion))[[1]])){
+            dataset |>
+              dplyr::mutate(cohort_proportion = dplyr::if_else(cohort_proportion == 0, 1, cohort_proportion)) |>
+              arrow::write_parquet(pqFile)
+          }
         }
       }
     }
@@ -580,7 +566,7 @@ readCohorts <- function(sim, timestep = NULL){
 
 }
 
-summarize <- function(sim) {
+summarize <- function(sim){
 
   message("Reading yearly totals for emissions and products")
 
