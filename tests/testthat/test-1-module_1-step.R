@@ -9,9 +9,9 @@ test_that("Module: step without spinup", {
     ageQ  = "?" # Increments apply to all ages
   )
 
-  # Set up project
   for (testName in names(incAges)){
 
+    # Set up project
     projectName <- paste0("module_step_", testName)
     times       <- list(start = 2000, end = 2000)
 
