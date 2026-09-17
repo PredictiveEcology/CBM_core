@@ -555,11 +555,9 @@ readCohorts <- function(sim, timestep = NULL){
 
   sim$cohortDT[, chunk_index  := NULL]
   sim$cohortDT[, raster_index := NULL]
-  sim$cohortDT[, cohort_index := NULL]
+  sim$cohortDT[, pools.Input  := NULL]
 
   data.table::setnames(sim$cohortDT, "state.age", "age")
-
-  sim$cohortDT[, pools.Input  := NULL]
 
   # Return simList
   return(invisible(sim))
