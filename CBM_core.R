@@ -37,7 +37,8 @@ defineModule(sim, list(
   inputObjects = bindrows(
     expectsInput(
       objectName = "masterRaster", objectClass = "SpatRaster",
-      desc = "Raster grid defining the study area."),
+      desc = "Raster grid defining the study area."
+    ),
     expectsInput(
       objectName = "standDT", objectClass = "data.table",
       desc = "Table of stand attributes. Stands can have 1 or more cohorts.",
@@ -51,8 +52,10 @@ defineModule(sim, list(
       )),
     expectsInput(
       objectName = "cohortDT", objectClass = "data.table",
-      desc = paste("Table of cohort attributes. Must contain one or more additional classifier columns.",
-                   "If parameter `spinup` == FALSE, a column must be present with carbon (t/ha) for every aboveground and belowground pool."),
+      desc = paste(
+        "Table of cohort attributes. Must contain one or more additional classifier columns.",
+        "If parameter `spinup` == FALSE, a column must be present with carbon (t/ha) for every aboveground and belowground pool."
+      ),
       columns = c(
         pixelIndex   = "Stand ID",
         age          = "Cohort age at simulation start",
@@ -64,46 +67,56 @@ defineModule(sim, list(
       desc = "Optional. Name(s) of cohort classifier columns. Defaults to all additional `cohortDT` columns.",
     ),
     expectsInput(
-      objectName = "gcMeta", objectClass = "data.table",
-      desc = paste("Growth curve metadata. One or more `cohortClassifiers` columns must be present.",
-                   "Columns `admin_name`, `admin_abbrev`, and/or `eco_id` may be present to associate curves with specific regions."),
-      columns = c(
-        gcID  = "Growth curve ID",
-        sw    = "TRUE (softwood) or FALSE (hardwood)"
-      )),
-    expectsInput(
       objectName = "gcIncrements", objectClass = "data.table",
-      desc = "Growth curve increments.",
+      desc = "Growth curve increments. Can be provided with or without `gcMeta`.",
       columns = c(
-        gcID        = "Growth curve ID",
+        gcID        = "Growth curve ID. Not required if `gcMeta` is not used and `gcID` is not a cohort classifier.",
         age         = "Cohort age",
         merch_inc   = "Change in carbon (MgC/ha/year) in merchantable pools",
         foliage_inc = "Change in carbon (MgC/ha/year) in foliage pools",
         other_inc   = "Change in carbon (MgC/ha/year) in other pools"
       )),
     expectsInput(
-      objectName = "disturbanceMeta", objectClass = "data.table",
-      desc = "Disturbance event types. `cohortClassifiers` columns can be present.",
+      objectName = "gcMeta", objectClass = "data.table",
+      desc = paste(
+        "Growth curve metadata.",
+        "Not required if the `gcIncrements` table contains all the required metadata.",
+        "One or more `cohortClassifiers` columns must be present to associate curves with cohorts.",
+        "Columns `admin_name`, `admin_abbrev`, and/or `eco_id` may be present to associate curves with specific regions."
+      ),
       columns = c(
-        eventID               = "Event type ID",
-        disturbance_type_name = "Disturbance type name",
-        disturbance_type_id   = "Optional. CBM disturbance type ID. Can use this or 'disturbance_type_name'.",
-        priority              = "Optional. Priority of event assignment to a pixel if more than one event occurs.",
-        description           = "Optional. Disturbance description"
+        gcID  = "Growth curve ID",
+        sw    = "TRUE (softwood) or FALSE (hardwood)"
       )),
     expectsInput(
       objectName = "disturbanceEvents", objectClass = "data.table",
-      desc = "Disturbance events.",
+      desc = "Disturbance events. Can be provided with or without `disturbanceMeta`.",
       columns = c(
-        pixelIndex = "Stand ID",
+        eventID    = "Event type ID. Not required if `disturbanceMeta` is not used.",
         year       = "Year of disturbance",
-        eventID    = "Event type ID. This associates events to metadata in the 'disturbanceMeta' table."
+        pixelIndex = "Stand ID"
+      )),
+    expectsInput(
+      objectName = "disturbanceMeta", objectClass = "data.table",
+      desc = paste(
+        "Disturbance event types.",
+        "Not required if the `disturbanceEvents` table contains all the required metadata.",
+        "`cohortClassifiers` columns can be present to associate events with certain types of cohorts."
+      ),
+      columns = c(
+        eventID               = "Event type ID.",
+        disturbance_type_name = "Disturbance type name",
+        disturbance_type_id   = "Optional. CBM disturbance type ID. Can use this or 'disturbance_type_name'.",
+        disturbance_order     = "Optional. Event order if multiple events occur in one pixel.",
+        priority              = "Optional. Event priority if multiple events are assigned to one pixel and only one should occur.",
+        description           = "Optional. Disturbance description"
       )),
     expectsInput(
       objectName = "cbm_defaults_db", objectClass = "character",
-      desc = paste("Optional. Path to an SQLite database of CBM parameters",
-                   "Defaults to the most latest version of the CBM defaults database.")
-    )
+      desc = paste(
+        "Optional. Path to an SQLite database of CBM parameters",
+        "Defaults to the most latest version of the CBM defaults database."
+    ))
   ),
   outputObjects = bindrows(
     createsOutput(
@@ -426,52 +439,60 @@ step <- function(sim) {
 
     # Convert to data.table
     for (table in c("disturbanceMeta", "disturbanceEvents")){
-      if (!data.table::is.data.table(sim[[table]])) sim[[table]] <- data.table::as.data.table(sim[[table]])
+      if (!is.null(sim[[table]]) && !data.table::is.data.table(sim[[table]])){
+        sim[[table]] <- data.table::as.data.table(sim[[table]])
+      }
     }
 
     distEvents <- sim$disturbanceEvents[year == time(sim)]
     distEvents[, timestep := time(sim) - start(sim) + 1]
     distEvents[, year := NULL]
 
-    # Choose disturbance events by priority
-    multiEvents <- distEvents[, .(N = .N, disturbance_id = list(disturbance_id)), by = c("pixel_index", "timestep")][N > 1,]
-    if (nrow(multiEvents) > 0){
-
-      if (!"priority" %in% names(sim$disturbanceMeta)) stop(
-        "Multiple disturbance events found in one or more pixels. ",
-        "Use the disturbanceMeta \"priority\" column to set event precendence.")
-
-      multiEvents <- multiEvents[, .(disturbance_id = unlist(disturbance_id)), by = c("pixel_index", "timestep")]
-      multiEvents <- merge(multiEvents, sim$disturbanceMeta, by = "disturbance_id", all.x = TRUE)
-
-      multiEvents[, pri_highest := priority %in% min(priority), by = c("pixel_index", "timestep")]
-      multiEvents <- multiEvents[pri_highest == TRUE, .(N = .N, disturbance_id = first(disturbance_id)), by = c("pixel_index", "timestep")]
-
-      if (any(multiEvents$N > 1)) stop(
-        "Multiple disturbance events found in one or more pixels ",
-        "and disturbanceMeta \"priority\" indicates events have the same priority.")
-
-      distEvents <- rbind(
-        distEvents[!multiEvents, on = c("pixel_index", "timestep")],
-        distEvents[multiEvents,  on = c("pixel_index", "timestep", "disturbance_id")][, .SD, .SDcols = names(distEvents)]
-      )
+    if (!is.null(sim$disturbanceMeta)){
+      distEvents <- merge(distEvents, sim$disturbanceMeta, by = "disturbance_id")
     }
 
+    # Choose disturbance events by priority
+    if (!"disturbance_order" %in% names(distEvents) && anyDuplicated(distEvents$pixel_index) > 0){
+
+      if (!"priority" %in% names(distEvents)) stop(
+        "Multiple disturbance events found in one or more pixels. ",
+        "Use the \"disturbance_order\" or \"priority\" columns to set event behaviour.")
+
+      distEvents[, N := .N, by = c("pixel_index", "timestep")]
+      distMulti <- distEvents[N > 1]
+
+      if (anyNA(distMulti$priority)) stop(
+        "Multiple disturbance events found in one or more pixels ",
+        "and the \"priority\" column contains NAs.")
+
+      distMulti[, pri_highest := priority %in% min(priority), by = c("pixel_index", "timestep")]
+      distMulti <- distMulti[pri_highest == TRUE]
+
+      if (anyDuplicated(distMulti$pixel_index) > 0) stop(
+        "Multiple disturbance events found in one or more pixels ",
+        "and \"priority\" indicates some events have the same priority.")
+
+      distMulti[, pri_highest := NULL]
+      distEvents <- rbind(distEvents[N == 1], distMulti)
+      distEvents[, N := NULL]
+    }
   }else distEvents <- NULL
 
-  CBM4r::cbm4_write_disturbance(
-    cbm4_data       = sim$CBM4data,
-    cbm_defaults_db = sim$cbm_defaults_db,
-    grid_meta       = sim$standDT,
-    dist_meta       = sim$disturbanceMeta,
-    dist_events     = distEvents
-  ) |>
-    reproducible::Cache(
-      omitArgs    = c("cbm4_data", "cbm_defaults_db"),
-      .cacheExtra = digestFile(sim$cbm_defaults_db),
-      useCache    = P(sim)$.useCacheCBM4,
-      verbose     = P(sim)$.useCacheCBM4) |>
-    CacheCBM4dataset(sim$CBM4data, "disturbance")
+  if (!is.null(distEvents) | time(sim) == start(sim)){
+    CBM4r::cbm4_write_disturbance(
+      cbm4_data       = sim$CBM4data,
+      cbm_defaults_db = sim$cbm_defaults_db,
+      grid_meta       = sim$standDT,
+      dist_events     = distEvents
+    ) |>
+      reproducible::Cache(
+        omitArgs    = c("cbm4_data", "cbm_defaults_db"),
+        .cacheExtra = digestFile(sim$cbm_defaults_db),
+        useCache    = P(sim)$.useCacheCBM4,
+        verbose     = P(sim)$.useCacheCBM4) |>
+      CacheCBM4dataset(sim$CBM4data, "disturbance")
+  }
 
   # Write parameters
   message("Writing CBM4 dataset: step_parameters")
@@ -502,7 +523,7 @@ step <- function(sim) {
     if ("cohort_proportion" %in% names(sim$cohortDT)){
       sim$cohortDT[cohort_proportion == 1, cohort_proportion := 0]
     }
-    CBM4r::cbm4_step_with_cohorts(
+    tryCatch(CBM4r::cbm4_step_with_cohorts(
       cbm4_data       = sim$CBM4data,
       cbm_defaults_db = sim$cbm_defaults_db,
       timestep        = timestep,
@@ -511,7 +532,7 @@ step <- function(sim) {
       grid_meta       = sim$standDT,
       def_regeneration_delay = P(sim)$def_delay_regen,
       def_cohort_proportion = 0
-    )
+    ), error = function(e) browser())
   }
 
   # Set cohort_proportion to 1 where it has been set to 0
