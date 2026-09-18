@@ -28,6 +28,7 @@ test_that("Module: RIA-small 2000-2001", {
 
       params = list(
         CBM_core = list(
+          .plot = FALSE,
           fixedCohorts = fixedCohorts
         )
       ),
