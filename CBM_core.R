@@ -523,7 +523,7 @@ step <- function(sim) {
     if ("cohort_proportion" %in% names(sim$cohortDT)){
       sim$cohortDT[cohort_proportion == 1, cohort_proportion := 0]
     }
-    tryCatch(CBM4r::cbm4_step_with_cohorts(
+    CBM4r::cbm4_step_with_cohorts(
       cbm4_data       = sim$CBM4data,
       cbm_defaults_db = sim$cbm_defaults_db,
       timestep        = timestep,
@@ -532,7 +532,7 @@ step <- function(sim) {
       grid_meta       = sim$standDT,
       def_regeneration_delay = P(sim)$def_delay_regen,
       def_cohort_proportion = 0
-    ), error = function(e) browser())
+    )
   }
 
   # Set cohort_proportion to 1 where it has been set to 0
