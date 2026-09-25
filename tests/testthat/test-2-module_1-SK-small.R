@@ -23,7 +23,7 @@ test_that("Module: SK-small 1998-2000", {
       testdata    = spadesTestPaths$testdata
     ),
 
-    params = list(CBM_core = list(.saveSpinup = TRUE, .saveAll = TRUE, .plot = FALSE)),
+    params = list(CBM_core = list(.plots = NA, .saveSpinup = TRUE, .saveAll = TRUE)),
 
     standDT           = file.path(paths$testdata, "SK-small/input", "standDT.qs2")           |> qs2::qs_read() |> data.table::as.data.table(),
     cohortDT          = file.path(paths$testdata, "SK-small/input", "cohortDT.qs2")          |> qs2::qs_read() |> data.table::as.data.table(),
