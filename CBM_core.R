@@ -49,7 +49,7 @@ defineModule(sim, list(
     defineParameter(".saveInterval", "numeric", 1,          NA, NA, "Time interval between save events"),
     defineParameter(".saveSpinup",   "logical", TRUE,       NA, NA, "Save spinup results"),
     defineParameter(".saveAll",      "logical", FALSE,      NA, NA, "Save all available data"),
-    defineParameter(".plot",         "logical", TRUE,       NA, NA, "Plot simulation results"),
+    defineParameter(".plots",        "character", "png",    NA, NA, "Used by the Plots function to set plot types"),
     defineParameter(".useCache",     "logical", FALSE,      NA, NA, "Cache module events")
   ),
   inputObjects = bindrows(
@@ -163,7 +163,9 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
       }
 
       # Schedule plotting
-      if (P(sim)$.plot) sim <- scheduleEvent(sim, end(sim), "CBM_core", "plot", eventPriority = 12)
+      if (length(na.omit(P(sim)$.plots)) > 0){
+        sim <- scheduleEvent(sim, end(sim), "CBM_core", "plot", eventPriority = 12)
+      }
     },
 
     spinup = {
@@ -527,8 +529,7 @@ plot <- function(sim){
   SpaDES.core::Plots(cPlot,
                      filename = "emissionsProducts",
                      path = figPath,
-                     ggsaveArgs = list(width = 14, height = 5, units = "in", dpi = 300),
-                     types = "png")
+                     ggsaveArgs = list(width = 14, height = 5, units = "in", dpi = 300))
   rm(cPlot)
   gc(full = FALSE, verbose = FALSE)
 
@@ -543,8 +544,7 @@ plot <- function(sim){
   SpaDES.core::Plots(bPlot,
                      filename = "poolProportions",
                      path = figPath,
-                     ggsaveArgs = list(width = 7, height = 5, units = "in", dpi = 300),
-                     types = "png")
+                     ggsaveArgs = list(width = 7, height = 5, units = "in", dpi = 300))
   rm(bPlot)
   gc(full = FALSE, verbose = FALSE)
 
@@ -555,8 +555,7 @@ plot <- function(sim){
     SpaDES.core::Plots(nPlot,
                        filename = paste0("NPP-", year),
                        path = figPath,
-                       ggsaveArgs = list(width = 7, height = 5, units = "in", dpi = 300),
-                       types = "png")
+                       ggsaveArgs = list(width = 7, height = 5, units = "in", dpi = 300))
     rm(nPlot)
     gc(full = FALSE, verbose = FALSE)
   }
@@ -568,8 +567,7 @@ plot <- function(sim){
     SpaDES.core::Plots(sPlot,
                        filename = paste0("totalCarbon-", year),
                        path = figPath,
-                       ggsaveArgs = list(width = 7, height = 5, units = "in", dpi = 300),
-                       types = "png")
+                       ggsaveArgs = list(width = 7, height = 5, units = "in", dpi = 300))
     rm(sPlot)
     gc(full = FALSE, verbose = FALSE)
   }

@@ -22,7 +22,7 @@ test_that("Module: with regeneration delay", {
       outputPath  = file.path(spadesTestPaths$temp$outputs, projectName)
     ),
 
-    params = list(CBM_core = list(.plot = FALSE)),
+    params = list(CBM_core = list(.plots = NA)),
 
     standDT = data.table::data.table(
       pixelIndex = c(1, 2),
