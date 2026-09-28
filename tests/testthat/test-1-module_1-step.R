@@ -28,8 +28,8 @@ test_that("Module: step without spinup", {
       ),
       params = list(
         CBM_core = list(
+          .plots        = NA,
           .useCacheCBM4 = FALSE,
-          .plot         = FALSE,
           spinup        = FALSE,
           fixedCohorts  = FALSE
         )

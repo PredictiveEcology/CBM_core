@@ -26,9 +26,9 @@ test_that("Module: SK 1985-2011", {
     ),
 
     params = list(CBM_core = list(
+      .plots        = NA,
       .chunk_size   = 100,
-      .useCacheCBM4 = FALSE,
-      .plot         = FALSE
+      .useCacheCBM4 = FALSE
     )),
 
     masterRaster = terra::rast(

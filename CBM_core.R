@@ -32,7 +32,7 @@ defineModule(sim, list(
     defineParameter(".chunk_size",  "integer", NA, NA, NA, "Number of cohort groups per processing chunk"),
     defineParameter(".max_workers", "integer", NA, NA, NA, "Number of parallel processes"),
     defineParameter(".saveAll",     "logical",   FALSE,    NA, NA, "Save all available data"),
-    defineParameter(".plot",        "logical",   TRUE,     NA, NA, "Plot simulation results")
+    defineParameter(".plots",       "character", "png",    NA, NA, "Used by the Plots function to set plot types"),
   ),
   inputObjects = bindrows(
     expectsInput(
@@ -147,7 +147,9 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
 
       # Schedule summaries
       sim <- scheduleEvent(sim, end(sim), "CBM_core", "summarize", eventPriority = 10)
-      if (P(sim)$.plot) sim <- scheduleEvent(sim, end(sim), "CBM_core", "plot", eventPriority = 10)
+      if (length(na.omit(P(sim)$.plots)) > 0){
+        sim <- scheduleEvent(sim, end(sim), "CBM_core", "plot", eventPriority = 10)
+      }
     },
 
     setStands = {

@@ -58,11 +58,12 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
     # Parameters
     params = list(
       .globals = list(
+        .plots = NA,
         dataYear = 2001, #will get kNN 2011 data, and NTEMS 2011 landcover
         sppEquivCol = 'LandR'
       ),
       CBM_core = list(
-        .useCacheCBM4 = FALSE, .plot = FALSE,
+        .useCacheCBM4 = FALSE,
         fixedCohorts = FALSE
       ))
   )

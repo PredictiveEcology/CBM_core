@@ -108,8 +108,8 @@ test_that("Module: SK-small 1998-2000", {
     ),
 
     params = list(CBM_core = list(
-      fixedCohorts = FALSE,
-      .plot = FALSE
+      .plots       = NA,
+      fixedCohorts = FALSE
     )),
 
     masterRaster = terra::rast(

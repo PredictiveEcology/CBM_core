@@ -29,7 +29,7 @@ test_that("Multi module: SK-small 1985-1986", {
       outputPath  = file.path(spadesTestPaths$temp$outputs, projectName)
     ),
 
-    params = list(CBM_core = list(.useCacheCBM4 = FALSE, .plot = TRUE), CBM_vol2biomass = list(.plot = FALSE)),
+    params = list(.globals = list(.plots = NA), CBM_core = list(.useCacheCBM4 = FALSE)),
 
     require = "terra",
 
