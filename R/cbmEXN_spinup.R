@@ -66,6 +66,12 @@ cbmEXN_spinup <- function(cohortDT, growthMeta, growthIncr,
   cohortGroups[, which(grepl("\\.y$", names(cohortGroups))) := NULL]
   data.table::setkey(cohortGroups, row_idx)
 
+  if (anyNA(cohortGroups$spatial_unit_id)) with(
+    cohortGroups[is.na(spatial_unit_id)], stop(
+      "spatial_unit_id(s) not found for: ",
+      paste(paste(shQuote(admin_name), "ecozone ID", eco_id), collapse = ", ")
+    ))
+
   # Set area to 1ha
   cohortGroups[, area := 1L] # 1ha
 

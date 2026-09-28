@@ -25,7 +25,14 @@ cbmEXN_step <- function(cbm_vars, cbm_defaults_db = NULL, cbm_exn_dir = NULL){
     if (!"spatial_unit_id" %in% names(cbm_vars$state)){
       if (!all(c("admin_name", "eco_id") %in% names(cbm_vars$state))) stop(
         "cbm_vars$state must have either 'spatial_unit_id' or 'admin_name' and 'eco_id' columns")
+
       cbm_vars$state <- cbm_vars$state[spuMeta, spatial_unit_id := spatial_unit_id, on = c("admin_name", "eco_id")]
+
+      if (anyNA(cbm_vars$state$spatial_unit_id)) with(
+        cbm_vars$state[is.na(spatial_unit_id)], stop(
+          "spatial_unit_id(s) not found for: ",
+          paste(paste(shQuote(admin_name), "ecozone ID", eco_id), collapse = ", ")
+        ))
     }
 
     spuMeta <- merge(cbm_vars$state[, .(row_idx, spatial_unit_id)], spuMeta, by = "spatial_unit_id", all.x = TRUE)
