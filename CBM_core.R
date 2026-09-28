@@ -32,7 +32,7 @@ defineModule(sim, list(
     defineParameter(".chunk_size",  "integer", NA, NA, NA, "Number of cohort groups per processing chunk"),
     defineParameter(".max_workers", "integer", NA, NA, NA, "Number of parallel processes"),
     defineParameter(".saveAll",     "logical",   FALSE,    NA, NA, "Save all available data"),
-    defineParameter(".plots",       "character", "png",    NA, NA, "Used by the Plots function to set plot types"),
+    defineParameter(".plots",       "character", "png",    NA, NA, "Used by the Plots function to set plot types")
   ),
   inputObjects = bindrows(
     expectsInput(
