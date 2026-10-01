@@ -14,7 +14,7 @@ defineModule(sim, list(
   citation = list("citation.bib"),
   documentation = list("README.txt", "CBM_core.Rmd"),
   reqdPkgs = list(
-    "data.table", "arrow", "dplyr", "zip", "cli",
+    "arrow", "cli", "data.table", "dplyr", "zip",
     "PredictiveEcology/CBM4r@development (>=1.0.1)", "gert",
     "PredictiveEcology/CBMutils@development (>=2.5.4)"
   ),
