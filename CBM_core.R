@@ -25,13 +25,13 @@ defineModule(sim, list(
     defineParameter("def_delay_regen",  "integer", 0L, 0L, NA, "Default regeneration delay post disturbance"),
     defineParameter("def_historic_disturbance_type",  "character", "Wildfire", NA, NA, "Default historic disturbance type."),
     defineParameter("def_last_pass_disturbance_type", "character", "Wildfire", NA, NA, "Default last pass disturbance type."),
+    defineParameter(".chunk_size",  "integer",   NA,       NA, NA, "Number of cohort groups per processing chunk"),
+    defineParameter(".max_workers", "integer",   NA,       NA, NA, "Number of parallel processes"),
+    defineParameter(".saveAll",     "logical",   FALSE,    NA, NA, "Save all available data"),
     defineParameter(".virtualenv",  "character", "r-CBM4", NA, NA, "Python virtual environment"),
     defineParameter(".cbm4vers",    "character", NA,       NA, NA, "CBM4 version"),
     defineParameter(".useCache",    "logical",   FALSE,    NA, NA, "Cache module events"),
     defineParameter(".useCacheCBM4","logical",   TRUE,     NA, NA, "Cache CBM4 processes"),
-    defineParameter(".chunk_size",  "integer", NA, NA, NA, "Number of cohort groups per processing chunk"),
-    defineParameter(".max_workers", "integer", NA, NA, NA, "Number of parallel processes"),
-    defineParameter(".saveAll",     "logical",   FALSE,    NA, NA, "Save all available data"),
     defineParameter(".plots",       "character", "png",    NA, NA, "Used by the Plots function to set plot types")
   ),
   inputObjects = bindrows(
