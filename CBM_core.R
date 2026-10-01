@@ -19,7 +19,10 @@ defineModule(sim, list(
     "PredictiveEcology/CBMutils@development (>=2.5.4)"
   ),
   parameters = rbind(
-    defineParameter("spinup", "logical", TRUE, NA, NA, "Run CBM spinup to initialize cohort pools."),
+    defineParameter("spinup", "logical", TRUE, NA, NA, paste(
+      "Run CBM spinup to initialize cohort pools."
+      "if FALSE, `cohortDT` must contain a carbon (t/ha) column for every aboveground and belowground pool."
+    )),
     defineParameter("fixedCohorts", "logical", TRUE, NA, NA, "Stand cohorts are fixed for simulation duration"),
     defineParameter("def_delay_spinup", "integer", 0L, 0L, NA, "Default regeneration delay used in the spinup"),
     defineParameter("def_delay_regen",  "integer", 0L, 0L, NA, "Default regeneration delay post disturbance"),
@@ -52,10 +55,7 @@ defineModule(sim, list(
       )),
     expectsInput(
       objectName = "cohortDT", objectClass = "data.table",
-      desc = paste(
-        "Table of cohort attributes. Must contain one or more additional classifier columns.",
-        "If parameter `spinup` == FALSE, a column must be present with carbon (t/ha) for every aboveground and belowground pool."
-      ),
+      desc = "Table of cohort attributes. Must contain one or more additional classifier columns.",
       columns = c(
         pixelIndex   = "Stand ID",
         age          = "Cohort age at simulation start",
