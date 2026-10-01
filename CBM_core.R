@@ -19,7 +19,7 @@ defineModule(sim, list(
     "PredictiveEcology/CBMutils@development (>=2.5.4)"
   ),
   parameters = rbind(
-    defineParameter("spinup", "logical", TRUE, NA, NA, "Run CBM spinup"),
+    defineParameter("spinup", "logical", TRUE, NA, NA, "Run CBM spinup to initialize cohort pools."),
     defineParameter("fixedCohorts", "logical", TRUE, NA, NA, "Stand cohorts are fixed for simulation duration"),
     defineParameter("def_delay_spinup", "integer", 0L, 0L, NA, "Default regeneration delay used in the spinup"),
     defineParameter("def_delay_regen",  "integer", 0L, 0L, NA, "Default regeneration delay post disturbance"),
