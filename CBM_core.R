@@ -290,10 +290,7 @@ spinup <- function(sim) {
             "area assumed to be 1 ha when calculating emissions and product totals.")
     sim$standDT[, area := 1]
   }
-  groupAreas <- merge(sim$cbm_vars$key, sim$standDT, by = "pixelIndex")[, .(
-    area = sum(area) / 10000), by = row_idx]
-  data.table::setkey(groupAreas, row_idx)
-  sim$cbm_vars$state$area <- groupAreas$area
+  sim$cbm_vars$state$area <- cohortGroupAreas(sim$cbm_vars$key, sim$standDT)
 
   # Add regeneration delay to cbm_vars$state table
   data.table::setnames(sim$cbm_vars$state, "delayRegen", "delay", skip_absent = TRUE)
@@ -476,6 +473,14 @@ annual_prepCohortGroups <- function(sim) {
   return(invisible(sim))
 }
 
+# Total area (ha) of each cohort group, ordered by row_idx, from the pixel areas in standDT.
+# Looks up pixel areas by match() and sums with rowsum() instead of merging the pixel-level tables.
+cohortGroupAreas <- function(key, standDT){
+  idx  <- match(key$pixelIndex, standDT$pixelIndex)
+  keep <- !is.na(idx)
+  as.vector(rowsum(as.numeric(standDT$area[idx[keep]]), key$row_idx[keep])) / 10000
+}
+
 annual_carbonDynamics <- function(sim) {
 
   # CBM-EXN step
@@ -486,10 +491,7 @@ annual_carbonDynamics <- function(sim) {
   )
 
   # Set total cohort group area in cbm_vars$state table
-  groupAreas <- merge(sim$cbm_vars$key, sim$standDT, by = "pixelIndex")[, .(
-    area = sum(area) / 10000), by = row_idx]
-  data.table::setkey(groupAreas, row_idx)
-  sim$cbm_vars$state$area <- groupAreas$area
+  sim$cbm_vars$state$area <- cohortGroupAreas(sim$cbm_vars$key, sim$standDT)
 
   # Summarize yearly emissions and products
   #Note: details of which source and sink pools goes into each of the columns in
@@ -498,7 +500,8 @@ annual_carbonDynamics <- function(sim) {
   #cbm_vars$flux are in metric tonnes of carbon per ha like the rest of the
   #values produced.
 
-  emissions <- (sim$cbm_vars$flux * sim$cbm_vars$state$area)[, lapply(.SD, sum), .SDcols = !"row_idx"]
+  groupArea <- sim$cbm_vars$state$area
+  emissions <- sim$cbm_vars$flux[, lapply(.SD, function(x) sum(x * groupArea)), .SDcols = !"row_idx"]
   emissions[, CO2 := sum(DisturbanceBioCO2Emission, DecayDOMCO2Emission, DisturbanceDOMCO2Emission)]
   emissions[, CH4 := sum(DisturbanceBioCH4Emission, DisturbanceDOMCH4Emission)]
   emissions[, CO  := sum(DisturbanceBioCOEmission,  DisturbanceDOMCOEmission)]
