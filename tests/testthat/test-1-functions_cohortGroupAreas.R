@@ -31,3 +31,4 @@ test_that("flux emissions totals equal the whole-table multiplication", {
 
   expect_identical(new, old)
 })
+
