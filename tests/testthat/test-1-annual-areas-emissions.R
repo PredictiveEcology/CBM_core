@@ -1,15 +1,5 @@
 
-# Load module helper functions without running simInit
-.loadCBMcoreFns <- function(){
-  modFile <- file.path(dirname(dirname(getwd())), "CBM_core.R")
-  if (!file.exists(modFile)) modFile <- file.path(getwd(), "CBM_core.R")
-  env <- new.env(parent = globalenv())
-  for (e in parse(modFile)){
-    if (is.call(e) && identical(e[[1]], as.name("<-")) && is.name(e[[2]]) &&
-        as.character(e[[2]]) == "cohortGroupAreas") eval(e, env)
-  }
-  env
-}
+if (!testthat::is_testing()) source(testthat::test_path("setup.R"))
 
 test_that("cohortGroupAreas equals the pixel-level merge() summary", {
 
@@ -21,14 +11,13 @@ test_that("cohortGroupAreas equals the pixel-level merge() summary", {
   old <- merge(key, standDT, by = "pixelIndex")[, .(area = sum(area) / 10000), by = row_idx]
   data.table::setkey(old, row_idx)
 
-  fns <- .loadCBMcoreFns()
-  new <- fns$cohortGroupAreas(key, standDT)
+  new <- cohortGroupAreas(key, standDT)
 
   expect_equal(new, old$area, tolerance = 1e-12)
 
   # Pixels not in standDT are dropped, as with the inner merge
   key2 <- rbind(key, data.table::data.table(pixelIndex = n + 1L, row_idx = 1L))
-  expect_equal(fns$cohortGroupAreas(key2, standDT), new)
+  expect_equal(cohortGroupAreas(key2, standDT), new)
 })
 
 test_that("flux emissions totals equal the whole-table multiplication", {
