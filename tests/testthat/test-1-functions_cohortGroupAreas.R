@@ -1,6 +1,30 @@
 
 if (!testthat::is_testing()) source(testthat::test_path("setup.R"))
 
+test_that("cohortGroupAreas", {
+
+  # cohort group 1 in pixels 1 & 3
+  # cohort group 2 in pixel 3
+  # cohort group 3 in pixels 1, 1, & 2
+  standDT <- data.table::data.table(
+    pixelIndex = 1:10,
+    area       = 1
+  )
+  key <- rbind(
+    data.table::data.table(pixelIndex = 1, row_idx = 3),
+    data.table::data.table(pixelIndex = 1, row_idx = 3),
+    data.table::data.table(pixelIndex = 1, row_idx = 1),
+    data.table::data.table(pixelIndex = 2, row_idx = 3),
+    data.table::data.table(pixelIndex = 3, row_idx = 2),
+    data.table::data.table(pixelIndex = 3, row_idx = 1)
+  )
+
+  cgAreas <- cohortGroupAreas(key, standDT)
+
+  expect_equal(cgAreas, c(0.0002, 0.0001, 0.0003))
+
+})
+
 test_that("cohortGroupAreas equals the pixel-level merge() summary", {
 
   set.seed(1)
