@@ -16,6 +16,9 @@ source(tempScript)
 SpaDEStestSetGlobalOptions()
 spadesTestPaths <- SpaDEStestSetUpDirectories()
 
+# Source module functions
+for (f in list.files(file.path(spadesTestPaths$RProj, "R"), full.names = TRUE)) source(f)
+
 # Install required packages
 withr::with_options(c(timeout = 600), Require::Install(
   c(SpaDES.core::packages(modules = basename(getwd()), paths = "..")[[1]],
