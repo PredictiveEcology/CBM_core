@@ -29,7 +29,7 @@ cbmEXN_step <- function(cbm_vars, cbm_defaults_db = NULL, cbm_exn_dir = NULL){
       cbm_vars$state <- cbm_vars$state[spuMeta, spatial_unit_id := spatial_unit_id, on = c("admin_name", "eco_id")]
 
       if (anyNA(cbm_vars$state$spatial_unit_id)) with(
-        cbm_vars$state[is.na(spatial_unit_id)], stop(
+        unique(cbm_vars$state[is.na(spatial_unit_id), .(admin_name, eco_id)]), stop(
           "spatial_unit_id(s) not found for: ",
           paste(paste(shQuote(admin_name), "ecozone ID", eco_id), collapse = ", ")
         ))
