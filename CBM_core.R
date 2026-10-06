@@ -20,8 +20,8 @@ defineModule(sim, list(
   ),
   parameters = rbind(
     defineParameter("spinup", "logical", TRUE, NA, NA, paste(
-      "Run CBM spinup to initialize cohort pools."
-      "if FALSE, `cohortDT` must contain a carbon (t/ha) column for every aboveground and belowground pool."
+      "Run CBM spinup to initialize cohort pools.",
+      "if FALSE, `cohortDT` must contain a carbon (t/ha) column for every carbon pool."
     )),
     defineParameter("fixedCohorts", "logical", TRUE, NA, NA, "Stand cohorts are fixed for simulation duration"),
     defineParameter("def_delay_spinup", "integer", 0L, 0L, NA, "Default regeneration delay used in the spinup"),
