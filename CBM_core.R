@@ -50,7 +50,8 @@ defineModule(sim, list(
     defineParameter(".saveSpinup",   "logical", TRUE,       NA, NA, "Save spinup results"),
     defineParameter(".saveAll",      "logical", FALSE,      NA, NA, "Save all available data"),
     defineParameter(".plots",        "character", "png",    NA, NA, "Used by the Plots function to set plot types"),
-    defineParameter(".useCache",     "logical", FALSE,      NA, NA, "Cache module events")
+    defineParameter(".useCache",     "logical", FALSE,      NA, NA,
+      "Cache module events. Must not include \"init\": a cached init would skip selecting the Python environment and resetting the output database.")
   ),
   inputObjects = bindrows(
     expectsInput(
@@ -213,6 +214,15 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
 }
 
 Init <- function(sim){
+
+  # The init event selects the Python environment and resets the output
+  # database as a side effect. A cached init would skip both, so caching
+  # this event is not supported.
+  useCache <- P(sim)$.useCache
+  if (isTRUE(useCache) || (is.character(useCache) && "init" %in% useCache)) stop(
+    "CBM_core's 'init' event cannot be cached: it selects the Python ",
+    "environment and resets the output database, which a cached init ",
+    "would skip. Remove 'init' from CBM_core's .useCache parameter.")
 
   # Set SpaDES CBM outputs database path
   sim$spadesCBMdb <- file.path(outputPath(sim), "spadesCBMdb")
