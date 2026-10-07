@@ -14,6 +14,10 @@
 
 ## RUN ALL TESTS ----
 
+  # Set Python virtual environment
+  reticulate::use_virtualenv("r-CBM4")
+  reticulate::import("pyarrow")
+
   # Run all tests
   testthat::test_dir("tests/testthat")
 
