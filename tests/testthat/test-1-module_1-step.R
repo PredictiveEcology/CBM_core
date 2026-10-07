@@ -164,8 +164,8 @@ test_that("Module: step without spinup: with disturbance", {
       ),
       params = list(
         CBM_core = list(
+          .plots        = NA,
           .useCacheCBM4 = FALSE,
-          .plot         = FALSE,
           spinup        = FALSE,
           fixedCohorts  = FALSE
         )
@@ -313,8 +313,8 @@ test_that("Module: step without spinup: with partial disturbance", {
     ),
     params = list(
       CBM_core = list(
+        .plots        = NA,
         .useCacheCBM4 = FALSE,
-        .plot         = FALSE,
         spinup        = FALSE,
         fixedCohorts  = FALSE
       )
