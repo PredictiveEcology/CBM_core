@@ -8,8 +8,8 @@ testData <- list(
   cohortData            = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "cohortData.qs2") |> qs2::qs_read() |> data.table::data.table(),
   yieldTablesCumulative = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "yieldTablesCumulative.qs2") |> qs2::qs_read() |> data.table::data.table(),
   yieldTablesId         = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "yieldTablesId.qs2") |> qs2::qs_read() |> data.table::data.table(),
-  table6                = data.table::fread("https://nfi.nfis.org/resources/biomass_models/appendix2_table6_tb.csv"),
-  table7                = data.table::fread("https://nfi.nfis.org/resources/biomass_models/appendix2_table7_tb.csv"),
+  table6tb              = data.table::fread("https://nfi.nfis.org/resources/biomass_models/appendix2_table6_tb.csv"),
+  table7tb              = data.table::fread("https://nfi.nfis.org/resources/biomass_models/appendix2_table7_tb.csv"),
   tableMerchantability  = reproducible::prepInputs(
     url = "https://drive.google.com/file/d/1wa2QMd7Eo-bPpfigchdpPPPxo7NVpPiC",
     destinationPath = tempdir(),
@@ -56,7 +56,12 @@ data.table::setnames(gcIncr, "biomass", "B")
 gcIncr[, B := B / 100]
 gcIncr[age==0, B:= 0]
 
-gcIncr <- CBMutils::cumPoolsCreateAGB(gcIncr, pixGroupCol = "gcID", testData$table6, testData$table7, testData$tableMerchantability)
+gcIncr <- CBMutils::cumPoolsCreateAGB(
+  gcIncr,
+  table6tb   = testData$table6tb,
+  table7tb   = testData$table7,
+  tableMerch = testData$tableMerchantability
+)
 data.table::setkey(gcIncr, gcID, age)
 
 poolCols <- c("merch", "foliage", "other")
