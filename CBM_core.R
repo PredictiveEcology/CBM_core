@@ -201,6 +201,12 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
 
 Init <- function(sim){
 
+  # Check parameters
+  if (!(isFALSE(P(sim)$.useCache) | identical(P(sim)$.useCache, ".inputObjects"))) stop(
+    "CBM_core does not support event caching. ",
+    "Set parameter .useCache = FALSE. ",
+    "Set parameter .useCacheCBM4 = TRUE to cache CBM4 processes.")
+
   # Set CBM4 data directory
   sim$CBM4data <- file.path(outputPath(sim), "CBM4data")
   message("CBM4 data directory set to: ", sim$CBM4data)
@@ -294,6 +300,9 @@ setStands <- function(sim){
 
 spinup <- function(sim) {
 
+  # Set option reproducible.useCache
+  withr::local_options(list(reproducible.useCache = P(sim)$.useCacheCBM4))
+
   # Convert to data.table
   for (table in c("cohortDT", "gcMeta", "gcIncrements")){
     if (!data.table::is.data.table(sim[[table]])) sim[[table]] <- data.table::as.data.table(sim[[table]])
@@ -337,9 +346,8 @@ spinup <- function(sim) {
       reproducible::Cache(
         omitArgs    = c("cbm4_data", "cbm_defaults_db"),
         .cacheExtra = digestFile(sim$cbm_defaults_db),
-        useCache    = P(sim)$.useCacheCBM4,
-        verbose     = P(sim)$.useCacheCBM4) |>
-      CacheCBM4dataset(sim$CBM4data, "inventory")
+        verbose     = getOption("reproducible.useCache", TRUE)
+      ) |> CacheCBM4dataset(sim$CBM4data, "inventory")
 
     message("Writing CBM4 dataset: spinup_parameters")
     CBM4r::cbm4_write_spinup_parameters(
@@ -351,12 +359,11 @@ spinup <- function(sim) {
       reproducible::Cache(
         omitArgs    = c("cbm4_data", "cbm_defaults_db"),
         .cacheExtra = digestFile(sim$cbm_defaults_db),
-        useCache    = P(sim)$.useCacheCBM4,
-        verbose     = P(sim)$.useCacheCBM4) |>
-      CacheCBM4dataset(sim$CBM4data, "spinup_parameters")
+        verbose     = getOption("reproducible.useCache", TRUE)
+      ) |> CacheCBM4dataset(sim$CBM4data, "spinup_parameters")
 
     message("Running CBM4 spinup")
-    if (P(sim)$.useCacheCBM4) cbm4_data_digest <- digestDir(sim$CBM4data)
+    cbm4_data_digest <- if (P(sim)$.useCacheCBM4) digestDir(sim$CBM4data)
     CBM4r::cbm4_spinup(
       cbm4_data       = sim$CBM4data,
       cbm_defaults_db = sim$cbm_defaults_db,
@@ -365,9 +372,8 @@ spinup <- function(sim) {
       reproducible::Cache(
         omitArgs    = c("cbm4_data", "cbm_defaults_db", "max_workers"),
         .cacheExtra = cbm4_data_digest,
-        useCache    = P(sim)$.useCacheCBM4,
-        verbose     = P(sim)$.useCacheCBM4) |>
-      CacheCBM4dataset(sim$CBM4data, "simulation")
+        verbose     = getOption("reproducible.useCache", TRUE)
+      ) |> CacheCBM4dataset(sim$CBM4data, "simulation")
 
     # Alter simulation data to set true ages & regeneration delay
     simulation_data <- arrow::open_dataset(file.path(sim$CBM4data, "simulation/simulation"))
@@ -403,8 +409,8 @@ spinup <- function(sim) {
       reproducible::Cache(
         omitArgs    = c("cbm4_data", "cbm_defaults_db"),
         .cacheExtra = digestFile(sim$cbm_defaults_db),
-        useCache    = P(sim)$.useCacheCBM4,
-        verbose     = P(sim)$.useCacheCBM4) |>
+        verbose     = getOption("reproducible.useCache", TRUE)
+      ) |>
       CacheCBM4dataset(sim$CBM4data, "inventory")
 
     message("Writing CBM4 dataset: simulation: timestep = 0")
@@ -426,6 +432,9 @@ spinup <- function(sim) {
 }
 
 step <- function(sim) {
+
+  # Set option reproducible.useCache
+  withr::local_options(list(reproducible.useCache = P(sim)$.useCacheCBM4))
 
   # Rename table columns for duration of module event
   cbm4_table_setnames(sim)
@@ -491,8 +500,8 @@ step <- function(sim) {
       reproducible::Cache(
         omitArgs    = c("cbm4_data", "cbm_defaults_db"),
         .cacheExtra = digestFile(sim$cbm_defaults_db),
-        useCache    = P(sim)$.useCacheCBM4,
-        verbose     = P(sim)$.useCacheCBM4) |>
+        verbose     = getOption("reproducible.useCache", TRUE)
+      ) |>
       CacheCBM4dataset(sim$CBM4data, "disturbance")
   }
 
@@ -507,8 +516,8 @@ step <- function(sim) {
     reproducible::Cache(
       omitArgs    = c("cbm4_data", "cbm_defaults_db"),
       .cacheExtra = digestFile(sim$cbm_defaults_db),
-      useCache    = P(sim)$.useCacheCBM4,
-      verbose     = P(sim)$.useCacheCBM4) |>
+      verbose     = getOption("reproducible.useCache", TRUE)
+    ) |>
     CacheCBM4dataset(sim$CBM4data, "step_parameters")
 
   message("Running CBM4 annual step for year ", time(sim))
@@ -675,10 +684,6 @@ plot <- function(sim){
 }
 
 .inputObjects <- function(sim){
-
-  if (isTRUE(P(sim)$.useCache)) stop(
-    "CBM_core module does not support event caching. Set parameter .useCache = FALSE and .useCacheCBM4 = TRUE")
-  P(sim)$.useCacheCBM4 <- getOption("reproducible.useCache", TRUE) & P(sim)$.useCacheCBM4
 
   if (!suppliedElsewhere("cbm_defaults_db", sim)){
     sim$cbm_defaults_db <- getOption("CBM4r.db.path")
