@@ -1,12 +1,12 @@
 
 if (!testthat::is_testing()) source(testthat::test_path("setup.R"))
 
-test_that("Module: SK-small 1998-2000", {
+test_that("Module: SK-small", {
 
   ## Run simInit and spades ----
 
   # Set up project
-  projectName <- "module_SK-small_1998-2000"
+  projectName <- "module_SK-small"
   times       <- list(start = 1998, end = 2000)
 
   simInitInput <- SpaDES.project::setupProject(

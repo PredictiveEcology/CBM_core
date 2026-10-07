@@ -1,7 +1,7 @@
 
 if (!testthat::is_testing()) source(testthat::test_path("setup.R"))
 
-test_that("Module: RIA-small 2000-2001", {
+test_that("Module: RIA-small", {
 
   cohortDTin <- file.path(spadesTestPaths$testdata, "RIA-small/input", "cohortDT.qs2") |>
     qs2::qs_read() |> data.table::as.data.table()
@@ -9,7 +9,7 @@ test_that("Module: RIA-small 2000-2001", {
   for (fixedCohorts in c(TRUE, FALSE)) for (disturbances in c(FALSE, TRUE)){
 
     # Set up project
-    projectName <- paste0("module_RIA-small_1998-2000_dist", disturbances, "_fixedCohorts", fixedCohorts)
+    projectName <- paste0("module_RIA-small_dist", disturbances, "_fixedCohorts", fixedCohorts)
     times       <- list(start = 2000, end = 2001)
 
     simInitInput <- SpaDES.project::setupProject(
@@ -26,12 +26,7 @@ test_that("Module: RIA-small 2000-2001", {
         testdata    = spadesTestPaths$testdata
       ),
 
-      params = list(
-        CBM_core = list(
-          .plots       = NA,
-          fixedCohorts = fixedCohorts
-        )
-      ),
+      params = list(CBM_core = list(.plots = NA, fixedCohorts = fixedCohorts)),
 
       masterRaster = terra::rast(
         crs  = "EPSG:3005",
@@ -59,11 +54,10 @@ test_that("Module: RIA-small 2000-2001", {
     expect_s4_class(simTest, "simList")
 
     # Check results
-    if (!disturbances){
-      expect_equal(simTest$emissionsProducts,
-                   data.table::fread(file.path(spadesTestPaths$testdata, "RIA-small", "valid", "emissionsProducts.csv")),
-                   scale = 1, tolerance = 0.001, check.attributes = FALSE)
-    }
+    emissionsProductsValid <- data.table::fread(
+      file.path(spadesTestPaths$testdata, "RIA-small", "valid", paste0("emissionsProducts_dist", disturbances, ".csv")))
+    expect_equal(simTest$emissionsProducts, emissionsProductsValid,
+                 scale = 1, tolerance = 0.001, check.attributes = FALSE)
 
     cbm4_results <- CBM4r::cbm4_results_processor(simTest$CBM4data)
     simResults   <- CBM4r::cbm4_results_query(cbm4_results, c(
