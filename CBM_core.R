@@ -47,8 +47,8 @@ defineModule(sim, list(
       desc = "Table of stand attributes. Stands can have 1 or more cohorts.",
       columns = c(
         pixelIndex   = "Stand ID",
-        admin_name   = "Canada province or territory name",
-        admin_abbrev = "Optional. Canada province or territory 2-character abbreviation. 'admin_name' or 'admin_abbrev' required.",
+        admin_abbrev = "Canada province or territory 2-character abbreviation.",
+        admin_name   = "Canada province or territory name. 'admin_abbrev' or 'admin_name' required.",
         eco_id       = "Canada ecozone ID",
         historic_disturbance_type  = "Optional. Historic disturbance type. Defaults to parameter `def_historic_disturbance_type`",
         last_pass_disturbance_type = "Optional. Last pass disturbance type. Defaults to parameter `def_last_pass_disturbance_type`"
