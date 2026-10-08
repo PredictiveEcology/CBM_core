@@ -46,7 +46,6 @@ defineModule(sim, list(
     defineParameter(".max_workers", "integer",   NA,       NA, NA, "Number of parallel processes"),
     defineParameter(".saveAll",     "logical",   FALSE,    NA, NA, "Save all available data"),
     defineParameter(".virtualenv",  "character", "r-CBM4", NA, NA, "Python virtual environment"),
-    defineParameter(".cbm4vers",    "character", NA,       NA, NA, "CBM4 version"),
     defineParameter(".useCache",    "logical",   FALSE,    NA, NA, "Cache module events"),
     defineParameter(".useCacheCBM4","logical",   TRUE,     NA, NA, "Cache CBM4 processes"),
     defineParameter(".plots",       "character", "png",    NA, NA, "Used by the Plots function to set plot types")
@@ -243,7 +242,6 @@ Init <- function(sim){
     message("Setting up CBM4 Python virtual environment: ", P(sim)$.virtualenv)
     CBM4r::cbm4_virtualenv_create(
       P(sim)$.virtualenv,
-      version = if (!is.na(P(sim)$.cbm4vers)) P(sim)$.cbm4vers,
       python  = CBMutils::ReticulateFindPython(
         version        = ">=3.12,<3.13",
         versionInstall = "3.12:latest",
