@@ -224,6 +224,11 @@ Init <- function(sim){
   if (!P(sim)$cohort_mode %in% c("proportional", "stacked")) stop(
     "CBM_core parameter 'cohort_mode' must be \"proportional\" or \"stacked\"")
 
+  if (!is.null(P(sim)$fixedCohorts)){
+    warning("CBM_core parameter 'fixedCohorts' has been renamed 'cohort_fixed'")
+    P(sim)$cohort_fixed <- P(sim)$fixedCohorts
+  }
+
   # Set CBM4 data directory
   sim$CBM4data <- file.path(outputPath(sim), "CBM4data")
   message("CBM4 data directory set to: ", sim$CBM4data)
