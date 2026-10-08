@@ -90,7 +90,7 @@ test_that("Module: SK-small", {
   ))
 
 
-  ## Run with fixedCohorts = FALSE ----
+  ## Run with cohort_fixed = FALSE ----
 
   # Set up project
   simInitInputUnfixed <- SpaDES.project::setupProject(
@@ -109,7 +109,7 @@ test_that("Module: SK-small", {
 
     params = list(CBM_core = list(
       .plots       = NA,
-      fixedCohorts = FALSE
+      cohort_fixed = FALSE
     )),
 
     masterRaster = terra::rast(

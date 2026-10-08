@@ -59,7 +59,7 @@ CBM defaults SQLite database (input `cbm_defaults_db`).
 
 | Name | Class | Default | Description |
 |:---|:---|:---|:---|
-| fixedCohorts | logical | TRUE | Stand cohorts are fixed for simulation duration |
+| cohort_fixed | logical | TRUE | Stand cohorts are fixed for simulation duration |
 | def_delay_spinup | integer | 0 | Default regeneration delay used in the spinup |
 | def_delay_regen | integer | 0 | Default regeneration delay post disturbance |
 | def_historic_disturbance_type | character | Wildfire | Default historic disturbance type. |
@@ -111,7 +111,7 @@ directory with
 The spinup is performed with
 [`CBM4r::cbm4_spinup`](https://github.com/PredictiveEcology/CBM4r/blob/main/inst/docs/CBM4r_Reference_Manual.md#cbm4_spinup-cbm4-spinup).
 
-If parameter `fixedCohorts = FALSE` the cohort inventory and pools state
+If parameter `cohort_fixed = FALSE` the cohort inventory and pools state
 will be read into the `cohortDT` object for use by other modules.
 
 ### `annualDisturbances`
@@ -130,7 +130,7 @@ This event runs the CBM annual step where carbon transfers are applied
 for each simulation year.
 
 The cohort inventory and pools state will be read directly from the CBM4
-data directory unless parameter `fixedCohorts = FALSE` in which case the
+data directory unless parameter `cohort_fixed = FALSE` in which case the
 cohort inventory and pools state (input `cohortDT`) will be written the
 CBM4 data directory with
 [`CBM4r::cbm4_write_simulation_inventory`](https://github.com/PredictiveEcology/CBM4r/blob/main/inst/docs/CBM4r_Reference_Manual.md#cbm4_write_simulation_inventory-cbm4-write-simulation-inventory).
@@ -140,7 +140,7 @@ parameters (input `cbm_defaults_db`) are written to the CBM4 data
 directory with
 [`CBM4r::cbm4_write_step_parameters`](https://github.com/PredictiveEcology/CBM4r/blob/main/inst/docs/CBM4r_Reference_Manual.md#cbm4_write_step_parameters-cbm4-write-step-parameters).
 
-If parameter `fixedCohorts = FALSE` the updated cohort inventory and
+If parameter `cohort_fixed = FALSE` the updated cohort inventory and
 pools state will be read into the `cohortDT` object for use by other
 modules.
 

@@ -64,7 +64,7 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
       ),
       CBM_core = list(
         .useCacheCBM4 = FALSE,
-        fixedCohorts = FALSE
+        cohort_fixed  = FALSE
       ))
   )
 

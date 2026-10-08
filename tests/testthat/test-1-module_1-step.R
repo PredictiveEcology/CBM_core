@@ -31,7 +31,7 @@ test_that("Module: step without spinup", {
           .plots        = NA,
           .useCacheCBM4 = FALSE,
           spinup        = FALSE,
-          fixedCohorts  = FALSE
+          cohort_fixed  = FALSE
         )
       ),
       masterRaster = terra::rast(
@@ -167,7 +167,7 @@ test_that("Module: step without spinup: with disturbance", {
           .plots        = NA,
           .useCacheCBM4 = FALSE,
           spinup        = FALSE,
-          fixedCohorts  = FALSE
+          cohort_fixed  = FALSE
         )
       ),
       masterRaster = terra::rast(
@@ -316,7 +316,7 @@ test_that("Module: step without spinup: with partial disturbance", {
         .plots        = NA,
         .useCacheCBM4 = FALSE,
         spinup        = FALSE,
-        fixedCohorts  = FALSE
+        cohort_fixed  = FALSE
       )
     ),
     masterRaster = terra::rast(

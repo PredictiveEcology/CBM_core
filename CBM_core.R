@@ -23,7 +23,21 @@ defineModule(sim, list(
       "Run CBM spinup to initialize cohort pools.",
       "if FALSE, `cohortDT` must contain a carbon (t/ha) column for every carbon pool."
     )),
-    defineParameter("fixedCohorts", "logical", TRUE, NA, NA, "Stand cohorts are fixed for simulation duration"),
+    defineParameter("cohort_mode",  "character", "stacked", NA, NA, paste(
+      "CBM4 cohort mode defining the relationship between cohorts sharing the same pixel.",
+      "'proportional' expects each cohort to occupy a percentage of the total cell space.",
+      "If 'proportional', `cohortDT` may require a `cohort_proportion` column",
+      "where the sum of `cohort_proportion` for each pixel is 1 (100%).",
+      "The total growth of each cohort will be scaled by this multiplier.",
+      "'stacked' considers all cohorts to be independent (`cohort_proportion` = 1)."
+    )),
+    defineParameter("cohort_fixed", "logical", TRUE, NA, NA, paste(
+      "Cohorts are fixed for simulation duration.",
+      "Defaults to TRUE to reduce memory usage.",
+      "If FALSE, `cohortDT` will be updated after the spinup and each annual step",
+      "with the current carbon pools values so that other modules",
+      "may alter this table between annual steps."
+    )),
     defineParameter("def_delay_spinup", "integer", 0L, 0L, NA, "Default regeneration delay used in the spinup"),
     defineParameter("def_delay_regen",  "integer", 0L, 0L, NA, "Default regeneration delay post disturbance"),
     defineParameter("def_historic_disturbance_type",  "character", "Wildfire", NA, NA, "Default historic disturbance type"),
@@ -160,7 +174,7 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
 
       sim <- spinup(sim)
 
-      if (!P(sim)$fixedCohorts) sim <- readCohorts(sim, timestep = 0)
+      if (!P(sim)$cohort_fixed) sim <- readCohorts(sim, timestep = 0)
     },
 
     step = {
@@ -169,7 +183,7 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
 
       sim <- scheduleEvent(sim, time(sim) + 1, "CBM_core", "step", eventPriority = 9)
 
-      if (!P(sim)$fixedCohorts) sim <- readCohorts(sim)
+      if (!P(sim)$cohort_fixed) sim <- readCohorts(sim)
 
       # Remove interim data
       if (!P(sim)$.saveAll){
@@ -206,6 +220,9 @@ Init <- function(sim){
     "CBM_core does not support event caching. ",
     "Set parameter .useCache = FALSE. ",
     "Set parameter .useCacheCBM4 = TRUE to cache CBM4 processes.")
+
+  if (!P(sim)$cohort_mode %in% c("proportional", "stacked")) stop(
+    "CBM_core parameter 'cohort_mode' must be \"proportional\" or \"stacked\"")
 
   # Set CBM4 data directory
   sim$CBM4data <- file.path(outputPath(sim), "CBM4data")
@@ -338,10 +355,7 @@ spinup <- function(sim) {
       cohorts         = sim$cohortDT,
       classifiers     = cohortClassifiers(sim),
       col_ignore      = "cohortID",
-      def_delay       = P(sim)$def_delay_spinup,
-      def_cohort_proportion = ifelse(
-        P(sim)$fixedCohorts && anyDuplicated(sim$cohortDT$pixel_index) > 0,
-        0, 1)
+      def_delay       = P(sim)$def_delay_spinup
     ) |>
       reproducible::Cache(
         omitArgs    = c("cbm4_data", "cbm_defaults_db"),
@@ -420,10 +434,7 @@ spinup <- function(sim) {
       grid_meta       = sim$standDT,
       cohorts         = sim$cohortDT,
       timestep        = 0,
-      def_regeneration_delay = P(sim)$def_delay_regen,
-      def_cohort_proportion = ifelse(
-        P(sim)$fixedCohorts && anyDuplicated(sim$cohortDT$pixel_index) > 0,
-        0, 1)
+      def_regeneration_delay = P(sim)$def_delay_regen
     )
   }
 
@@ -461,6 +472,22 @@ step <- function(sim) {
 
     if (!is.null(sim$disturbanceMeta)){
       distEvents <- merge(distEvents, sim$disturbanceMeta, by = "disturbance_id")
+    }
+
+    # Set disturbance requirements for stacked cohort mode
+    if (P(sim)$cohort_mode == "stacked"){
+
+      if ("proportion" %in% names(distEvents) && any(distEvents$proportion != 1)) stop(
+        "When cohort_mode == \"stacked\" disturbance events must have proportion == 1")
+      distEvents$proportion <- 1L
+
+      if ("area_basis" %in% names(distEvents) && any(distEvents$area_basis != "filtered")) stop(
+        "When cohort_mode == \"stacked\" disturbance events must have proportion == 1")
+      distEvents$area_basis <- "filtered"
+
+      if ("enable_merge" %in% names(distEvents) && any(distEvents$enable_merge)) stop(
+        "When cohort_mode == \"stacked\" disturbance events must have enable_merge == FALSE")
+      distEvents$enable_merge <- FALSE
     }
 
     # Choose disturbance events by priority
@@ -503,6 +530,7 @@ step <- function(sim) {
         verbose     = getOption("reproducible.useCache", TRUE)
       ) |>
       CacheCBM4dataset(sim$CBM4data, "disturbance")
+    rm(distEvents)
   }
 
   # Write parameters
@@ -521,19 +549,16 @@ step <- function(sim) {
     CacheCBM4dataset(sim$CBM4data, "step_parameters")
 
   message("Running CBM4 annual step for year ", time(sim))
-  if (P(sim)$fixedCohorts){
+  if (P(sim)$cohort_fixed){
     CBM4r::cbm4_step(
       cbm4_data       = sim$CBM4data,
       cbm_defaults_db = sim$cbm_defaults_db,
       timestep        = timestep,
-      max_workers     = P(sim)$.max_workers
+      max_workers     = P(sim)$.max_workers,
+      area_validation = P(sim)$cohort_mode == "proportional"
     )
 
   }else{
-
-    if ("cohort_proportion" %in% names(sim$cohortDT)){
-      sim$cohortDT[cohort_proportion == 1, cohort_proportion := 0]
-    }
     CBM4r::cbm4_step_with_cohorts(
       cbm4_data       = sim$CBM4data,
       cbm_defaults_db = sim$cbm_defaults_db,
@@ -541,26 +566,9 @@ step <- function(sim) {
       max_workers     = P(sim)$.max_workers,
       cohorts         = sim$cohortDT,
       grid_meta       = sim$standDT,
-      def_regeneration_delay = P(sim)$def_delay_regen,
-      def_cohort_proportion = 0
+      area_validation = P(sim)$cohort_mode == "proportional",
+      def_regeneration_delay = P(sim)$def_delay_regen
     )
-  }
-
-  # Set cohort_proportion to 1 where it has been set to 0
-  if (time(sim) == end(sim)){
-    for (dataset_table in c("simulation", "simulation-table-annual_process_flux", "simulation-table-disturbance_flux")){
-      dataset_table_path <- file.path(sim$CBM4data, "simulation", dataset_table)
-      if (file.exists(dataset_table_path)){
-        for (pqFile in list.files(dataset_table_path, full.names = TRUE, recursive = TRUE)){
-          dataset <- arrow::open_dataset(pqFile)
-          if (0 %in% (dplyr::collect(dplyr::select(dataset, cohort_proportion))[[1]])){
-            dataset |>
-              dplyr::mutate(cohort_proportion = dplyr::if_else(cohort_proportion == 0, 1, cohort_proportion)) |>
-              arrow::write_parquet(pqFile)
-          }
-        }
-      }
-    }
   }
 
   # Return simList

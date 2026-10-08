@@ -6,10 +6,10 @@ test_that("Module: RIA-small", {
   cohortDTin <- file.path(spadesTestPaths$testdata, "RIA-small/input", "cohortDT.qs2") |>
     qs2::qs_read() |> data.table::as.data.table()
 
-  for (fixedCohorts in c(TRUE, FALSE)) for (disturbances in c(FALSE, TRUE)){
+  for (cohort_fixed in c(TRUE, FALSE)) for (disturbances in c(FALSE, TRUE)){
 
     # Set up project
-    projectName <- paste0("module_RIA-small_dist", disturbances, "_fixedCohorts", fixedCohorts)
+    projectName <- paste0("module_RIA-small_dist", disturbances, "_fixedCohorts", cohort_fixed)
     times       <- list(start = 2000, end = 2001)
 
     simInitInput <- SpaDES.project::setupProject(
@@ -26,7 +26,7 @@ test_that("Module: RIA-small", {
         testdata    = spadesTestPaths$testdata
       ),
 
-      params = list(CBM_core = list(.plots = NA, fixedCohorts = fixedCohorts)),
+      params = list(CBM_core = list(.plots = NA, cohort_fixed = cohort_fixed)),
 
       masterRaster = terra::rast(
         crs  = "EPSG:3005",
