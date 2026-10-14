@@ -15,8 +15,8 @@ defineModule(sim, list(
   documentation = list("README.txt", "CBM_core.Rmd"),
   reqdPkgs = list(
     "arrow", "cli", "data.table", "dplyr", "zip",
-    "PredictiveEcology/CBM4r@development (>=1.1.0)", "gert",
-    "PredictiveEcology/CBMutils@development (>=2.5.4)"
+    "PredictiveEcology/CBM4r@development (>=1.1.0.9001)", "gert",
+    "PredictiveEcology/CBMutils@development (>=2.5.7.9001)"
   ),
   parameters = rbind(
     defineParameter("spinup", "logical", TRUE, NA, NA, paste(
@@ -160,9 +160,6 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
 
       # Schedule summaries
       sim <- scheduleEvent(sim, end(sim), "CBM_core", "summarize", eventPriority = 10)
-      if (length(na.omit(P(sim)$.plots)) > 0){
-        sim <- scheduleEvent(sim, end(sim), "CBM_core", "plot", eventPriority = 10)
-      }
     },
 
     setStands = {
@@ -201,7 +198,14 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
     },
 
     summarize = {
-      sim <- summarize(sim)
+
+      cbm4_results <- CBM4r::SQLResultsProcessor(sim$CBM4data, max_workers = P(sim)$.max_workers)
+
+      sim <- summarize(sim, cbm4_results = cbm4_results)
+
+      if (length(na.omit(P(sim)$.plots)) > 0){
+        sim <- plot(sim, cbm4_results = cbm4_results)
+      }
     },
     plot = {
       sim <- plot(sim)
@@ -607,25 +611,27 @@ readCohorts <- function(sim, timestep = NULL){
 
 }
 
-summarize <- function(sim){
+summarize <- function(sim, cbm4_results = NULL){
 
   message("Reading yearly totals for emissions and products")
 
-  cbm4_results <- CBM4r::cbm4_results_processor(sim$CBM4data, max_workers = P(sim)$.max_workers)
+  if (is.null(cbm4_results)){
+    cbm4_results <- CBM4r::SQLResultsProcessor(sim$CBM4data, max_workers = P(sim)$.max_workers)
+  }
 
   sim$emissionsProducts <- merge(
-    CBM4r::cbm4_results_totals(
+    CBM4r::cbm4_results_timestep(
       cbm4_results,
-      view_name    = "composite_flux_indicators",
-      view_columns = c(
+      view   = "composite_flux_indicators",
+      select = c(
         "CH4" = "Emissions - Emissions By Gas - Total CH4",
         "CO"  = "Emissions - Emissions By Gas - Total CO",
         "CO2" = "Emissions - Emissions By Gas - Total CO2"
       )),
-    CBM4r::cbm4_results_totals(
+    CBM4r::cbm4_results_timestep(
       cbm4_results,
-      view_name    = "composite_disturbance_indicators",
-      view_columns = c(
+      view   = "composite_disturbance_indicators",
+      select = c(
         "Products" = "Ecosystem Transfers - Ecosystem to Forest Products - Total Harvest (Biomass + Snags)"
       )),
     by = "timestep", all = TRUE)[, .(
@@ -644,11 +650,13 @@ summarize <- function(sim){
 
 }
 
-plot <- function(sim){
+plot <- function(sim, cbm4_results = NULL){
+
+  if (is.null(cbm4_results)){
+    cbm4_results <- CBM4r::SQLResultsProcessor(sim$CBM4data, max_workers = P(sim)$.max_workers)
+  }
 
   figPath <- file.path(outputPath(sim), "CBM_core_figures")
-
-  cbm4_results <- CBM4r::cbm4_results_processor(sim$CBM4data, max_workers = P(sim)$.max_workers)
 
   # Emissions and products
   SpaDES.core::Plots(

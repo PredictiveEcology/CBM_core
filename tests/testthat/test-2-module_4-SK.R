@@ -57,9 +57,9 @@ test_that("Module: SK 1985-2011", {
   ## Check outputs ----
 
   testResults <- list(emissionsProducts = simTest$emissionsProducts)
-  cbm4_results <- CBM4r::cbm4_results_processor(simTest$CBM4data)
+  cbm4_results <- CBM4r::SQLResultsProcessor(simTest$CBM4data)
   for (view_name in c("pool_indicators", "flux_indicators", "disturbance_indicators")){
-    testResults[[view_name]] <- CBM4r::cbm4_results_totals(cbm4_results, view_name)
+    testResults[[view_name]] <- CBM4r::cbm4_results_timestep(cbm4_results, view_name)
   }
   for (table in names(testResults)){
     testValid <- data.table::fread(file.path(spadesTestPaths$testdata, "SK", "valid", paste0(table, ".csv")))

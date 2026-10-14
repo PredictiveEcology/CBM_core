@@ -72,9 +72,12 @@ test_that("Module: with regeneration delay", {
   expect_s4_class(simTest, "simList")
 
   # Check result
-  simDelay <- CBM4r::cbm4_results_query(
+  simDelay <- CBM4r::cbm4_results_view(
     simTest$CBM4data,
-    "SELECT timestep, index, \"state.age\", \"inventory.delay\", \"state.regeneration_delay\" FROM simulation ORDER BY timestep, index")
+    view   = "simulation",
+    select = c("timestep", "index", "state.age", "inventory.delay", "state.regeneration_delay")
+  )
+  data.table::setkey(simDelay, timestep, index)
 
   expect_equal(simDelay[index == 0]$state.age,                c(10, 1, 2, 3))
   expect_equal(simDelay[index == 0]$inventory.delay,          c( 0, 0, 0, 0))
@@ -101,10 +104,14 @@ test_that("Module: with regeneration delay", {
   expect_s4_class(simTestParam, "simList")
 
   # Check result
-  simDelay <- CBM4r::cbm4_results_query(
+  simDelay <- CBM4r::cbm4_results_view(
     simTest$CBM4data,
-    "SELECT timestep, index, \"state.age\" FROM simulation ORDER BY timestep, index")
-  expect_equal(simDelay$state.age, c(10, 0, 0, 1))
+    view   = "simulation",
+    select = c("timestep", "index", "state.age", "inventory.delay", "state.regeneration_delay")
+  )
+  data.table::setkey(simDelay, timestep, index)
+
+  ## Add checks here
 
 })
 

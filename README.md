@@ -171,7 +171,7 @@ documentation](https://github.com/PredictiveEcology/CBM4r).
 
 ``` r
 # Read results as CBM4 SQLResultsProcessor
-cbm4_results <- CBM4r::cbm4_results_processor(sim$CBM4data)
+cbm4_results <- CBM4r::SQLResultsProcessor(sim$CBM4data)
 
 # Plot emissions and products
 CBMutils::cbm4PlotEmissionsProducts(cbm4_results, yearStart = start(sim))
