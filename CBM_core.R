@@ -241,7 +241,10 @@ Init <- function(sim){
     "Failed to remove existing CBM4 data directory: ", sim$CBM4data)
 
   # Set virtual environment
-  if (Sys.getenv("VIRTUAL_ENV") == ""){
+  if (Sys.getenv("VIRTUAL_ENV") == "" ||
+      compareVersion(
+        tryCatch(reticulate::import("importlib.metadata")$version("cbm4"), error = function(e) -1),
+        "3.3.0") == -1){
 
     message("Setting up CBM4 Python virtual environment: ", P(sim)$.virtualenv)
     CBM4r::cbm4_virtualenv_create(
