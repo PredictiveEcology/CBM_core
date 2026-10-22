@@ -388,16 +388,24 @@ spinup <- function(sim) {
 
     message("Running CBM4 spinup")
     cbm4_data_digest <- if (P(sim)$.useCacheCBM4) digestDir(sim$CBM4data)
+
+    outFile <- tempfile(fileext = ".out")
+    Rprof(outFile, memory.profiling = TRUE)
+
     CBM4r::cbm4_spinup(
       cbm4_data       = sim$CBM4data,
       cbm_defaults_db = sim$cbm_defaults_db,
       max_workers     = P(sim)$.max_workers
-    ) |>
-      reproducible::Cache(
-        omitArgs    = c("cbm4_data", "cbm_defaults_db", "max_workers"),
-        .cacheExtra = cbm4_data_digest,
-        verbose     = getOption("reproducible.useCache", TRUE)
-      ) |> CacheCBM4dataset(sim$CBM4data, "simulation")
+    # ) |>
+    #   reproducible::Cache(
+    #     omitArgs    = c("cbm4_data", "cbm_defaults_db", "max_workers"),
+    #     .cacheExtra = cbm4_data_digest,
+    #     verbose     = getOption("reproducible.useCache", TRUE)
+    #   ) |> CacheCBM4dataset(sim$CBM4data, "simulation")
+    )
+
+    Rprof(NULL)
+    writeRprof(sim, P(sim)$.chunk_size, process = "spatial_cbm4_app$spinup_all", timestep = 0, outFile = outFile)
 
     # Alter simulation data to set true ages & regeneration delay
     simulation_data <- arrow::open_dataset(file.path(sim$CBM4data, "simulation/simulation"))
@@ -559,6 +567,10 @@ step <- function(sim) {
     CacheCBM4dataset(sim$CBM4data, "step_parameters")
 
   message("Running CBM4 annual step for year ", time(sim))
+
+  outFile <- tempfile(fileext = ".out")
+  Rprof(outFile, memory.profiling = TRUE)
+
   if (P(sim)$cohort_fixed){
     CBM4r::cbm4_step(
       cbm4_data       = sim$CBM4data,
@@ -580,6 +592,9 @@ step <- function(sim) {
       def_regeneration_delay = P(sim)$def_delay_regen
     )
   }
+
+  Rprof(NULL)
+  writeRprof(sim, P(sim)$.chunk_size, process = "spatial_cbm4_app$step_all", timestep = timestep, outFile = outFile)
 
   # Return simList
   return(invisible(sim))
