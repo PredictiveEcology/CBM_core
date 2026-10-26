@@ -12,8 +12,7 @@ cbm4_table_rename <- function() c(
 
   "gcID" = "gc_id",
 
-  "eventID" = "disturbance_id",
-  "disturbance_type_name" = "disturbance_type"
+  "eventID" = "disturbance_id"
 )
 
 cbm4_table_setnames <- function(sim, cohortRename = NULL){

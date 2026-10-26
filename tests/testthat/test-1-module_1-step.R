@@ -103,15 +103,15 @@ test_that("Module: step without spinup: with disturbance", {
 
     # Wildfire in a single pixel
     fire = list(
-      disturbanceMeta   = data.table::data.table(eventID = 1, disturbance_type_name = "Wildfire"),
+      disturbanceMeta   = data.table::data.table(eventID = 1, name = "Wildfire"),
       disturbanceEvents = data.table::data.table(eventID = 1, year = 2000, pixelIndex = 1)
     ),
 
     # 2 disturbances in the same pixel in the same year, with wildfire taking priority
     priority = list(
       disturbanceMeta   = rbind(
-        data.table::data.table(eventID = 1, disturbance_type_name = "Wildfire", priority = 1),
-        data.table::data.table(eventID = 2, disturbance_type_name = "Clearcut harvesting without salvage", priority = 2)
+        data.table::data.table(eventID = 1, name = "Wildfire", priority = 1),
+        data.table::data.table(eventID = 2, name = "Clearcut harvesting without salvage", priority = 2)
       ),
       disturbanceEvents = rbind(
         data.table::data.table(eventID = 1, year = 2000, pixelIndex = 1),
@@ -122,8 +122,8 @@ test_that("Module: step without spinup: with disturbance", {
     # 2 disturbances in the same pixel with disturbance_order
     priority_order = list(
       disturbanceMeta   = rbind(
-        data.table::data.table(eventID = 1, disturbance_type_name = "Wildfire", disturbance_order = 2),
-        data.table::data.table(eventID = 2, disturbance_type_name = "Clearcut harvesting without salvage", disturbance_order = 1)
+        data.table::data.table(eventID = 1, name = "Wildfire", disturbance_order = 2),
+        data.table::data.table(eventID = 2, name = "Clearcut harvesting without salvage", disturbance_order = 1)
       ),
       disturbanceEvents = rbind(
         data.table::data.table(eventID = 1, year = 2000, pixelIndex = 1),
@@ -134,8 +134,8 @@ test_that("Module: step without spinup: with disturbance", {
     # 2 disturbances in the same pixel in the same year without order or priority
     priority_missing = list(
       disturbanceMeta   = rbind(
-        data.table::data.table(eventID = 1, disturbance_type_name = "Wildfire"),
-        data.table::data.table(eventID = 2, disturbance_type_name = "Clearcut harvesting without salvage")
+        data.table::data.table(eventID = 1, name = "Wildfire"),
+        data.table::data.table(eventID = 2, name = "Clearcut harvesting without salvage")
       ),
       disturbanceEvents = rbind(
         data.table::data.table(eventID = 1, year = 2000, pixelIndex = 1),
@@ -357,7 +357,7 @@ test_that("Module: step without spinup: with partial disturbance", {
     gcMeta            = data.table::data.table(gcID = 1:2, species = c("A", "B"), sw = TRUE),
     gcIncrements      = data.table::data.table(gcID = 1:2, age = "?", merch_inc = 0, foliage_inc = 0, other_inc = 0),
 
-    disturbanceMeta   = data.table::data.table(eventID = 1, species = "A", disturbance_type_name = "Wildfire"),
+    disturbanceMeta   = data.table::data.table(eventID = 1, species = "A", name = "Wildfire"),
     disturbanceEvents = data.table::data.table(eventID = 1, year = 2000, pixelIndex = 1)
   )
 

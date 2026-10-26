@@ -40,7 +40,7 @@ test_that("Module: RIA-small", {
     )
 
     if (disturbances){
-      simInitInput$disturbanceMeta   <- data.table::data.table(eventID = 1, disturbance_type_name = "Wildfire")
+      simInitInput$disturbanceMeta   <- data.table::data.table(eventID = 1, name = "Wildfire")
       simInitInput$disturbanceEvents <- data.table::data.table(pixelIndex = 1, year = 2001, eventID = 1)
     }
 
