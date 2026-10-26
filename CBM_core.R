@@ -111,12 +111,10 @@ defineModule(sim, list(
         "Table defining the disturbance event types.",
         "This associates CBM-CFS3 disturbances with the event IDs in the 'disturbanceEvents' table."),
       columns = c(
-        eventID             = "Event type ID",
-        disturbance_type_id = "CBM-CFS3 disturbance type ID",
-        priority            = "Optional. Priority of event assignment to a pixel if more than one event occurs.",
-        name                = "Optional. Disturbance name",
-        description         = "Optional. Disturbance description",
-        wholeStand          = "Optional. Specifies if the whole stand is disturbed (1 = TRUE; 0 = FALSE)"
+        eventID     = "Event type ID",
+        name        = "Disturbance name",
+        description = "Optional. Disturbance description",
+        priority    = "Optional. Priority of event assignment to a pixel if more than one event occurs."
       )),
     expectsInput(objectName = "masterRaster", objectClass = "raster",
                  desc = "Optional. Raster template for mapping results"),
@@ -332,14 +330,23 @@ annual_prepDisturbances <- function(sim){
   }
 
   # Read disturbance metadata
-  if (is.null(sim$disturbanceMeta)) stop("'disturbanceMeta' input not found")
-  if (!all(c("eventID", "disturbance_type_id") %in% names(sim$disturbanceMeta))) stop(
-    "'disturbanceMeta' table requires columns: 'eventID', 'disturbance_type_id'")
+  if (is.null(sim$disturbanceMeta)) stop("disturbanceMeta not found")
+  if (!"eventID" %in% names(sim$disturbanceMeta)) stop("disturbanceMeta requires column: 'eventID'")
+  if (!is.data.table(sim$disturbanceMeta)){
+    sim$disturbanceMeta <- data.table::as.data.table(sim$disturbanceMeta)
+  }
 
-  distMeta <- unique(sim$disturbanceMeta[, .SD, .SDcols = intersect(
-    c("eventID", "disturbance_type_id", "priority"), names(sim$disturbanceMeta))])
+  # Set disturbance type IDs
+  if (!"disturbance_type_id" %in% names(sim$disturbanceMeta)){
+    if (!"name" %in% names(sim$disturbanceMeta)) stop(
+      "disturbanceMeta requires column 'name' or 'disturbance_type_id'")
+    sim$disturbanceMeta[, disturbance_type_id := NA_integer_]
+  }
+  sim$disturbanceMeta[is.na(disturbance_type_id), disturbance_type_id := disturbanceMatch(name)]
 
   # Choose disturbance events by priority
+  distMeta <- unique(sim$disturbanceMeta[, .SD, .SDcols = intersect(
+    c("eventID", "disturbance_type_id", "priority"), names(sim$disturbanceMeta))])
   distEvents <- data.table::merge.data.table(distEvents, distMeta, by = "eventID", all.x = TRUE)
 
   if (any(duplicated(distEvents$pixelIndex))){
