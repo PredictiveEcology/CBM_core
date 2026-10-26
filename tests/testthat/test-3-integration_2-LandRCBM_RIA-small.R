@@ -15,7 +15,7 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
 
     modules = c(
       paste0("PredictiveEcology/Biomass_core@", Sys.getenv("BRANCH_NAME", "development")),
-      "PredictiveEcology/LandRCBM_split3pools@main",
+      "PredictiveEcology/LandRCBM_split3pools@CBM4",
       "CBM_core"
     ),
 
@@ -30,7 +30,7 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
       testdata    = spadesTestPaths$testdata
     ),
 
-    require = c("terra", "reproducible"),
+    require = c("sf", "terra", "qs2", "data.table"),
 
     # Prepare input objects
     masterRaster          = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "pixelGroupMap.tif") |> terra::rast(),
@@ -48,19 +48,13 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
     speciesEcoregion      = file.path(paths$testdata, "LandRCBM-RIA-small/input", "speciesEcoregion.qs2") |> qs2::qs_read() |> data.table::as.data.table(),
     yieldTablesCumulative = file.path(paths$testdata, "LandRCBM-RIA-small/input", "yieldTablesCumulative.qs2") |> qs2::qs_read() |> data.table::as.data.table(),
     yieldTablesId         = file.path(paths$testdata, "LandRCBM-RIA-small/input", "yieldTablesId.qs2") |> qs2::qs_read() |> data.table::as.data.table(),
-    sppEquiv = {
-      speciesInStudy <- LandR::speciesInStudyArea(studyArea, dPath = paths$inputPath)
-      species <- LandR::equivalentName(speciesInStudy$speciesList, df = LandR::sppEquivalencies_CA, "LandR")
-      sppEquiv <- LandR::sppEquivalencies_CA[LandR %in% species]
-      sppEquiv <- sppEquiv[KNN != "" & LANDIS_traits != ""]
-    },
+    sppEquiv              = file.path(paths$testdata, "LandRCBM-RIA-small/input", "sppEquiv.qs2") |> qs2::qs_read() |> data.table::as.data.table(),
 
     # Parameters
     params = list(
       .globals = list(
         .plots = NA,
-        dataYear = 2001, #will get kNN 2011 data, and NTEMS 2011 landcover
-        sppEquivCol = 'LandR'
+        sppEquivCol = "LandR"
       ),
       CBM_core = list(
         .useCacheCBM4 = FALSE,
