@@ -243,9 +243,9 @@ Init <- function(sim){
 
   # Set virtual environment
   if (Sys.getenv("VIRTUAL_ENV") == "" ||
-      compareVersion(
-        tryCatch(reticulate::import("importlib.metadata")$version("cbm4"), error = function(e) -1),
-        "3.3.0") == -1){
+      tryCatch(
+        compareVersion(reticulate::import("importlib.metadata")$version("cbm4"), "3.3.0"),
+        error = function(e) -1) == -1){
 
     message("Setting up CBM4 Python virtual environment: ", P(sim)$.virtualenv)
     CBM4r::cbm4_virtualenv_create(
