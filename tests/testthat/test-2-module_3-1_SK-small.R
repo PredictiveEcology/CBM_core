@@ -75,7 +75,7 @@ test_that("Module: SK-small", {
     expect_equal(outTables$gcMeta,       refTables$gcMeta)
     expect_equal(outTables$gcIncrements, refTables$gcIncrements)
     if (disturbances){
-      expect_equal(outTables$disturbanceMeta[, -c("disturbance_type_id")], refTables$disturbanceMeta)
+      expect_equal(outTables$disturbanceMeta,   refTables$disturbanceMeta)
       expect_equal(outTables$disturbanceEvents, refTables$disturbanceEvents)
     }
 

@@ -335,20 +335,21 @@ annual_prepDisturbances <- function(sim){
   if (!is.data.table(sim$disturbanceMeta)){
     sim$disturbanceMeta <- data.table::as.data.table(sim$disturbanceMeta)
   }
+  distMeta <- unique(sim$disturbanceMeta[, .SD, .SDcols = intersect(
+    c("eventID", "name", "disturbance_type_id", "priority"), names(sim$disturbanceMeta))])
 
   # Set disturbance type IDs
-  if (!"disturbance_type_id" %in% names(sim$disturbanceMeta)){
-    if (!"name" %in% names(sim$disturbanceMeta)) stop(
+  if (!"disturbance_type_id" %in% names(distMeta)){
+    if (!"name" %in% names(distMeta)) stop(
       "disturbanceMeta requires column 'name' or 'disturbance_type_id'")
-    sim$disturbanceMeta[, disturbance_type_id := NA_integer_]
+    distMeta[, disturbance_type_id := NA_integer_]
   }
-  sim$disturbanceMeta[is.na(disturbance_type_id), disturbance_type_id := disturbanceMatch(name)]
+  distMeta[is.na(disturbance_type_id), disturbance_type_id := disturbanceMatch(name)]
+  if ("name" %in% names(distMeta)) distMeta[, name := NULL]
 
-  # Choose disturbance events by priority
-  distMeta <- unique(sim$disturbanceMeta[, .SD, .SDcols = intersect(
-    c("eventID", "disturbance_type_id", "priority"), names(sim$disturbanceMeta))])
   distEvents <- data.table::merge.data.table(distEvents, distMeta, by = "eventID", all.x = TRUE)
 
+  # Choose disturbance events by priority
   if (any(duplicated(distEvents$pixelIndex))){
 
     if ("priority" %in% names(distEvents)){
