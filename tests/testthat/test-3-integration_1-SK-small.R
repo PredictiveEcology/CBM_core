@@ -5,13 +5,13 @@ test_that("Multi module: SK-small 1985-1986", {
 
   ## Run simInit and spades ----
 
+  skip_if(Sys.getenv("BRANCH_NAME") != "main")
+
   # Set up project
-  projectName <- "integration_SK-small_1985-1986"
-  times       <- list(start = 1985, end = 1986)
-
-  simInitInput <- SpaDES.project::setupProject(
-
-    modules = c(
+  simInitInput <- setupProjectTest(
+    projectName = "integration_SK-small_1985-1986",
+    times       = list(start = 1985, end = 1986),
+    modules     = c(
       paste0("PredictiveEcology/CBM_defaults@",    Sys.getenv("BRANCH_NAME", "development")),
       paste0("PredictiveEcology/CBM_dataPrep_SK@", Sys.getenv("BRANCH_NAME", "development")),
       paste0("PredictiveEcology/CBM_dataPrep@",    Sys.getenv("BRANCH_NAME", "development")),
@@ -19,19 +19,7 @@ test_that("Multi module: SK-small 1985-1986", {
       "CBM_core"
     ),
 
-    times   = times,
-    paths   = list(
-      projectPath = spadesTestPaths$projectPath,
-      modulePath  = spadesTestPaths$temp$modules,
-      packagePath = spadesTestPaths$packagePath,
-      inputPath   = spadesTestPaths$inputPath,
-      cachePath   = spadesTestPaths$cachePath,
-      outputPath  = file.path(spadesTestPaths$temp$outputs, projectName)
-    ),
-
     params = list(.globals = list(.plots = NA)),
-
-    require = "terra",
 
     masterRaster = terra::rast(
       ext  = c(xmin = -687696, xmax = -681036, ymin = 711955, ymax = 716183),

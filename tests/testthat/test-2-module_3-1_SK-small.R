@@ -8,22 +8,9 @@ test_that("Module: SK-small", {
     ## Run simInit and spades ----
 
     # Set up project
-    projectName <- "module_SK-small"
-    times       <- list(start = 1998, end = 2000)
-
-    simInitInput <- SpaDES.project::setupProject(
-
-      modules = "CBM_core",
-      times   = times,
-      paths   = list(
-        projectPath = spadesTestPaths$projectPath,
-        modulePath  = spadesTestPaths$modulePath,
-        packagePath = spadesTestPaths$packagePath,
-        inputPath   = spadesTestPaths$inputPath,
-        cachePath   = spadesTestPaths$cachePath,
-        outputPath  = file.path(spadesTestPaths$temp$outputs, projectName),
-        testdata    = spadesTestPaths$testdata
-      ),
+    simInitInput <- setupProjectTest(
+      projectName = "module_SK-small",
+      times       = list(start = 1998, end = 2000),
 
       params = list(CBM_core = list(.saveSpinup = TRUE, .saveAll = TRUE)),
 
@@ -33,18 +20,18 @@ test_that("Module: SK-small", {
         res  = 30,
         vals = 1L
       ),
-      standDT      = file.path(paths$testdata, "SK-small/input", "standDT.qs2")      |> qs2::qs_read() |> data.table::as.data.table(),
-      cohortDT     = file.path(paths$testdata, "SK-small/input", "cohortDT.qs2")     |> qs2::qs_read() |> data.table::as.data.table(),
-      gcMeta       = file.path(paths$testdata, "SK-small/input", "gcMeta.qs2")       |> qs2::qs_read() |> data.table::as.data.table(),
-      gcIncrements = file.path(paths$testdata, "SK-small/input", "gcIncrements.qs2") |> qs2::qs_read() |> data.table::as.data.table()
+      standDT      = file.path(test_path("testdata"), "SK-small/input", "standDT.qs2")      |> qs2::qs_read() |> data.table::as.data.table(),
+      cohortDT     = file.path(test_path("testdata"), "SK-small/input", "cohortDT.qs2")     |> qs2::qs_read() |> data.table::as.data.table(),
+      gcMeta       = file.path(test_path("testdata"), "SK-small/input", "gcMeta.qs2")       |> qs2::qs_read() |> data.table::as.data.table(),
+      gcIncrements = file.path(test_path("testdata"), "SK-small/input", "gcIncrements.qs2") |> qs2::qs_read() |> data.table::as.data.table()
     )
 
     ## In year 2000 there are no disturbances
     ## In year 1998 pixels 1324-1327 have both a wildfire and "Generic 20% mortality" event;
     ## wildfire takes priority. `disturbanceEvents[pixelIndex %in% 1324:1327 & year == 1998]`
     if (disturbances){
-      simInitInput$disturbanceMeta   <- file.path(spadesTestPaths$testdata, "SK-small/input", "disturbanceMeta.qs2")   |> qs2::qs_read() |> data.table::as.data.table()
-      simInitInput$disturbanceEvents <- file.path(spadesTestPaths$testdata, "SK-small/input", "disturbanceEvents.qs2") |> qs2::qs_read() |> data.table::as.data.table()
+      simInitInput$disturbanceMeta   <- file.path(test_path("testdata"), "SK-small/input", "disturbanceMeta.qs2")   |> qs2::qs_read() |> data.table::as.data.table()
+      simInitInput$disturbanceEvents <- file.path(test_path("testdata"), "SK-small/input", "disturbanceEvents.qs2") |> qs2::qs_read() |> data.table::as.data.table()
     }
 
     # Run simInit
@@ -60,12 +47,12 @@ test_that("Module: SK-small", {
 
     ## Check that input tables are not altered by module.
     refTables <- list(
-      standDT           = qs2::qs_read(file.path(spadesTestPaths$testdata, "SK-small/input", "standDT.qs2")),
-      cohortDT          = qs2::qs_read(file.path(spadesTestPaths$testdata, "SK-small/input", "cohortDT.qs2")),
-      gcMeta            = qs2::qs_read(file.path(spadesTestPaths$testdata, "SK-small/input", "gcMeta.qs2")),
-      gcIncrements      = qs2::qs_read(file.path(spadesTestPaths$testdata, "SK-small/input", "gcIncrements.qs2")),
-      disturbanceMeta   = qs2::qs_read(file.path(spadesTestPaths$testdata, "SK-small/input", "disturbanceMeta.qs2")),
-      disturbanceEvents = qs2::qs_read(file.path(spadesTestPaths$testdata, "SK-small/input", "disturbanceEvents.qs2"))
+      standDT           = qs2::qs_read(file.path(test_path("testdata"), "SK-small/input", "standDT.qs2")),
+      cohortDT          = qs2::qs_read(file.path(test_path("testdata"), "SK-small/input", "cohortDT.qs2")),
+      gcMeta            = qs2::qs_read(file.path(test_path("testdata"), "SK-small/input", "gcMeta.qs2")),
+      gcIncrements      = qs2::qs_read(file.path(test_path("testdata"), "SK-small/input", "gcIncrements.qs2")),
+      disturbanceMeta   = qs2::qs_read(file.path(test_path("testdata"), "SK-small/input", "disturbanceMeta.qs2")),
+      disturbanceEvents = qs2::qs_read(file.path(test_path("testdata"), "SK-small/input", "disturbanceEvents.qs2"))
     )
     outTables <- lapply(setNames(names(refTables), names(refTables)), function(table) simTest[[table]]) |>
       lapply(data.table::copy) |> lapply(data.table::setindex, NULL)
@@ -86,7 +73,7 @@ test_that("Module: SK-small", {
     expect_true(!is.null(simTest$emissionsProducts))
     expect_equal(
       data.table::as.data.table(simTest$emissionsProducts),
-      data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/valid", paste0("dist", disturbances), "emissionsProducts.csv"))[
+      data.table::fread(file.path(test_path("testdata"), "SK-small/valid", paste0("dist", disturbances), "emissionsProducts.csv"))[
         , .SD, .SDcols = colnames(simTest$emissionsProducts)]
     )
 
@@ -120,9 +107,9 @@ test_that("Module: SK-small", {
     if (disturbances){
 
       outDataDir   <- file.path(simTest$spadesCBMdb, "data")
-      validDataDir <- file.path(spadesTestPaths$testdata, "SK-small/valid", paste0("dist", disturbances), "cbm_vars")
+      validDataDir <- file.path(test_path("testdata"), "SK-small/valid", paste0("dist", disturbances), "cbm_vars")
 
-      for (year in times$start:times$end){
+      for (year in simInitInput$times$start:simInitInput$times$end){
         expect_equal(
           qs2::qd_read(file.path(outDataDir,   paste0(year, "_key.qs2")))[, .(cohortID, pixelIndex, row_idx)],
           qs2::qd_read(file.path(validDataDir, paste0(year, "_key.qs2")))[, .(cohortID, pixelIndex, row_idx)]
@@ -138,7 +125,7 @@ test_that("Module: SK-small", {
     }
 
     # Check that plots are created
-    expect_equal(list.files(file.path(outputPath(simTest), "CBM_core_figures")), c(
+    expect_equal(list.files(file.path(simInitInput$paths$outputPath, "CBM_core_figures")), c(
       "emissionsProducts.png",
       "NPP-1998.png", "NPP-2000.png",
       "poolProportions.png",

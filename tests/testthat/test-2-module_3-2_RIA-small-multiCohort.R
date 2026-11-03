@@ -6,38 +6,25 @@ test_that("Module: RIA-small", {
   for (disturbances in c(FALSE, TRUE)){
 
     # Set up project
-    projectName <- paste0("module_RIA-small_dist", disturbances)
-    times       <- list(start = 2000, end = 2001)
-
-    simInitInput <- SpaDES.project::setupProject(
-
-      modules = "CBM_core",
-      times   = times,
-      paths   = list(
-        projectPath = spadesTestPaths$projectPath,
-        modulePath  = spadesTestPaths$modulePath,
-        packagePath = spadesTestPaths$packagePath,
-        inputPath   = spadesTestPaths$inputPath,
-        cachePath   = spadesTestPaths$cachePath,
-        outputPath  = file.path(spadesTestPaths$temp$outputs, projectName),
-        testdata    = spadesTestPaths$testdata
-      ),
+    simInitInput <- setupProjectTest(
+      projectName = paste0("module_RIA-small_dist", disturbances),
+      times       = list(start = 2000, end = 2001),
 
       params = list(CBM_core = list(.plots = NA)),
 
       standDT      = {
-        standDT <- file.path(paths$testdata, "RIA-small/input", "standDT.qs2") |> qs2::qs_read() |> data.table::as.data.table()
+        standDT <- file.path(test_path("testdata"), "RIA-small/input", "standDT.qs2") |> qs2::qs_read() |> data.table::as.data.table()
         standDT[, admin_name := "British Columbia"]
         standDT[, area := 250 * 250]
         standDT
       },
-      cohortDT     = file.path(paths$testdata, "RIA-small/input", "cohortDT.qs2") |> qs2::qs_read() |> data.table::as.data.table(),
+      cohortDT     = file.path(test_path("testdata"), "RIA-small/input", "cohortDT.qs2") |> qs2::qs_read() |> data.table::as.data.table(),
       gcMeta       = {
-        gcMeta <- file.path(paths$testdata, "RIA-small/input", "gcMeta.qs2") |> qs2::qs_read() |> data.table::as.data.table()
+        gcMeta <- file.path(test_path("testdata"), "RIA-small/input", "gcMeta.qs2") |> qs2::qs_read() |> data.table::as.data.table()
         gcMeta <- cbind(gcMeta, unique(standDT[, .(admin_name, eco_id)]))
         gcMeta
       },
-      gcIncrements = file.path(paths$testdata, "RIA-small/input", "gcIncrements.qs2") |> qs2::qs_read() |> data.table::as.data.table()
+      gcIncrements = file.path(test_path("testdata"), "RIA-small/input", "gcIncrements.qs2") |> qs2::qs_read() |> data.table::as.data.table()
     )
 
     if (disturbances){
@@ -55,7 +42,7 @@ test_that("Module: RIA-small", {
 
     # Check results
     emissionsProductsValid <- data.table::fread(
-      file.path(spadesTestPaths$testdata, "RIA-small", "valid", paste0("emissionsProducts_dist", disturbances, ".csv")))
+      file.path(test_path("testdata"), "RIA-small", "valid", paste0("emissionsProducts_dist", disturbances, ".csv")))
     expect_equal(simTest$emissionsProducts, emissionsProductsValid,
                  scale = 1, tolerance = 0.001, check.attributes = FALSE)
   }
