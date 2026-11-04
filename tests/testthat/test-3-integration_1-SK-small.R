@@ -5,7 +5,7 @@ test_that("Multi module: SK-small 1985-1986", {
 
   ## Run simInit and spades ----
 
-  skip_if(Sys.getenv("BRANCH_NAME") != "main")
+  skip_if(isTRUE(Sys.getenv("CI")) & Sys.getenv("BRANCH_NAME") != "main")
 
   # Set up project
   simInitInput <- setupProjectTest(
