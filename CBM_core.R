@@ -455,9 +455,6 @@ spinup <- function(sim) {
 
 step <- function(sim) {
 
-  # Set option reproducible.useCache
-  withr::local_options(list(reproducible.useCache = P(sim)$.useCacheCBM4))
-
   # Rename table columns for duration of module event
   cbm4_table_setnames(sim)
   on.exit(cbm4_table_setnames_revert(sim))
@@ -557,13 +554,7 @@ step <- function(sim) {
       cbm_defaults_db = sim$cbm_defaults_db,
       grid_meta       = sim$standDT,
       dist_events     = distEvents
-    ) |>
-      reproducible::Cache(
-        omitArgs    = c("cbm4_data", "cbm_defaults_db"),
-        .cacheExtra = digestFile(sim$cbm_defaults_db),
-        verbose     = getOption("reproducible.useCache", TRUE)
-      ) |>
-      CacheCBM4dataset(sim$CBM4data, "disturbance")
+    )
     rm(distEvents)
   }
 
@@ -574,13 +565,7 @@ step <- function(sim) {
     cbm_defaults_db = sim$cbm_defaults_db,
     gc_meta         = sim$gcMeta,
     gc_incr         = sim$gcIncrements
-  ) |>
-    reproducible::Cache(
-      omitArgs    = c("cbm4_data", "cbm_defaults_db"),
-      .cacheExtra = digestFile(sim$cbm_defaults_db),
-      verbose     = getOption("reproducible.useCache", TRUE)
-    ) |>
-    CacheCBM4dataset(sim$CBM4data, "step_parameters")
+  )
 
   message("Running CBM4 annual step for year ", time(sim))
   if (P(sim)$cohort_fixed){
