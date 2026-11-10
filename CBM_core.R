@@ -389,8 +389,9 @@ spinup <- function(sim) {
     message("Running CBM4 spinup")
     cbm4_data_digest <- if (P(sim)$.useCacheCBM4) digestDir(sim$CBM4data)
 
-    outFile <- tempfile(fileext = ".out")
-    Rprof(outFile, memory.profiling = TRUE)
+    # outFile <- tempfile(fileext = ".out")
+    # Rprof(outFile, memory.profiling = TRUE)
+    ti <- Sys.time()
 
     CBM4r::cbm4_spinup(
       cbm4_data       = sim$CBM4data,
@@ -404,8 +405,10 @@ spinup <- function(sim) {
     #   ) |> CacheCBM4dataset(sim$CBM4data, "simulation")
     )
 
-    Rprof(NULL)
-    writeRprof(sim, P(sim)$.chunk_size, process = "spatial_cbm4_app$spinup_all", timestep = 0, outFile = outFile)
+    # Rprof(NULL)
+    # writeRprof(sim, P(sim)$.chunk_size, process = "spatial_cbm4_app$spinup_all", timestep = 0, outFile = outFile)
+    tf <- Sys.time()
+    writeTimes(sim, process = "spinup", timestep = 0, start = ti, end = tf)
 
     # Alter simulation data to set true ages & regeneration delay
     simulation_data <- arrow::open_dataset(file.path(sim$CBM4data, "simulation/simulation"))
@@ -568,8 +571,9 @@ step <- function(sim) {
 
   message("Running CBM4 annual step for year ", time(sim))
 
-  outFile <- tempfile(fileext = ".out")
-  Rprof(outFile, memory.profiling = TRUE)
+  # outFile <- tempfile(fileext = ".out")
+  # Rprof(outFile, memory.profiling = TRUE)
+  ti <- Sys.time()
 
   if (P(sim)$cohort_fixed){
     CBM4r::cbm4_step(
@@ -593,8 +597,11 @@ step <- function(sim) {
     )
   }
 
-  Rprof(NULL)
-  writeRprof(sim, P(sim)$.chunk_size, process = "spatial_cbm4_app$step_all", timestep = timestep, outFile = outFile)
+  # Rprof(NULL)
+  # writeRprof(sim, P(sim)$.chunk_size, process = "spatial_cbm4_app$step_all", timestep = timestep, outFile = outFile)
+
+  tf <- Sys.time()
+  writeTimes(sim, process = "step", timestep = timestep, start = ti, end = tf)
 
   # Return simList
   return(invisible(sim))
