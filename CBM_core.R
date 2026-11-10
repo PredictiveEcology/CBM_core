@@ -117,12 +117,13 @@ defineModule(sim, list(
         "`cohortClassifiers` columns can be present to associate events with certain types of cohorts."
       ),
       columns = c(
-        eventID               = "Event type ID.",
-        disturbance_type_name = "Disturbance type name",
-        disturbance_type_id   = "Optional. CBM disturbance type ID. Can use this or 'disturbance_type_name'.",
-        disturbance_order     = "Optional. Event order if multiple events occur in one pixel.",
-        priority              = "Optional. Event priority if multiple events are assigned to one pixel and only one should occur.",
-        description           = "Optional. Disturbance description"
+        eventID             = "Event type ID.",
+        name                = "Disturbance name or description used to set 'disturbance_type' and 'disturbance_type_id'.",
+        disturbance_type    = "Optional. CBM disturbance type name.",
+        disturbance_type_id = "Optional. CBM disturbance type ID.",
+        disturbance_order   = "Optional. Event order if multiple events occur in one pixel.",
+        priority            = "Optional. Event priority if multiple events are assigned to one pixel and only one should occur.",
+        description         = "Optional. Disturbance description."
       )),
     expectsInput(
       objectName = "cbm_defaults_db", objectClass = "character",
@@ -242,9 +243,9 @@ Init <- function(sim){
 
   # Set virtual environment
   if (Sys.getenv("VIRTUAL_ENV") == "" ||
-      compareVersion(
-        tryCatch(reticulate::import("importlib.metadata")$version("cbm4"), error = function(e) -1),
-        "3.3.0") == -1){
+      tryCatch(
+        compareVersion(reticulate::import("importlib.metadata")$version("cbm4"), "3.3.0"),
+        error = function(e) -1) == -1){
 
     message("Setting up CBM4 Python virtual environment: ", P(sim)$.virtualenv)
     CBM4r::cbm4_virtualenv_create(
@@ -465,9 +466,6 @@ spinup <- function(sim) {
 
 step <- function(sim) {
 
-  # Set option reproducible.useCache
-  withr::local_options(list(reproducible.useCache = P(sim)$.useCacheCBM4))
-
   # Rename table columns for duration of module event
   cbm4_table_setnames(sim)
   on.exit(cbm4_table_setnames_revert(sim))
@@ -493,6 +491,29 @@ step <- function(sim) {
 
     if (!is.null(sim$disturbanceMeta)){
       distEvents <- merge(distEvents, sim$disturbanceMeta, by = "disturbance_id")
+    }
+
+    # Set disturbance_type_id
+    if (!any(c("disturbance_type", "disturbance_type_id") %in% names(distEvents))){
+
+      if (!"name" %in% names(distEvents)) stop(
+        "disturbance events require one of column 'name', 'disturbance_type', or 'disturbance_type_id'")
+
+      distMeta <- unique(distEvents[, .(name)])
+      distMeta <- cbind(distMeta, do.call(rbind, lapply(distMeta$name, function(name){
+        distMatch <- CBMutils::distMatch(
+          name,
+          cbm_defaults_db = sim$cbm_defaults_db,
+          ask = interactive() & !identical(Sys.getenv("TESTTHAT"), "true")
+        ) |> reproducible::Cache(
+          omitArgs = c("cbm_defaults_db", "ask"),
+          .cacheExtra = digestFile(sim$cbm_defaults_db)
+        )
+        distMatch[, .(disturbance_type = name, disturbance_type_id)]
+      })))
+
+      distEvents <- merge(distEvents, distMeta, by = "name")
+      distEvents[, name := NULL]
     }
 
     # Set disturbance requirements for stacked cohort mode
@@ -544,13 +565,7 @@ step <- function(sim) {
       cbm_defaults_db = sim$cbm_defaults_db,
       grid_meta       = sim$standDT,
       dist_events     = distEvents
-    ) |>
-      reproducible::Cache(
-        omitArgs    = c("cbm4_data", "cbm_defaults_db"),
-        .cacheExtra = digestFile(sim$cbm_defaults_db),
-        verbose     = getOption("reproducible.useCache", TRUE)
-      ) |>
-      CacheCBM4dataset(sim$CBM4data, "disturbance")
+    )
     rm(distEvents)
   }
 
@@ -561,13 +576,7 @@ step <- function(sim) {
     cbm_defaults_db = sim$cbm_defaults_db,
     gc_meta         = sim$gcMeta,
     gc_incr         = sim$gcIncrements
-  ) |>
-    reproducible::Cache(
-      omitArgs    = c("cbm4_data", "cbm_defaults_db"),
-      .cacheExtra = digestFile(sim$cbm_defaults_db),
-      verbose     = getOption("reproducible.useCache", TRUE)
-    ) |>
-    CacheCBM4dataset(sim$CBM4data, "step_parameters")
+  )
 
   message("Running CBM4 annual step for year ", time(sim))
 
