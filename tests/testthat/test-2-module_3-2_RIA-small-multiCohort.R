@@ -3,12 +3,14 @@ if (!testthat::is_testing()) source(testthat::test_path("setup.R"))
 
 test_that("Module: RIA-small", {
 
-  for (cohort_fixed in c(TRUE, FALSE)) for (disturbances in c(FALSE, TRUE)){
+  for (cohort_fixed in c(TRUE, FALSE)) for (disturbances in c(FALSE, TRUE)) for (chunk_size in c(NA, 100)){
 
     ## Run simInit and spades ----
 
     # Set up project
-    projectName <- paste0("module_RIA-small_dist", disturbances, "_fixedCohorts", cohort_fixed)
+    projectName <- paste0("module_RIA-small_dist",
+                          disturbances, "_fixedCohorts",
+                          cohort_fixed, "_chunkSize", chunk_size)
     times       <- list(start = 2000, end = 2001)
 
     simInitInput <- SpaDES.project::setupProject(
@@ -25,7 +27,11 @@ test_that("Module: RIA-small", {
         testdata    = spadesTestPaths$testdata
       ),
 
-      params = list(CBM_core = list(.plots = NA, cohort_fixed = cohort_fixed)),
+      params = list(CBM_core = list(
+        plots = NA,
+        cohort_fixed = cohort_fixed,
+        .chunk_size  = chunk_size
+      )),
 
       masterRaster = terra::rast(
         crs  = "EPSG:3005",

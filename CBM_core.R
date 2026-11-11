@@ -15,7 +15,7 @@ defineModule(sim, list(
   documentation = list("README.txt", "CBM_core.Rmd"),
   reqdPkgs = list(
     "arrow", "cli", "data.table", "dplyr", "zip",
-    "PredictiveEcology/CBM4r@development (>=1.1.0.9004)", "gert",
+    "PredictiveEcology/CBM4r@development (>=1.1.0.9007)", "gert",
     "PredictiveEcology/CBMutils@development (>=2.5.7.9001)"
   ),
   parameters = rbind(
@@ -303,17 +303,13 @@ setStands <- function(sim){
     grid_meta       = sim$standDT,
     grid_rast       = sim$masterRaster,
     chunk_size      = P(sim)$.chunk_size,
-    chunk_meta      = if (!is.na(P(sim)$.chunk_size)){
-      if ("cohortID" %in% names(sim$cohortDT)){
-        sim$cohortDT[, .SD, .SDcols = setdiff(names(sim$cohortDT), "cohortID")]
-      }else sim$cohortDT
-    },
     def_historic_disturbance_type  = P(sim)$def_historic_disturbance_type,
     def_last_pass_disturbance_type = P(sim)$def_last_pass_disturbance_type
   )
 
   if (!is.na(P(sim)$.chunk_size)) message(cli::col_blue(
-    "Partitions: ", sum(!is.na(unique(sim$standDT$chunk_index))), " chunk(s) of ", P(sim)$.chunk_size))
+    "Partitions: ", length(unique(sim$standDT$chunk_index)), " chunk(s) of ",
+    P(sim)$.chunk_size, "x", P(sim)$.chunk_size))
 
   if (P(sim)$.saveAll){
     message("Writing stand metadata to CBM4 data")
@@ -363,6 +359,7 @@ spinup <- function(sim) {
       cbm_defaults_db = sim$cbm_defaults_db,
       grid_meta       = sim$standDT,
       grid_rast       = sim$masterRaster,
+      chunk_size      = P(sim)$.chunk_size,
       cohorts         = sim$cohortDT,
       classifiers     = cohortClassifiers(sim),
       col_ignore      = "cohortID",
@@ -440,6 +437,7 @@ spinup <- function(sim) {
       cbm_defaults_db = sim$cbm_defaults_db,
       grid_rast       = sim$masterRaster,
       grid_meta       = sim$standDT,
+      chunk_size      = P(sim)$.chunk_size,
       classifiers     = cohortClassifiers(sim)
     ) |>
       reproducible::Cache(
