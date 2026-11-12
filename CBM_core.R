@@ -15,7 +15,7 @@ defineModule(sim, list(
   documentation = list("README.txt", "CBM_core.Rmd"),
   reqdPkgs = list(
     "arrow", "cli", "data.table", "dplyr", "zip",
-    "PredictiveEcology/CBM4r@development (>=1.1.0.9007)", "gert",
+    "PredictiveEcology/CBM4r@development (>=1.1.0.9008)", "gert",
     "PredictiveEcology/CBMutils@development (>=2.5.7.9001)"
   ),
   parameters = rbind(

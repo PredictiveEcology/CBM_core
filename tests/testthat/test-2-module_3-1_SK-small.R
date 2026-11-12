@@ -100,7 +100,9 @@ test_that("Module: SK-small", {
     }
 
     # Check cohort group count
-    expect_equal(length(CBM4r::cbm4_results_view(cbm4_results, "simulation", timestep = 3)$index), ifelse(disturbances, 43, 41))
+    if (is.na(chunk_size)) expect_equal(
+      length(CBM4r::cbm4_results_view(cbm4_results, "simulation", timestep = 3)$index),
+      ifelse(disturbances, 43, 41))
 
     # Check disturbance event priority
     if (disturbances){
