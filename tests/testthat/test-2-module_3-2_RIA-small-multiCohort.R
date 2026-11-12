@@ -3,7 +3,7 @@ if (!testthat::is_testing()) source(testthat::test_path("setup.R"))
 
 test_that("Module: RIA-small", {
 
-  for (cohort_fixed in c(TRUE, FALSE)) for (disturbances in c(FALSE, TRUE)) for (chunk_size in c(NA, 100)){
+  for (cohort_fixed in c(TRUE, FALSE)) for (disturbances in c(FALSE, TRUE)) for (chunk_size in c(NA, 4)){
 
     ## Run simInit and spades ----
 
