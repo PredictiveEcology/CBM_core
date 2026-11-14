@@ -25,7 +25,7 @@ test_that("Module: RIA-small", {
 
       params = list(CBM_core = list(.plots = NA)),
 
-      masterRaster = terra::rast(
+      rasterToMatch = terra::rast(
         crs  = "EPSG:3005",
         ext  = c(xmin = 1018000, xmax = 1020000, ymin = 1200000, ymax = 1202000),
         res  = 250,

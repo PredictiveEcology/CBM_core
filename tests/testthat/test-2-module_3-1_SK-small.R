@@ -27,7 +27,7 @@ test_that("Module: SK-small", {
 
       params = list(CBM_core = list(.saveSpinup = TRUE, .saveAll = TRUE)),
 
-      masterRaster = terra::rast(
+      rasterToMatch = terra::rast(
         crs  = "EPSG:3979",
         ext  = c(xmin = -687696, xmax = -681036, ymin = 711955, ymax = 716183),
         res  = 30,

@@ -33,7 +33,7 @@ test_that("Multi module: SK-small 1985-1986", {
 
     require = "terra",
 
-    masterRaster = terra::rast(
+    rasterToMatch = terra::rast(
       ext  = c(xmin = -687696, xmax = -681036, ymin = 711955, ymax = 716183),
       res  = 30,
       vals = 0L,

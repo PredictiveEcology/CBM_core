@@ -116,7 +116,7 @@ defineModule(sim, list(
         description = "Optional. Disturbance description",
         priority    = "Optional. Priority of event assignment to a pixel if more than one event occurs."
       )),
-    expectsInput(objectName = "masterRaster", objectClass = "raster",
+    expectsInput(objectName = "rasterToMatch", objectClass = "raster",
                  desc = "Optional. Raster template for mapping results"),
     expectsInput(objectName = "cbm_defaults_db", objectClass = "character",
                  desc = "Optional. Path to CBM defaults SQLite database"),
@@ -561,7 +561,7 @@ plot <- function(sim){
   rm(bPlot)
   gc(full = FALSE, verbose = FALSE)
 
-  if (!is.null(sim$masterRaster)) for (year in range(saveYears)){
+  if (!is.null(sim$rasterToMatch)) for (year in range(saveYears)){
 
     nPlot <- CBMutils::simMapNPP(
       sim, year = year, useCache = FALSE)
@@ -573,7 +573,7 @@ plot <- function(sim){
     gc(full = FALSE, verbose = FALSE)
   }
 
-  if (!is.null(sim$masterRaster)) for (year in range(saveYears)){
+  if (!is.null(sim$rasterToMatch)) for (year in range(saveYears)){
 
     sPlot <- CBMutils::simMapTotalCarbon(
       sim, year = year, useCache = FALSE)
