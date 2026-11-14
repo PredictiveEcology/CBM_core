@@ -25,6 +25,12 @@ test_that("Module: RIA-small", {
 
       params = list(CBM_core = list(.plots = NA)),
 
+      masterRaster = terra::rast(
+        crs  = "EPSG:3005",
+        ext  = c(xmin = 1018000, xmax = 1020000, ymin = 1200000, ymax = 1202000),
+        res  = 250,
+        vals = 1L
+      ),
       standDT      = {
         standDT <- file.path(paths$testdata, "RIA-small/input", "standDT.qs2") |> qs2::qs_read() |> data.table::as.data.table()
         standDT[, admin_name := "British Columbia"]
