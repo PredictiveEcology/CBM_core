@@ -61,7 +61,7 @@ test_that("Module: RIA-small", {
 
     # Check results
     emissionsProductsValid <- data.table::fread(
-      file.path(spadesTestPaths$testdata, "RIA-small", "valid", paste0("emissionsProducts_dist", disturbances, ".csv")))
+      file.path(spadesTestPaths$testdata, "RIA-small/valid", paste0("dist", disturbances), "emissionsProducts.csv"))
     expect_equal(simTest$emissionsProducts, emissionsProductsValid,
                  scale = 1, tolerance = 0.001, check.attributes = FALSE)
   }
