@@ -2,7 +2,6 @@
 source(testthat::test_path("setup.R"))
 
 testData <- list(
-  masterRaster          = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "rasterToMatch.tif") |> terra::rast(),
   pixelGroupMap         = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "pixelGroupMap.tif") |> terra::rast(),
   standDT               = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "standDT.qs2") |> qs2::qs_read() |> data.table::data.table(),
   cohortData            = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "cohortData.qs2") |> qs2::qs_read() |> data.table::data.table(),
