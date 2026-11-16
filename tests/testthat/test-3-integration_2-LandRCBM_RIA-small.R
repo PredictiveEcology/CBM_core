@@ -33,13 +33,12 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
     require = c("sf", "terra", "qs2", "data.table"),
 
     # Prepare input objects
-    masterRaster = terra::rast(
+    rasterToMatch = terra::rast(
       crs  = "EPSG:3005",
       ext  = c(xmin = 1018000, xmax = 1020000, ymin = 1200000, ymax = 1202000),
       res  = 250,
       vals = 1L
     ),
-    rasterToMatch         = masterRaster,
     studyArea             = file.path(paths$testdata, "LandRCBM-RIA-small/input", "studyArea.shp")     |> sf::st_read(quiet = TRUE),
     standDT               = file.path(paths$testdata, "LandRCBM-RIA-small/input", "standDT.qs2")       |> qs2::qs_read() |> data.table::as.data.table(),
     biomassMap            = file.path(paths$testdata, "LandRCBM-RIA-small/input", "biomassMap.tif")    |> terra::rast(),
