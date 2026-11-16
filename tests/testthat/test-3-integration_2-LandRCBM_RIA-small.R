@@ -30,30 +30,36 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
       testdata    = spadesTestPaths$testdata
     ),
 
-    require = c("sf", "terra", "qs2", "data.table"),
+    require = c("sf", "terra", "data.table"),
 
     # Prepare input objects
     masterRaster = terra::rast(
       crs  = "EPSG:3005",
-      ext  = c(xmin = 1018000, xmax = 1020000, ymin = 1200000, ymax = 1202000),
+      ext  = c(xmin = 1018000, xmax = 1020000, ymin = 1200750, ymax = 1202000),
       res  = 250,
       vals = 1L
     ),
+    standDT = data.table::data.table(
+      pixelIndex   = 1:terra::ncell(masterRaster),
+      admin_name   = "British Columbia",
+      admin_abbrev = "BC",
+      eco_id       = 14,
+      area         = prod(terra::res(masterRaster))
+    ),
     rasterToMatch         = masterRaster,
-    studyArea             = file.path(paths$testdata, "LandRCBM-RIA-small/input", "studyArea.shp")     |> sf::st_read(quiet = TRUE),
-    standDT               = file.path(paths$testdata, "LandRCBM-RIA-small/input", "standDT.qs2")       |> qs2::qs_read() |> data.table::as.data.table(),
+    studyArea             = sf::st_sf(sf::st_as_sfc(sf::st_bbox(rasterToMatch))),
     biomassMap            = file.path(paths$testdata, "LandRCBM-RIA-small/input", "biomassMap.tif")    |> terra::rast(),
-    cohortData            = file.path(paths$testdata, "LandRCBM-RIA-small/input", "cohortData.qs2")    |> qs2::qs_read() |> data.table::as.data.table(),
+    cohortData            = file.path(paths$testdata, "LandRCBM-RIA-small/input", "cohortData.rds")    |> readRDS(),
     pixelGroupMap         = file.path(paths$testdata, "LandRCBM-RIA-small/input", "pixelGroupMap.tif") |> terra::rast(),
     speciesLayers         = file.path(paths$testdata, "LandRCBM-RIA-small/input", "speciesLayers.tif") |> terra::rast(),
     ecoregionMap          = file.path(paths$testdata, "LandRCBM-RIA-small/input", "ecoregionMap.tif")  |> terra::rast(),
-    minRelativeB          = file.path(paths$testdata, "LandRCBM-RIA-small/input", "minRelativeB.qs2")  |> qs2::qs_read() |> data.table::as.data.table(),
-    ecoregion             = file.path(paths$testdata, "LandRCBM-RIA-small/input", "ecoregion.qs2")     |> qs2::qs_read() |> data.table::as.data.table(),
-    species               = file.path(paths$testdata, "LandRCBM-RIA-small/input", "species.qs2")       |> qs2::qs_read() |> data.table::as.data.table(),
-    speciesEcoregion      = file.path(paths$testdata, "LandRCBM-RIA-small/input", "speciesEcoregion.qs2") |> qs2::qs_read() |> data.table::as.data.table(),
-    yieldTablesCumulative = file.path(paths$testdata, "LandRCBM-RIA-small/input", "yieldTablesCumulative.qs2") |> qs2::qs_read() |> data.table::as.data.table(),
-    yieldTablesId         = file.path(paths$testdata, "LandRCBM-RIA-small/input", "yieldTablesId.qs2") |> qs2::qs_read() |> data.table::as.data.table(),
-    sppEquiv              = file.path(paths$testdata, "LandRCBM-RIA-small/input", "sppEquiv.qs2") |> qs2::qs_read() |> data.table::as.data.table(),
+    minRelativeB          = file.path(paths$testdata, "LandRCBM-RIA-small/input", "minRelativeB.rds")  |> readRDS(),
+    ecoregion             = file.path(paths$testdata, "LandRCBM-RIA-small/input", "ecoregion.rds")     |> readRDS(),
+    species               = file.path(paths$testdata, "LandRCBM-RIA-small/input", "species.rds")       |> readRDS(),
+    speciesEcoregion      = file.path(paths$testdata, "LandRCBM-RIA-small/input", "speciesEcoregion.rds") |> readRDS(),
+    yieldTablesCumulative = file.path(paths$testdata, "LandRCBM-RIA-small/input", "yieldTablesCumulative.rds") |> readRDS(),
+    yieldTablesId         = file.path(paths$testdata, "LandRCBM-RIA-small/input", "yieldTablesId.rds") |> readRDS(),
+    sppEquiv              = file.path(paths$testdata, "LandRCBM-RIA-small/input", "sppEquiv.rds") |> readRDS(),
 
     # Parameters
     params = list(
