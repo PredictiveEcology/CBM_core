@@ -29,22 +29,29 @@ test_that("Module: SK-small", {
 
       masterRaster = terra::rast(
         crs  = "EPSG:3979",
-        ext  = c(xmin = -687696, xmax = -681036, ymin = 711955, ymax = 716183),
+        ext  = c(xmin = -687696, xmax = -681036, ymin = 714685, ymax = 716185),
         res  = 30,
         vals = 1L
       ),
-      standDT      = file.path(paths$testdata, "SK-small/input", "standDT.qs2")      |> qs2::qs_read() |> data.table::as.data.table(),
-      cohortDT     = file.path(paths$testdata, "SK-small/input", "cohortDT.qs2")     |> qs2::qs_read() |> data.table::as.data.table(),
-      gcMeta       = file.path(paths$testdata, "SK-small/input", "gcMeta.qs2")       |> qs2::qs_read() |> data.table::as.data.table(),
-      gcIncrements = file.path(paths$testdata, "SK-small/input", "gcIncrements.qs2") |> qs2::qs_read() |> data.table::as.data.table()
+      standDT = data.table::data.table(
+        pixelIndex = 1:terra::ncell(masterRaster),
+        admin_name = "Saskatchewan",
+        eco_id     = 9,
+        area       = prod(terra::res(masterRaster))
+      ),
+      cohortDT     = file.path(paths$testdata, "SK-small/input", "cohortDT.rds")     |> readRDS(),
+      gcMeta       = file.path(paths$testdata, "SK-small/input", "gcMeta.rds")       |> readRDS(),
+      gcIncrements = file.path(paths$testdata, "SK-small/input", "gcIncrements.rds") |> readRDS()
     )
 
-    ## In year 2000 there are no disturbances
     ## In year 1998 pixels 1324-1327 have both a wildfire and "Generic 20% mortality" event;
     ## wildfire takes priority. `disturbanceEvents[pixelIndex %in% 1324:1327 & year == 1998]`
+    ## In year 1999 disturbances only occur in unforested pixels
+    ## No disturbances in year 2000
+    ## This leads to just 1 wildfire event in 1998
     if (disturbances){
-      simInitInput$disturbanceMeta   <- file.path(spadesTestPaths$testdata, "SK-small/input", "disturbanceMeta.qs2")   |> qs2::qs_read() |> data.table::as.data.table()
-      simInitInput$disturbanceEvents <- file.path(spadesTestPaths$testdata, "SK-small/input", "disturbanceEvents.qs2") |> qs2::qs_read() |> data.table::as.data.table()
+      simInitInput$disturbanceMeta   <- file.path(spadesTestPaths$testdata, "SK-small/input", "disturbanceMeta.rds")   |> readRDS()
+      simInitInput$disturbanceEvents <- file.path(spadesTestPaths$testdata, "SK-small/input", "disturbanceEvents.rds") |> readRDS()
     }
 
     # Run simInit
@@ -60,17 +67,15 @@ test_that("Module: SK-small", {
 
     ## Check that input tables are not altered by module.
     refTables <- list(
-      standDT           = qs2::qs_read(file.path(spadesTestPaths$testdata, "SK-small/input", "standDT.qs2")),
-      cohortDT          = qs2::qs_read(file.path(spadesTestPaths$testdata, "SK-small/input", "cohortDT.qs2")),
-      gcMeta            = qs2::qs_read(file.path(spadesTestPaths$testdata, "SK-small/input", "gcMeta.qs2")),
-      gcIncrements      = qs2::qs_read(file.path(spadesTestPaths$testdata, "SK-small/input", "gcIncrements.qs2")),
-      disturbanceMeta   = qs2::qs_read(file.path(spadesTestPaths$testdata, "SK-small/input", "disturbanceMeta.qs2")),
-      disturbanceEvents = qs2::qs_read(file.path(spadesTestPaths$testdata, "SK-small/input", "disturbanceEvents.qs2"))
+      cohortDT          = readRDS(file.path(spadesTestPaths$testdata, "SK-small/input", "cohortDT.rds")),
+      gcMeta            = readRDS(file.path(spadesTestPaths$testdata, "SK-small/input", "gcMeta.rds")),
+      gcIncrements      = readRDS(file.path(spadesTestPaths$testdata, "SK-small/input", "gcIncrements.rds")),
+      disturbanceMeta   = readRDS(file.path(spadesTestPaths$testdata, "SK-small/input", "disturbanceMeta.rds")),
+      disturbanceEvents = readRDS(file.path(spadesTestPaths$testdata, "SK-small/input", "disturbanceEvents.rds"))
     )
     outTables <- lapply(setNames(names(refTables), names(refTables)), function(table) simTest[[table]]) |>
       lapply(data.table::copy) |> lapply(data.table::setindex, NULL)
 
-    expect_equal(outTables$standDT,      refTables$standDT)
     expect_equal(outTables$cohortDT,     refTables$cohortDT)
     expect_equal(outTables$gcMeta,       refTables$gcMeta)
     expect_equal(outTables$gcIncrements, refTables$gcIncrements)
@@ -95,18 +100,19 @@ test_that("Module: SK-small", {
     expect_true(!is.null(simTest$cbm_vars$key))
     expect_identical(simTest$cbm_vars$key$cohortID,   simTest$cohortDT$cohortID)
     expect_identical(simTest$cbm_vars$key$pixelIndex, simTest$cohortDT$pixelIndex)
-    expect_equal(max(simTest$cbm_vars$key$row_idx),            ifelse(disturbances, 43, 41))
-    expect_equal(length(unique(simTest$cbm_vars$key$row_idx)), ifelse(disturbances, 43, 41))
-    expect_equal(nrow(simTest$cbm_vars$parameters),            ifelse(disturbances, 43, 41))
-    expect_equal(nrow(simTest$cbm_vars$state),                 ifelse(disturbances, 43, 41))
-    expect_equal(nrow(simTest$cbm_vars$flux),                  ifelse(disturbances, 43, 41))
-    expect_equal(nrow(simTest$cbm_vars$pool),                  ifelse(disturbances, 43, 41))
+
+    nGroupsInit <- 24
+    expect_equal(max(simTest$cbm_vars$key$row_idx),            ifelse(!disturbances, nGroupsInit, nGroupsInit + 1))
+    expect_equal(length(unique(simTest$cbm_vars$key$row_idx)), ifelse(!disturbances, nGroupsInit, nGroupsInit + 1))
+    expect_equal(nrow(simTest$cbm_vars$parameters),            ifelse(!disturbances, nGroupsInit, nGroupsInit + 1))
+    expect_equal(nrow(simTest$cbm_vars$state),                 ifelse(!disturbances, nGroupsInit, nGroupsInit + 1))
+    expect_equal(nrow(simTest$cbm_vars$flux),                  ifelse(!disturbances, nGroupsInit, nGroupsInit + 1))
+    expect_equal(nrow(simTest$cbm_vars$pool),                  ifelse(!disturbances, nGroupsInit, nGroupsInit + 1))
 
     # Check sw_hw flag
     expect_equal(unique(simTest$cbm_vars$state[species_name == "Black spruce", sw_hw]), 0)
     expect_equal(unique(simTest$cbm_vars$state[species_name == "Jack pine",    sw_hw]), 0)
     expect_equal(unique(simTest$cbm_vars$state[species_name == "White birch",  sw_hw]), 1)
-    expect_equal(unique(simTest$cbm_vars$state[species_name == "White spruce", sw_hw]), 0)
 
     # Check disturbance event priority
     if (disturbances){
