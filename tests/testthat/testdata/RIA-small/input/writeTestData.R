@@ -3,10 +3,9 @@ source(testthat::test_path("setup.R"))
 
 testData <- list(
   pixelGroupMap         = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "pixelGroupMap.tif") |> terra::rast(),
-  standDT               = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "standDT.qs2") |> qs2::qs_read() |> data.table::data.table(),
-  cohortData            = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "cohortData.qs2") |> qs2::qs_read() |> data.table::data.table(),
-  yieldTablesCumulative = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "yieldTablesCumulative.qs2") |> qs2::qs_read() |> data.table::data.table(),
-  yieldTablesId         = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "yieldTablesId.qs2") |> qs2::qs_read() |> data.table::data.table(),
+  cohortData            = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "cohortData.rds") |> readRDS(),
+  yieldTablesCumulative = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "yieldTablesCumulative.rds") |> readRDS(),
+  yieldTablesId         = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "yieldTablesId.rds") |> readRDS(),
   table6tb              = data.table::fread("https://nfi.nfis.org/resources/biomass_models/appendix2_table6_tb.csv"),
   table7tb              = data.table::fread("https://nfi.nfis.org/resources/biomass_models/appendix2_table7_tb.csv"),
   tableMerchantability  = reproducible::prepInputs(
@@ -14,6 +13,12 @@ testData <- list(
     destinationPath = tempdir(),
     fun = data.table::fread
   ) |> cbind(minAge = 15L)
+)
+testData$standDT <- data.table::data.table(
+  pixelIndex   = 1:terra::ncell(testData$pixelGroupMap),
+  admin_name   = "British Columbia",
+  admin_abbrev = "BC",
+  eco_id       = 14
 )
 
 AGB <- data.table::data.table(
@@ -70,7 +75,7 @@ gcIncr[age == 0, c("merch_inc", "foliage_inc", "other_inc") := list(0, 0, 0)]
 testData$gcIncrements <- gcIncr[, .(gcID, age, merch_inc, foliage_inc, other_inc)]
 
 # Write to file
-for (table in c("standDT", "cohortDT", "gcMeta", "gcIncrements")){
-  qs2::qs_save(testData[[table]], file.path(spadesTestPaths$testdata, "RIA-small/input", paste0(table, ".qs2")))
+for (table in c("cohortDT", "gcMeta", "gcIncrements")){
+  saveRDS(testData[[table]], file.path(spadesTestPaths$testdata, "RIA-small/input", paste0(table, ".rds")))
 }
 

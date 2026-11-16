@@ -3,7 +3,9 @@ if (!testthat::is_testing()) source(testthat::test_path("setup.R"))
 
 test_that("Module: RIA-small", {
 
-  for (cohort_fixed in c(TRUE, FALSE)) for (disturbances in c(FALSE, TRUE)) for (chunk_size in c(NA, 4)){
+  cacheInit <- reproducible::showCache(spadesTestPaths$cachePath)
+
+  for (disturbances in c(FALSE, TRUE)) for (cohort_fixed in c(TRUE, FALSE)) for (chunk_size in c(NA, 6)){
 
     ## Run simInit and spades ----
 
@@ -28,21 +30,30 @@ test_that("Module: RIA-small", {
       ),
 
       params = list(CBM_core = list(
-        plots = NA,
+        .plots = NA,
         cohort_fixed = cohort_fixed,
         .chunk_size  = chunk_size
       )),
 
       masterRaster = terra::rast(
         crs  = "EPSG:3005",
-        ext  = c(xmin = 1018000, xmax = 1020000, ymin = 1200000, ymax = 1202000),
+        ext  = c(xmin = 1018000, xmax = 1020000, ymin = 1200750, ymax = 1202000),
         res  = 250,
         vals = 1L
       ),
-      standDT      = file.path(paths$testdata, "RIA-small/input", "standDT.qs2")      |> qs2::qs_read() |> data.table::as.data.table(),
-      cohortDT     = file.path(paths$testdata, "RIA-small/input", "cohortDT.qs2")     |> qs2::qs_read() |> data.table::as.data.table(),
-      gcMeta       = file.path(paths$testdata, "RIA-small/input", "gcMeta.qs2")       |> qs2::qs_read() |> data.table::as.data.table(),
-      gcIncrements = file.path(paths$testdata, "RIA-small/input", "gcIncrements.qs2") |> qs2::qs_read() |> data.table::as.data.table()
+      standDT = data.table::data.table(
+        pixelIndex = 1:terra::ncell(masterRaster),
+        admin_name = "British Columbia",
+        eco_id     = 14,
+        area       = prod(terra::res(masterRaster))
+      ),
+      cohortDT     = file.path(paths$testdata, "RIA-small/input", "cohortDT.rds") |> readRDS(),
+      gcMeta       = {
+        gcMeta <- file.path(paths$testdata, "RIA-small/input", "gcMeta.rds") |> readRDS()
+        gcMeta <- cbind(gcMeta, unique(standDT[, .(admin_name, eco_id)]))
+        gcMeta
+      },
+      gcIncrements = file.path(paths$testdata, "RIA-small/input", "gcIncrements.rds") |> readRDS()
     )
 
     if (disturbances){
@@ -61,17 +72,17 @@ test_that("Module: RIA-small", {
 
     ## Check outputs ----
 
+    # emissionsProducts
     emissionsProductsValid <- data.table::fread(
-      file.path(spadesTestPaths$testdata, "RIA-small", "valid", paste0("emissionsProducts_dist", disturbances, ".csv")))
+      file.path(spadesTestPaths$testdata, "RIA-small", "valid", paste0("dist", disturbances), "emissionsProducts.csv"))
     expect_equal(simTest$emissionsProducts, emissionsProductsValid,
                  scale = 1, tolerance = 0.001, check.attributes = FALSE)
 
+    # Check there are results for all input cohorts through all simulation stages
     cbm4_results <- CBM4r::SQLResultsProcessor(simTest$CBM4data)
     simResults <- CBM4r::cbm4_results_cohort(cbm4_results, "spatial_pool_indicators")
 
-    ## Check there are results for all input cohorts through all simulation stages
-    cohortDTin <- file.path(spadesTestPaths$testdata, "RIA-small/input", "cohortDT.qs2") |>
-      qs2::qs_read() |> data.table::as.data.table()
+    cohortDTin <- file.path(spadesTestPaths$testdata, "RIA-small/input", "cohortDT.rds") |> readRDS()
     for (t in 0:2){
 
       expect_equal(sum(simResults$timestep == t), nrow(cohortDTin))
@@ -91,7 +102,7 @@ test_that("Module: RIA-small", {
       }
     }
 
-    ## Check that cohorts have expected total C
+    # Check that cohorts have expected total C
     simResults[, C :=
                  SoftwoodMerch + SoftwoodFoliage + SoftwoodOther +
                  HardwoodMerch + HardwoodFoliage + HardwoodOther]
@@ -110,5 +121,11 @@ test_that("Module: RIA-small", {
       )
     }
   }
+
+  # Check that the spinup was cached just twice: once without and once with chunk_size
+  cacheIds <- setdiff(
+    reproducible::showCache(spadesTestPaths$cachePath)[tagKey == "function" & tagValue == "cbm4_spinup", cacheId],
+    cacheInit$cacheId)
+  expect_equal(length(cacheIds), 2)
 })
 
