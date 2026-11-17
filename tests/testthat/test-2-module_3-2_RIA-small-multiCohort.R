@@ -27,23 +27,23 @@ test_that("Module: RIA-small", {
 
       masterRaster = terra::rast(
         crs  = "EPSG:3005",
-        ext  = c(xmin = 1018000, xmax = 1020000, ymin = 1200000, ymax = 1202000),
+        ext  = c(xmin = 1018000, xmax = 1020000, ymin = 1200750, ymax = 1202000),
         res  = 250,
         vals = 1L
       ),
-      standDT      = {
-        standDT <- file.path(paths$testdata, "RIA-small/input", "standDT.qs2") |> qs2::qs_read() |> data.table::as.data.table()
-        standDT[, admin_name := "British Columbia"]
-        standDT[, area := 250 * 250]
-        standDT
-      },
-      cohortDT     = file.path(paths$testdata, "RIA-small/input", "cohortDT.qs2") |> qs2::qs_read() |> data.table::as.data.table(),
+      standDT = data.table::data.table(
+        pixelIndex = 1:terra::ncell(masterRaster),
+        admin_name = "British Columbia",
+        eco_id     = 14,
+        area       = prod(terra::res(masterRaster))
+      ),
+      cohortDT     = file.path(paths$testdata, "RIA-small/input", "cohortDT.rds") |> readRDS(),
       gcMeta       = {
-        gcMeta <- file.path(paths$testdata, "RIA-small/input", "gcMeta.qs2") |> qs2::qs_read() |> data.table::as.data.table()
+        gcMeta <- file.path(paths$testdata, "RIA-small/input", "gcMeta.rds") |> readRDS()
         gcMeta <- cbind(gcMeta, unique(standDT[, .(admin_name, eco_id)]))
         gcMeta
       },
-      gcIncrements = file.path(paths$testdata, "RIA-small/input", "gcIncrements.qs2") |> qs2::qs_read() |> data.table::as.data.table()
+      gcIncrements = file.path(paths$testdata, "RIA-small/input", "gcIncrements.rds") |> readRDS()
     )
 
     if (disturbances){
