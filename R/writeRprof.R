@@ -10,6 +10,7 @@ writeRprof <- function(sim, chunk_size, process, timestep, outFile){
   sumRprofRow <- sumRprof$by.total[paste0("\"", process, "\""),]
 
   newRow <- data.table::data.table(
+    timestep     = timestep,
     pixels       = nrow(sim$standDT),
     cohorts      = nrow(sim$cohortDT),
     chunk_size   = chunk_size,
