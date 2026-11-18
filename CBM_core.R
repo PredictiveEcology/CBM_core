@@ -15,7 +15,7 @@ defineModule(sim, list(
   documentation = list("README.txt", "CBM_core.Rmd"),
   reqdPkgs = list(
     "arrow", "cli", "data.table", "dplyr", "zip",
-    "PredictiveEcology/CBM4r@development (>=1.1.0.9009)", "gert",
+    "PredictiveEcology/CBM4r@development (>=1.1.0.9010)", "gert",
     "PredictiveEcology/CBMutils@development (>=2.5.7.9001)"
   ),
   parameters = rbind(
@@ -157,7 +157,7 @@ doEvent.CBM_core <- function(sim, eventTime, eventType, debug = FALSE) {
       sim <- scheduleEvent(sim, start(sim), "CBM_core", "spinup", eventPriority = 5)
 
       # Schedule annual event
-      sim <- scheduleEvent(sim, start(sim), "CBM_core", "step", eventPriority = 9)
+      sim <- scheduleEvent(sim, start(sim), "CBM_core", "step", eventPriority = 10)
 
       # Schedule summaries
       sim <- scheduleEvent(sim, end(sim), "CBM_core", "summarize", eventPriority = 10)
@@ -295,7 +295,7 @@ setStands <- function(sim){
 
   # Rename table columns for duration of module event
   cbm4_table_setnames(sim)
-  on.exit(cbm4_table_setnames_revert(sim))
+  withr::defer(cbm4_table_setnames_revert(sim))
 
   # Set stand metadata
   CBM4r::cbm4_set_grid_meta(
@@ -349,11 +349,18 @@ spinup <- function(sim) {
   # Rename table columns for duration of module event
   cohortRename <- if (P(sim)$spinup) c("delay_spinup" = "delay", "delay" = "delay_regen")
   cbm4_table_setnames(sim, cohortRename)
-  on.exit(cbm4_table_setnames_revert(sim, cohortRename))
+  withr::defer(cbm4_table_setnames_revert(sim, cohortRename))
 
   if (P(sim)$spinup){
 
     message("Writing CBM4 dataset: inventory")
+
+    # Set all cohort_index to 0 for the spinup if cohort_fixed = FALSE
+    if (!P(sim)$cohort_fixed || !anyDuplicated(sim$cohortDT$pixel_index)){
+      sim$cohortDT[, cohort_index := 0]
+      withr::defer(sim$cohortDT[, cohort_index := NULL])
+    }
+
     CBM4r::cbm4_write_inventory(
       cbm4_data       = sim$CBM4data,
       cbm_defaults_db = sim$cbm_defaults_db,
@@ -466,7 +473,7 @@ step <- function(sim) {
 
   # Rename table columns for duration of module event
   cbm4_table_setnames(sim)
-  on.exit(cbm4_table_setnames_revert(sim))
+  withr::defer(cbm4_table_setnames_revert(sim))
 
   # Set timestep
   timestep <- time(sim) - start(sim) + 1
@@ -620,7 +627,7 @@ readCohorts <- function(sim, timestep = NULL){
 
   # Rename table columns for duration of module event
   cbm4_table_setnames(sim)
-  on.exit(cbm4_table_setnames_revert(sim))
+  withr::defer(cbm4_table_setnames_revert(sim))
 
   # Set timestep
   if (is.null(timestep)) timestep <- time(sim) - start(sim) + 1
@@ -634,6 +641,7 @@ readCohorts <- function(sim, timestep = NULL){
 
   sim$cohortDT[, chunk_index  := NULL]
   sim$cohortDT[, raster_index := NULL]
+  sim$cohortDT[, cohort_index := NULL]
   sim$cohortDT[, pools.Input  := NULL]
 
   data.table::setnames(sim$cohortDT, "state.age", "age")

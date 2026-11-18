@@ -3,7 +3,9 @@ if (!testthat::is_testing()) source(testthat::test_path("setup.R"))
 
 test_that("Module: SK-small", {
 
-  for (cohort_fixed in c(TRUE, FALSE)) for (disturbances in c(FALSE, TRUE)) for (chunk_size in c(NA, 200)){
+  cacheInit <- reproducible::showCache(spadesTestPaths$cachePath)
+
+  for (disturbances in c(FALSE, TRUE)) for (cohort_fixed in c(TRUE, FALSE)) for (chunk_size in c(NA, 200)){
 
     ## Run simInit and spades ----
 
@@ -34,22 +36,29 @@ test_that("Module: SK-small", {
 
       masterRaster = terra::rast(
         crs  = "EPSG:3979",
-        ext  = c(xmin = -687696, xmax = -681036, ymin = 711955, ymax = 716183),
+        ext  = c(xmin = -687696, xmax = -681036, ymin = 714685, ymax = 716185),
         res  = 30,
         vals = 1L
       ),
-      standDT      = file.path(paths$testdata, "SK-small/input", "standDT.qs2")      |> qs2::qs_read() |> data.table::as.data.table(),
-      cohortDT     = file.path(paths$testdata, "SK-small/input", "cohortDT.qs2")     |> qs2::qs_read() |> data.table::as.data.table(),
-      gcMeta       = file.path(paths$testdata, "SK-small/input", "gcMeta.qs2")       |> qs2::qs_read() |> data.table::as.data.table(),
-      gcIncrements = file.path(paths$testdata, "SK-small/input", "gcIncrements.qs2") |> qs2::qs_read() |> data.table::as.data.table()
+      standDT = data.table::data.table(
+        pixelIndex = 1:terra::ncell(masterRaster),
+        admin_name = "Saskatchewan",
+        eco_id     = 9,
+        area       = prod(terra::res(masterRaster))
+      ),
+      cohortDT     = file.path(paths$testdata, "SK-small/input", "cohortDT.rds")     |> readRDS(),
+      gcMeta       = file.path(paths$testdata, "SK-small/input", "gcMeta.rds")       |> readRDS(),
+      gcIncrements = file.path(paths$testdata, "SK-small/input", "gcIncrements.rds") |> readRDS()
     )
 
-    ## In year 2000 there are no disturbances
     ## In year 1998 pixels 1324-1327 have both a wildfire and "Generic 20% mortality" event;
     ## wildfire takes priority. `disturbanceEvents[pixelIndex %in% 1324:1327 & year == 1998]`
+    ## In year 1999 disturbances only occur in unforested pixels
+    ## No disturbances in year 2000
+    ## This leads to just 1 wildfire event in 1998
     if (disturbances){
-      simInitInput$disturbanceMeta   <- file.path(spadesTestPaths$testdata, "SK-small/input", "disturbanceMeta.qs2")   |> qs2::qs_read() |> data.table::as.data.table()
-      simInitInput$disturbanceEvents <- file.path(spadesTestPaths$testdata, "SK-small/input", "disturbanceEvents.qs2") |> qs2::qs_read() |> data.table::as.data.table()
+      simInitInput$disturbanceMeta   <- file.path(spadesTestPaths$testdata, "SK-small/input", "disturbanceMeta.rds")   |> readRDS()
+      simInitInput$disturbanceEvents <- file.path(spadesTestPaths$testdata, "SK-small/input", "disturbanceEvents.rds") |> readRDS()
     }
 
     # Run simInit
@@ -65,18 +74,16 @@ test_that("Module: SK-small", {
 
     ## Check that input tables are not altered by module.
     refTables <- list(
-      standDT           = qs2::qs_read(file.path(spadesTestPaths$testdata, "SK-small/input", "standDT.qs2")),
-      cohortDT          = qs2::qs_read(file.path(spadesTestPaths$testdata, "SK-small/input", "cohortDT.qs2")),
-      gcMeta            = qs2::qs_read(file.path(spadesTestPaths$testdata, "SK-small/input", "gcMeta.qs2")),
-      gcIncrements      = qs2::qs_read(file.path(spadesTestPaths$testdata, "SK-small/input", "gcIncrements.qs2")),
-      disturbanceMeta   = qs2::qs_read(file.path(spadesTestPaths$testdata, "SK-small/input", "disturbanceMeta.qs2")),
-      disturbanceEvents = qs2::qs_read(file.path(spadesTestPaths$testdata, "SK-small/input", "disturbanceEvents.qs2"))
+      cohortDT          = readRDS(file.path(spadesTestPaths$testdata, "SK-small/input", "cohortDT.rds")),
+      gcMeta            = readRDS(file.path(spadesTestPaths$testdata, "SK-small/input", "gcMeta.rds")),
+      gcIncrements      = readRDS(file.path(spadesTestPaths$testdata, "SK-small/input", "gcIncrements.rds")),
+      disturbanceMeta   = readRDS(file.path(spadesTestPaths$testdata, "SK-small/input", "disturbanceMeta.rds")),
+      disturbanceEvents = readRDS(file.path(spadesTestPaths$testdata, "SK-small/input", "disturbanceEvents.rds"))
     )
     outTables <- lapply(setNames(names(refTables), names(refTables)), function(table) simTest[[table]]) |>
       lapply(data.table::copy) |> lapply(data.table::setindex, NULL)
 
-    expect_equal(outTables$standDT[, .SD, .SDcols = names(refTables$standDT)], refTables$standDT) # Columns are added
-    if (cohort_fixed) expect_equal(outTables$cohortDT, refTables$cohortDT)
+    if (cohort_fixed) expect_equal(outTables$cohortDT,     refTables$cohortDT)
     expect_equal(outTables$gcMeta,       refTables$gcMeta)
     expect_equal(outTables$gcIncrements, refTables$gcIncrements)
     if (disturbances){
@@ -100,9 +107,15 @@ test_that("Module: SK-small", {
     }
 
     # Check cohort group count
+    nGroupsInit <- 24
     if (is.na(chunk_size)) expect_equal(
       length(CBM4r::cbm4_results_view(cbm4_results, "simulation", timestep = 3)$index),
-      ifelse(disturbances, 43, 41))
+      ifelse(!disturbances, nGroupsInit, nGroupsInit + 1))
+
+    # Check cohort_index count
+    cohort_index_count <- CBM4r::cbm4_results_view(cbm4_results, "simulation")[
+      , .(cohort_index = data.table::uniqueN(cohort_index)), by = "timestep"]
+    expect_all_equal(cohort_index_count$cohort_index, 1)
 
     # Check disturbance event priority
     if (disturbances){
@@ -120,6 +133,13 @@ test_that("Module: SK-small", {
       "totalCarbon-1998.png", "totalCarbon-2000.png"
     ))
   }
+
+  # Check that the spinup was cached just twice: once without and once with chunk_size
+  cacheIds <- setdiff(
+    reproducible::showCache(spadesTestPaths$cachePath)[tagKey == "function" & tagValue == "cbm4_spinup", cacheId],
+    cacheInit$cacheId)
+  expect_equal(length(cacheIds), 2)
+
 })
 
 
