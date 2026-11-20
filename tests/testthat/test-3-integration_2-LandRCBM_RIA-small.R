@@ -25,14 +25,10 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
       vals = 1L
     ),
     standDT = data.table::data.table(
-      pixelIndex   = 1:terra::ncell(masterRaster),
       admin_name   = "British Columbia",
       admin_abbrev = "BC",
-      eco_id       = 14,
-      area         = prod(terra::res(masterRaster))
+      eco_id       = 14
     ),
-    rasterToMatch         = masterRaster,
-    studyArea             = sf::st_sf(sf::st_as_sfc(sf::st_bbox(rasterToMatch))),
     biomassMap            = file.path(test_path("testdata"), "LandRCBM-RIA-small/input", "biomassMap.tif")    |> terra::rast(),
     cohortData            = file.path(test_path("testdata"), "LandRCBM-RIA-small/input", "cohortData.rds")    |> readRDS(),
     pixelGroupMap         = file.path(test_path("testdata"), "LandRCBM-RIA-small/input", "pixelGroupMap.tif") |> terra::rast(),
@@ -56,6 +52,14 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
         skipPrepareCBMvars = TRUE
       ))
   )
+
+  simInitInput$standDT <- cbind(
+    data.table::data.table(pixelIndex = 1:terra::ncell(simInitInput$masterRaster)),
+    simInitInput$standDT,
+    area = prod(terra::res(simInitInput$masterRaster))
+  )
+  simInitInput$rasterToMatch <- simInitInput$masterRaster
+  simInitInput$studyArea     <- sf::st_sf(sf::st_as_sfc(sf::st_bbox(simInitInput$masterRaster)))
 
   # Run simInit
   simTestInit <- suppressWarnings(SpaDES.core::simInit2(simInitInput))

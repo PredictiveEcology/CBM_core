@@ -19,18 +19,18 @@ test_that("Module: RIA-small", {
         vals = 1L
       ),
       standDT = data.table::data.table(
-        pixelIndex = 1:terra::ncell(masterRaster),
         admin_name = "British Columbia",
-        eco_id     = 14,
-        area       = prod(terra::res(masterRaster))
+        eco_id     = 14
       ),
-      cohortDT     = file.path(test_path("testdata"), "RIA-small/input", "cohortDT.rds") |> readRDS(),
-      gcMeta       = {
-        gcMeta <- file.path(test_path("testdata"), "RIA-small/input", "gcMeta.rds") |> readRDS()
-        gcMeta <- cbind(gcMeta, unique(standDT[, .(admin_name, eco_id)]))
-        gcMeta
-      },
+      cohortDT     = file.path(test_path("testdata"), "RIA-small/input", "cohortDT.rds")     |> readRDS(),
+      gcMeta       = file.path(test_path("testdata"), "RIA-small/input", "gcMeta.rds")       |> readRDS(),
       gcIncrements = file.path(test_path("testdata"), "RIA-small/input", "gcIncrements.rds") |> readRDS()
+    )
+
+    simInitInput$standDT <- cbind(
+      data.table::data.table(pixelIndex = 1:terra::ncell(simInitInput$masterRaster)),
+      simInitInput$standDT,
+      area = prod(terra::res(simInitInput$masterRaster))
     )
 
     if (disturbances){
