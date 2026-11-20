@@ -5,7 +5,7 @@ test_that("Multi module: RIA-small with LandR 2000-2002", {
 
   ## Run simInit and spades ----
 
-  skip_if(!"main" %in% Sys.getenv(c("GITHUB_BASE_REF", "GITHUB_REF_NAME")))
+  skip_if(as.logical(Sys.getenv("CI", FALSE)) & !"main" %in% Sys.getenv(c("GITHUB_BASE_REF", "GITHUB_REF_NAME")))
   skip_on_ci()
 
   # Set up project
