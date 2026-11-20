@@ -6,22 +6,9 @@ test_that("Module: RIA-small", {
   for (disturbances in c(FALSE, TRUE)){
 
     # Set up project
-    projectName <- paste0("module_RIA-small_dist", disturbances)
-    times       <- list(start = 2000, end = 2001)
-
-    simInitInput <- SpaDES.project::setupProject(
-
-      modules = "CBM_core",
-      times   = times,
-      paths   = list(
-        projectPath = spadesTestPaths$projectPath,
-        modulePath  = spadesTestPaths$modulePath,
-        packagePath = spadesTestPaths$packagePath,
-        inputPath   = spadesTestPaths$inputPath,
-        cachePath   = spadesTestPaths$cachePath,
-        outputPath  = file.path(spadesTestPaths$temp$outputs, projectName),
-        testdata    = spadesTestPaths$testdata
-      ),
+    simInitInput <- setupProjectTest(
+      projectName = paste0("module_RIA-small_dist", disturbances),
+      times       = list(start = 2000, end = 2001),
 
       params = list(CBM_core = list(.plots = NA)),
 

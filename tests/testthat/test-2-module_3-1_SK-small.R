@@ -8,22 +8,9 @@ test_that("Module: SK-small", {
     ## Run simInit and spades ----
 
     # Set up project
-    projectName <- "module_SK-small"
-    times       <- list(start = 1998, end = 2000)
-
-    simInitInput <- SpaDES.project::setupProject(
-
-      modules = "CBM_core",
-      times   = times,
-      paths   = list(
-        projectPath = spadesTestPaths$projectPath,
-        modulePath  = spadesTestPaths$modulePath,
-        packagePath = spadesTestPaths$packagePath,
-        inputPath   = spadesTestPaths$inputPath,
-        cachePath   = spadesTestPaths$cachePath,
-        outputPath  = file.path(spadesTestPaths$temp$outputs, projectName),
-        testdata    = spadesTestPaths$testdata
-      ),
+    simInitInput <- setupProjectTest(
+      projectName = "module_SK-small",
+      times       = list(start = 1998, end = 2000),
 
       params = list(CBM_core = list(.saveSpinup = TRUE, .saveAll = TRUE)),
 
@@ -39,9 +26,9 @@ test_that("Module: SK-small", {
         eco_id     = 9,
         area       = prod(terra::res(masterRaster))
       ),
-      cohortDT     = file.path(paths$testdata, "SK-small/input", "cohortDT.rds")     |> readRDS(),
-      gcMeta       = file.path(paths$testdata, "SK-small/input", "gcMeta.rds")       |> readRDS(),
-      gcIncrements = file.path(paths$testdata, "SK-small/input", "gcIncrements.rds") |> readRDS()
+      cohortDT     = file.path(test_path("testdata"), "SK-small/input", "cohortDT.rds")     |> readRDS(),
+      gcMeta       = file.path(test_path("testdata"), "SK-small/input", "gcMeta.rds")       |> readRDS(),
+      gcIncrements = file.path(test_path("testdata"), "SK-small/input", "gcIncrements.rds") |> readRDS()
     )
 
     ## In year 1998 pixels 1324-1327 have both a wildfire and "Generic 20% mortality" event;
@@ -50,8 +37,8 @@ test_that("Module: SK-small", {
     ## No disturbances in year 2000
     ## This leads to just 1 wildfire event in 1998
     if (disturbances){
-      simInitInput$disturbanceMeta   <- file.path(spadesTestPaths$testdata, "SK-small/input", "disturbanceMeta.rds")   |> readRDS()
-      simInitInput$disturbanceEvents <- file.path(spadesTestPaths$testdata, "SK-small/input", "disturbanceEvents.rds") |> readRDS()
+      simInitInput$disturbanceMeta   <- file.path(test_path("testdata"), "SK-small/input", "disturbanceMeta.rds")   |> readRDS()
+      simInitInput$disturbanceEvents <- file.path(test_path("testdata"), "SK-small/input", "disturbanceEvents.rds") |> readRDS()
     }
 
     # Run simInit
@@ -67,11 +54,11 @@ test_that("Module: SK-small", {
 
     ## Check that input tables are not altered by module.
     refTables <- list(
-      cohortDT          = readRDS(file.path(spadesTestPaths$testdata, "SK-small/input", "cohortDT.rds")),
-      gcMeta            = readRDS(file.path(spadesTestPaths$testdata, "SK-small/input", "gcMeta.rds")),
-      gcIncrements      = readRDS(file.path(spadesTestPaths$testdata, "SK-small/input", "gcIncrements.rds")),
-      disturbanceMeta   = readRDS(file.path(spadesTestPaths$testdata, "SK-small/input", "disturbanceMeta.rds")),
-      disturbanceEvents = readRDS(file.path(spadesTestPaths$testdata, "SK-small/input", "disturbanceEvents.rds"))
+      cohortDT          = readRDS(file.path(test_path("testdata"), "SK-small/input", "cohortDT.rds")),
+      gcMeta            = readRDS(file.path(test_path("testdata"), "SK-small/input", "gcMeta.rds")),
+      gcIncrements      = readRDS(file.path(test_path("testdata"), "SK-small/input", "gcIncrements.rds")),
+      disturbanceMeta   = readRDS(file.path(test_path("testdata"), "SK-small/input", "disturbanceMeta.rds")),
+      disturbanceEvents = readRDS(file.path(test_path("testdata"), "SK-small/input", "disturbanceEvents.rds"))
     )
     outTables <- lapply(setNames(names(refTables), names(refTables)), function(table) simTest[[table]]) |>
       lapply(data.table::copy) |> lapply(data.table::setindex, NULL)
@@ -91,7 +78,7 @@ test_that("Module: SK-small", {
     expect_true(!is.null(simTest$emissionsProducts))
     expect_equal(
       data.table::as.data.table(simTest$emissionsProducts),
-      data.table::fread(file.path(spadesTestPaths$testdata, "SK-small/valid", paste0("dist", disturbances), "emissionsProducts.csv"))[
+      data.table::fread(file.path(test_path("testdata"), "SK-small/valid", paste0("dist", disturbances), "emissionsProducts.csv"))[
         , .SD, .SDcols = colnames(simTest$emissionsProducts)]
     )
 
@@ -126,7 +113,7 @@ test_that("Module: SK-small", {
     if (disturbances){
 
       outDataDir   <- file.path(simTest$spadesCBMdb, "data")
-      validDataDir <- file.path(spadesTestPaths$testdata, "SK-small/valid", paste0("dist", disturbances), "cbm_vars")
+      validDataDir <- file.path(test_path("testdata"), "SK-small/valid", paste0("dist", disturbances), "cbm_vars")
 
       for (year in times$start:times$end){
         expect_equal(
