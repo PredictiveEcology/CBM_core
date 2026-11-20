@@ -24,13 +24,13 @@ test_that("Module: RIA-small", {
         eco_id     = 14,
         area       = prod(terra::res(masterRaster))
       ),
-      cohortDT     = file.path(paths$testdata, "RIA-small/input", "cohortDT.rds") |> readRDS(),
+      cohortDT     = file.path(test_path("testdata"), "RIA-small/input", "cohortDT.rds") |> readRDS(),
       gcMeta       = {
-        gcMeta <- file.path(paths$testdata, "RIA-small/input", "gcMeta.rds") |> readRDS()
+        gcMeta <- file.path(test_path("testdata"), "RIA-small/input", "gcMeta.rds") |> readRDS()
         gcMeta <- cbind(gcMeta, unique(standDT[, .(admin_name, eco_id)]))
         gcMeta
       },
-      gcIncrements = file.path(paths$testdata, "RIA-small/input", "gcIncrements.rds") |> readRDS()
+      gcIncrements = file.path(test_path("testdata"), "RIA-small/input", "gcIncrements.rds") |> readRDS()
     )
 
     if (disturbances){
@@ -48,7 +48,7 @@ test_that("Module: RIA-small", {
 
     # Check results
     emissionsProductsValid <- data.table::fread(
-      file.path(spadesTestPaths$testdata, "RIA-small/valid", paste0("dist", disturbances), "emissionsProducts.csv"))
+      file.path(test_path("testdata"), "RIA-small/valid", paste0("dist", disturbances), "emissionsProducts.csv"))
     expect_equal(simTest$emissionsProducts, emissionsProductsValid,
                  scale = 1, tolerance = 0.001, check.attributes = FALSE)
   }
