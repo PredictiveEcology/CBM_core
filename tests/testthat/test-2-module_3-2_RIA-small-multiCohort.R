@@ -6,22 +6,9 @@ test_that("Module: RIA-small", {
   for (disturbances in c(FALSE, TRUE)){
 
     # Set up project
-    projectName <- paste0("module_RIA-small_dist", disturbances)
-    times       <- list(start = 2000, end = 2001)
-
-    simInitInput <- SpaDES.project::setupProject(
-
-      modules = "CBM_core",
-      times   = times,
-      paths   = list(
-        projectPath = spadesTestPaths$projectPath,
-        modulePath  = spadesTestPaths$modulePath,
-        packagePath = spadesTestPaths$packagePath,
-        inputPath   = spadesTestPaths$inputPath,
-        cachePath   = spadesTestPaths$cachePath,
-        outputPath  = file.path(spadesTestPaths$temp$outputs, projectName),
-        testdata    = spadesTestPaths$testdata
-      ),
+    simInitInput <- setupProjectTest(
+      projectName = paste0("module_RIA-small_dist", disturbances),
+      times       = list(start = 2000, end = 2001),
 
       params = list(CBM_core = list(.plots = NA)),
 
@@ -32,14 +19,18 @@ test_that("Module: RIA-small", {
         vals = 1L
       ),
       standDT = data.table::data.table(
-        pixelIndex = 1:terra::ncell(masterRaster),
         admin_name = "British Columbia",
-        eco_id     = 14,
-        area       = prod(terra::res(masterRaster))
+        eco_id     = 14
       ),
-      cohortDT     = file.path(paths$testdata, "RIA-small/input", "cohortDT.rds")     |> readRDS(),
-      gcMeta       = file.path(paths$testdata, "RIA-small/input", "gcMeta.rds")       |> readRDS(),
-      gcIncrements = file.path(paths$testdata, "RIA-small/input", "gcIncrements.rds") |> readRDS()
+      cohortDT     = file.path(test_path("testdata"), "RIA-small/input", "cohortDT.rds")     |> readRDS(),
+      gcMeta       = file.path(test_path("testdata"), "RIA-small/input", "gcMeta.rds")       |> readRDS(),
+      gcIncrements = file.path(test_path("testdata"), "RIA-small/input", "gcIncrements.rds") |> readRDS()
+    )
+
+    simInitInput$standDT <- cbind(
+      data.table::data.table(pixelIndex = 1:terra::ncell(simInitInput$masterRaster)),
+      simInitInput$standDT,
+      area = prod(terra::res(simInitInput$masterRaster))
     )
 
     if (disturbances){
@@ -57,7 +48,7 @@ test_that("Module: RIA-small", {
 
     # Check results
     emissionsProductsValid <- data.table::fread(
-      file.path(spadesTestPaths$testdata, "RIA-small/valid", paste0("dist", disturbances), "emissionsProducts.csv"))
+      file.path(test_path("testdata"), "RIA-small/valid", paste0("dist", disturbances), "emissionsProducts.csv"))
     expect_equal(simTest$emissionsProducts, emissionsProductsValid,
                  scale = 1, tolerance = 0.001, check.attributes = FALSE)
   }
