@@ -37,12 +37,8 @@ test_that("Module: RIA-small", {
         eco_id     = 14,
         area       = prod(terra::res(masterRaster))
       ),
-      cohortDT     = file.path(paths$testdata, "RIA-small/input", "cohortDT.rds") |> readRDS(),
-      gcMeta       = {
-        gcMeta <- file.path(paths$testdata, "RIA-small/input", "gcMeta.rds") |> readRDS()
-        gcMeta <- cbind(gcMeta, unique(standDT[, .(admin_name, eco_id)]))
-        gcMeta
-      },
+      cohortDT     = file.path(paths$testdata, "RIA-small/input", "cohortDT.rds")     |> readRDS(),
+      gcMeta       = file.path(paths$testdata, "RIA-small/input", "gcMeta.rds")       |> readRDS(),
       gcIncrements = file.path(paths$testdata, "RIA-small/input", "gcIncrements.rds") |> readRDS()
     )
 

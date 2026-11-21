@@ -479,7 +479,7 @@ annual_prepCohortGroups <- function(sim) {
   }
 
   annualIncr <- sim$cbm_vars$state |>
-    merge(sim$gcMeta, by = c("admin_name", "eco_id", intersect(names(sim$cohortDT), names(sim$gcMeta)))) |>
+    merge(sim$gcMeta, by = intersect(names(sim$cbm_vars$state), names(sim$gcMeta))) |>
     merge(growthIncr, by = c("gcID", "age"), all.x = TRUE)
   data.table::setkey(annualIncr, row_idx)
 
