@@ -122,8 +122,8 @@ test_that("Module: step without spinup: with disturbance", {
     # 2 disturbances in the same pixel with disturbance_order
     priority_order = list(
       disturbanceMeta   = rbind(
-        data.table::data.table(eventID = 1, name = "Wildfire", disturbance_order = 2),
-        data.table::data.table(eventID = 2, name = "Clearcut harvesting without salvage", disturbance_order = 1)
+        data.table::data.table(eventID = 1, name = "Wildfire", disturbance_order = 1),
+        data.table::data.table(eventID = 2, name = "Clearcut harvesting without salvage", disturbance_order = 0)
       ),
       disturbanceEvents = rbind(
         data.table::data.table(eventID = 1, year = 2000, pixelIndex = 1),
