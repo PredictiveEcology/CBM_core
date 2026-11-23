@@ -355,12 +355,6 @@ spinup <- function(sim) {
 
     message("Writing CBM4 dataset: inventory")
 
-    # Set all cohort_index to 0 for the spinup if cohort_fixed = FALSE
-    if (!P(sim)$cohort_fixed || !anyDuplicated(sim$cohortDT$pixel_index)){
-      sim$cohortDT[, cohort_index := 0]
-      withr::defer(sim$cohortDT[, cohort_index := NULL])
-    }
-
     CBM4r::cbm4_write_inventory(
       cbm4_data       = sim$CBM4data,
       cbm_defaults_db = sim$cbm_defaults_db,
