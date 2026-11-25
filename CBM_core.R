@@ -62,7 +62,7 @@ defineModule(sim, list(
       )),
       columns = c(
         pixelIndex = "Stand ID",
-        area       = "Stand area in meters",
+        area       = "Stand area in meters. Can be omitted if `masterRaster` is provided.",
         admin_name = "Canada province or territory name",
         eco_id     = "Canada ecozone ID",
         historical_disturbance_type = "Historic CBM-CFS3 disturbance type ID. Defaults to the 'historical_disturbance_type' parameter",
