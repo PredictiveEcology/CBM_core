@@ -273,6 +273,17 @@ spinup <- function(sim) {
   if (!"last_pass_disturbance_type"  %in% names(sim$standDT)) message(
     "Spinup using the default last pass disturbance type ID: ", P(sim)$default_last_pass_disturbance_type)
 
+  # Set stand attributes
+  if (!is.null(sim$masterRaster)){
+
+    if (!"area" %in% names(sim$standDT)){
+      sim$standDT[, area := prod(sim$masterRaster@pntr@.xData$res)]
+    }
+    if (!"pixelIndex" %in% names(sim$standDT) & nrow(sim$standDT) == 1){
+      sim$standDT <- cbind(unique(sim$cohortDT[, .(pixelIndex)]), sim$standDT)
+    }
+  }
+
   # CBM-EXN spinup
   sim$cbm_vars <- cbmEXN_spinup(
     cohortDT        = merge(sim$cohortDT, sim$standDT, by = "pixelIndex", sort = FALSE, all.x = TRUE),

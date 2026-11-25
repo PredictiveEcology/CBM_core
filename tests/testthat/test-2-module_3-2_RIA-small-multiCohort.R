@@ -32,10 +32,8 @@ test_that("Module: RIA-small", {
         vals = 1L
       ),
       standDT = data.table::data.table(
-        pixelIndex = 1:terra::ncell(masterRaster),
         admin_name = "British Columbia",
-        eco_id     = 14,
-        area       = prod(terra::res(masterRaster))
+        eco_id     = 14
       ),
       cohortDT     = file.path(paths$testdata, "RIA-small/input", "cohortDT.rds")     |> readRDS(),
       gcMeta       = file.path(paths$testdata, "RIA-small/input", "gcMeta.rds")       |> readRDS(),
