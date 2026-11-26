@@ -59,7 +59,7 @@ defineModule(sim, list(
       desc = paste(
         "Table of stand attributes. Stands can have 1 or more cohorts.",
         "This can be provided as a 1-row table without `pixelIndex` if all attributes are the same for all cohorts."
-      )),
+      ),
       columns = c(
         pixelIndex = "Stand ID",
         area       = "Stand area in meters. Can be omitted if `masterRaster` is provided.",
