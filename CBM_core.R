@@ -56,10 +56,13 @@ defineModule(sim, list(
   inputObjects = bindrows(
     expectsInput(
       objectName = "standDT", objectClass = "data.table",
-      desc = "Table of stand attributes. Stands can have 1 or more cohorts.",
+      desc = paste(
+        "Table of stand attributes. Stands can have 1 or more cohorts.",
+        "This can be provided as a 1-row table without `pixelIndex` if all attributes are the same for all cohorts."
+      ),
       columns = c(
         pixelIndex = "Stand ID",
-        area       = "Stand area in meters",
+        area       = "Stand area in meters. Can be omitted if `masterRaster` is provided.",
         admin_name = "Canada province or territory name",
         eco_id     = "Canada ecozone ID",
         historical_disturbance_type = "Historic CBM-CFS3 disturbance type ID. Defaults to the 'historical_disturbance_type' parameter",
@@ -272,6 +275,14 @@ spinup <- function(sim) {
     "Spinup using the default historical disturbance type ID: ", P(sim)$default_historical_disturbance_type)
   if (!"last_pass_disturbance_type"  %in% names(sim$standDT)) message(
     "Spinup using the default last pass disturbance type ID: ", P(sim)$default_last_pass_disturbance_type)
+
+  # Set stand attributes
+  if (!"area" %in% names(sim$standDT) & !is.null(sim$masterRaster)){
+    sim$standDT[, area := prod(sim$masterRaster@pntr@.xData$res)]
+  }
+  if (!"pixelIndex" %in% names(sim$standDT) & nrow(sim$standDT) == 1){
+    sim$standDT <- cbind(unique(sim$cohortDT[, .(pixelIndex)]), sim$standDT)
+  }
 
   # CBM-EXN spinup
   sim$cbm_vars <- cbmEXN_spinup(
