@@ -4,22 +4,9 @@ if (!testthat::is_testing()) source(testthat::test_path("setup.R"))
 test_that("Module: multiple spatial units", {
 
   # Set up project
-  projectName <- "module_multi-spatial_unit"
-  times       <- list(start = 2000, end = 2000)
-
-  simInitInput <- SpaDES.project::setupProject(
-
-    modules = "CBM_core",
-    times   = times,
-    paths   = list(
-      projectPath = spadesTestPaths$projectPath,
-      modulePath  = spadesTestPaths$modulePath,
-      packagePath = spadesTestPaths$packagePath,
-      inputPath   = spadesTestPaths$inputPath,
-      cachePath   = spadesTestPaths$cachePath,
-      outputPath  = file.path(spadesTestPaths$temp$outputs, projectName),
-      testdata    = spadesTestPaths$testdata
-    ),
+  simInitInput <- setupProjectTest(
+    projectName = "module_multi-spatial_unit",
+    times       = list(start = 2000, end = 2000),
 
     params = list(CBM_core = list(.plots = NA)),
 

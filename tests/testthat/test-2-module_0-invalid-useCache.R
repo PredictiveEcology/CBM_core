@@ -5,22 +5,10 @@ test_that("Module: .useCache must not include 'init'", {
 
   ## Set up project ----
 
-  projectName <- "module_useCacheInit"
-  times       <- list(start = 2000, end = 2000)
-
-  makeSimInitInput <- function(useCache) SpaDES.project::setupProject(
-
-    modules = "CBM_core",
-    times   = times,
-    paths   = list(
-      projectPath = spadesTestPaths$projectPath,
-      modulePath  = spadesTestPaths$modulePath,
-      packagePath = spadesTestPaths$packagePath,
-      inputPath   = spadesTestPaths$inputPath,
-      cachePath   = spadesTestPaths$cachePath,
-      outputPath  = file.path(spadesTestPaths$temp$outputs, projectName, make.names(paste(useCache, collapse = "_")))
-    ),
-    params = list(CBM_core = list(.useCache = useCache))
+  makeSimInitInput <- function(useCache) setupProjectTest(
+    projectName = paste0("module_useCacheInit_", make.names(paste(useCache, collapse = "_"))),
+    times       = list(start = 2000, end = 2000),
+    params      = list(CBM_core = list(.useCache = useCache))
   )
 
 
